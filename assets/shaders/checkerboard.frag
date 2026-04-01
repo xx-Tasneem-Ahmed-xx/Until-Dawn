@@ -8,9 +8,18 @@ out vec4 frag_color;
 
 //TODO: (Req 1) Finish this shader.
 
+// each 32 pixel will map to a tile
 uniform int size = 32;
 uniform vec3 colors[2];
 
 void main(){
-    frag_color = vec4(colors[0], 1.0);
-}
+    vec2 coord = gl_FragCoord.xy;
+
+    vec2 tile = floor(coord / size);
+
+    int checker = int(mod(tile.x + tile.y, 2.0));
+
+    vec3 color = colors[checker];
+
+    frag_color = vec4(color, 1.0);
+}   
