@@ -1,0 +1,3339 @@
+{
+    "start-scene": "play-phase2",
+    "window": {
+        "title": "Zombie Shooter - Phase 2",
+        "size": {
+            "width": 1280,
+            "height": 720
+        },
+        "fullscreen": false
+    },
+    "scene": {
+        "renderer": {
+            "sky": "assets/textures/sky.jpg",
+            "postprocess": "assets/shaders/postprocess/vignette.frag"
+        },
+        "assets": {
+            "shaders": {
+                "tinted": {
+                    "vs": "assets/shaders/tinted.vert",
+                    "fs": "assets/shaders/tinted.frag"
+                },
+                "textured": {
+                    "vs": "assets/shaders/textured.vert",
+                    "fs": "assets/shaders/textured.frag"
+                },
+                "lit": {
+                    "vs": "assets/shaders/lit.vert",
+                    "fs": "assets/shaders/lit.frag"
+                }
+            },
+            "textures": {
+                "grass": "assets/textures/grass_ground_d.jpg",
+                "wood": "assets/textures/wood.jpg",
+                "moon": "assets/textures/moon.jpg",
+                "glass": "assets/textures/glass-panels.png",
+                "sky": "assets/textures/sky.jpg"
+            },
+            "meshes": {
+                "cube": "assets/models/cube.obj",
+                "plane": "assets/models/plane.obj"
+            },
+            "samplers": {
+                "default": {}
+            },
+            "materials": {
+                "grass": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        }
+                    },
+                    "tint": [
+                        1,
+                        1,
+                        1,
+                        1
+                    ],
+                    "texture": "grass",
+                    "sampler": "default"
+                },
+                "wood": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        }
+                    },
+                    "tint": [
+                        1,
+                        1,
+                        1,
+                        1
+                    ],
+                    "texture": "wood",
+                    "sampler": "default"
+                },
+                "stone_wall": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        }
+                    },
+                    "tint": [
+                        0.6,
+                        0.6,
+                        0.7,
+                        1
+                    ]
+                },
+                "dark_stone": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        }
+                    },
+                    "tint": [
+                        0.3,
+                        0.3,
+                        0.35,
+                        1
+                    ]
+                },
+                "red_brick": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        }
+                    },
+                    "tint": [
+                        0.8,
+                        0.35,
+                        0.25,
+                        1
+                    ]
+                },
+                "metal": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        }
+                    },
+                    "tint": [
+                        0.5,
+                        0.5,
+                        0.5,
+                        1
+                    ]
+                },
+                "glass": {
+                    "type": "lit",
+                    "shader": "lit",
+                    "pipelineState": {
+                        "faceCulling": {
+                            "enabled": false
+                        },
+                        "depthTesting": {
+                            "enabled": true
+                        },
+                        "blending": {
+                            "enabled": true,
+                            "sourceFactor": "GL_SRC_ALPHA",
+                            "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA"
+                        },
+                        "depthMask": false
+                    },
+                    "transparent": true,
+                    "tint": [
+                        1,
+                        1,
+                        1,
+                        0.6
+                    ],
+                    "texture": "glass",
+                    "sampler": "default"
+                }
+            }
+        },
+        "world": [
+            {
+                "name": "camera",
+                "position": [
+                    0,
+                    15,
+                    20
+                ],
+                "rotation": [
+                    -30,
+                    0,
+                    0
+                ],
+                "components": [
+                    {
+                        "type": "Camera"
+                    },
+                    {
+                        "type": "Free Camera Controller"
+                    }
+                ]
+            },
+            {
+                "name": "street_floor",
+                "position": [
+                    0,
+                    0,
+                    0
+                ],
+                "rotation": [
+                    -90,
+                    0,
+                    0
+                ],
+                "scale": [
+                    100,
+                    100,
+                    1
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "plane",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            100,
+                            100,
+                            1
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "floor"
+                    }
+                ]
+            },
+            {
+                "name": "moonlight",
+                "position": [
+                    0,
+                    50,
+                    0
+                ],
+                "rotation": [
+                    -45,
+                    45,
+                    0
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "directional",
+                        "color": [
+                            0.2,
+                            0.25,
+                            0.5
+                        ],
+                        "intensity": 0.8
+                    }
+                ]
+            },
+            {
+                "name": "building_-4_-4",
+                "position": [
+                    -56,
+                    8.386972316513315,
+                    -56
+                ],
+                "scale": [
+                    8,
+                    16.77394463302663,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            16.77394463302663,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-4_-4",
+                "position": [
+                    -51.0,
+                    4,
+                    -56
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-4_-3",
+                "position": [
+                    -56,
+                    11.407965555581905,
+                    -42
+                ],
+                "scale": [
+                    8,
+                    22.81593111116381,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            22.81593111116381,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-4_-2",
+                "position": [
+                    -56,
+                    5.192592770648777,
+                    -28
+                ],
+                "scale": [
+                    8,
+                    10.385185541297554,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            10.385185541297554,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-4_-2",
+                "position": [
+                    -51.0,
+                    4,
+                    -28
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-4_-1",
+                "position": [
+                    -56,
+                    10.789921354908955,
+                    -14
+                ],
+                "scale": [
+                    8,
+                    21.57984270981791,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            21.57984270981791,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-4_0",
+                "position": [
+                    -56,
+                    5.736620372585895,
+                    0
+                ],
+                "scale": [
+                    8,
+                    11.47324074517179,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            11.47324074517179,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-4_0",
+                "position": [
+                    -51.0,
+                    4,
+                    0
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-4_1",
+                "position": [
+                    -56,
+                    4.980297312718132,
+                    14
+                ],
+                "scale": [
+                    8,
+                    9.960594625436263,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            9.960594625436263,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-4_1",
+                "position": [
+                    -51.0,
+                    4,
+                    14
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-4_2",
+                "position": [
+                    -56,
+                    8.369765448466879,
+                    28
+                ],
+                "scale": [
+                    8,
+                    16.739530896933758,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "metal"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            16.739530896933758,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-4_2",
+                "position": [
+                    -51.0,
+                    4,
+                    28
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-4_3",
+                "position": [
+                    -56,
+                    11.679818518367501,
+                    42
+                ],
+                "scale": [
+                    8,
+                    23.359637036735002,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            23.359637036735002,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-3_-4",
+                "position": [
+                    -42,
+                    7.723551462025398,
+                    -56
+                ],
+                "scale": [
+                    8,
+                    15.447102924050796,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            15.447102924050796,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-3_-4",
+                "position": [
+                    -37.0,
+                    4,
+                    -56
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-3_-3",
+                "position": [
+                    -42,
+                    8.789501767830851,
+                    -42
+                ],
+                "scale": [
+                    8,
+                    17.579003535661702,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            17.579003535661702,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-3_-2",
+                "position": [
+                    -42,
+                    10.66809352129647,
+                    -28
+                ],
+                "scale": [
+                    8,
+                    21.33618704259294,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "metal"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            21.33618704259294,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-3_-2",
+                "position": [
+                    -37.0,
+                    4,
+                    -28
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-3_-1",
+                "position": [
+                    -42,
+                    8.254551253075256,
+                    -14
+                ],
+                "scale": [
+                    8,
+                    16.509102506150512,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            16.509102506150512,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-3_0",
+                "position": [
+                    -42,
+                    11.195035998506851,
+                    0
+                ],
+                "scale": [
+                    8,
+                    22.390071997013703,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            22.390071997013703,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-3_0",
+                "position": [
+                    -37.0,
+                    4,
+                    0
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-3_1",
+                "position": [
+                    -42,
+                    12.242979525463452,
+                    14
+                ],
+                "scale": [
+                    8,
+                    24.485959050926905,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "metal"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            24.485959050926905,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-3_1",
+                "position": [
+                    -37.0,
+                    4,
+                    14
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-3_2",
+                "position": [
+                    -42,
+                    11.717964618158536,
+                    28
+                ],
+                "scale": [
+                    8,
+                    23.435929236317072,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            23.435929236317072,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-3_3",
+                "position": [
+                    -42,
+                    10.36476162632949,
+                    42
+                ],
+                "scale": [
+                    8,
+                    20.72952325265898,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            20.72952325265898,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-2_-4",
+                "position": [
+                    -28,
+                    9.164748565107402,
+                    -56
+                ],
+                "scale": [
+                    8,
+                    18.329497130214804,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            18.329497130214804,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-2_-3",
+                "position": [
+                    -28,
+                    9.067083986288328,
+                    -42
+                ],
+                "scale": [
+                    8,
+                    18.134167972576655,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            18.134167972576655,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-2_-3",
+                "position": [
+                    -23.0,
+                    4,
+                    -42
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-2_-2",
+                "position": [
+                    -28,
+                    6.684819924651934,
+                    -28
+                ],
+                "scale": [
+                    8,
+                    13.369639849303868,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "metal"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            13.369639849303868,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-2_-1",
+                "position": [
+                    -28,
+                    5.704434950895976,
+                    -14
+                ],
+                "scale": [
+                    8,
+                    11.408869901791952,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            11.408869901791952,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-2_-1",
+                "position": [
+                    -23.0,
+                    4,
+                    -14
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-2_0",
+                "position": [
+                    -28,
+                    8.865043855880888,
+                    0
+                ],
+                "scale": [
+                    8,
+                    17.730087711761776,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            17.730087711761776,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-2_0",
+                "position": [
+                    -23.0,
+                    4,
+                    0
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-2_1",
+                "position": [
+                    -28,
+                    8.404703344055722,
+                    14
+                ],
+                "scale": [
+                    8,
+                    16.809406688111444,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "metal"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            16.809406688111444,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-2_2",
+                "position": [
+                    -28,
+                    8.453104269203418,
+                    28
+                ],
+                "scale": [
+                    8,
+                    16.906208538406837,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            16.906208538406837,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-2_2",
+                "position": [
+                    -23.0,
+                    4,
+                    28
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-2_3",
+                "position": [
+                    -28,
+                    6.2457393891689605,
+                    42
+                ],
+                "scale": [
+                    8,
+                    12.491478778337921,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            12.491478778337921,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-2_3",
+                "position": [
+                    -23.0,
+                    4,
+                    42
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-1_-4",
+                "position": [
+                    -14,
+                    5.208046938412711,
+                    -56
+                ],
+                "scale": [
+                    8,
+                    10.416093876825421,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            10.416093876825421,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-1_-3",
+                "position": [
+                    -14,
+                    11.98445632873793,
+                    -42
+                ],
+                "scale": [
+                    8,
+                    23.96891265747586,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "metal"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            23.96891265747586,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-1_-3",
+                "position": [
+                    -9.0,
+                    4,
+                    -42
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-1_-2",
+                "position": [
+                    -14,
+                    11.080187569417955,
+                    -28
+                ],
+                "scale": [
+                    8,
+                    22.16037513883591,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            22.16037513883591,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-1_-2",
+                "position": [
+                    -9.0,
+                    4,
+                    -28
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-1_-1",
+                "position": [
+                    -14,
+                    8.629923232002414,
+                    -14
+                ],
+                "scale": [
+                    8,
+                    17.259846464004827,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            17.259846464004827,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-1_0",
+                "position": [
+                    -14,
+                    4.3367299985433165,
+                    0
+                ],
+                "scale": [
+                    8,
+                    8.673459997086633,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            8.673459997086633,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_-1_1",
+                "position": [
+                    -14,
+                    11.714433975688848,
+                    14
+                ],
+                "scale": [
+                    8,
+                    23.428867951377697,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            23.428867951377697,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-1_1",
+                "position": [
+                    -9.0,
+                    4,
+                    14
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-1_2",
+                "position": [
+                    -14,
+                    11.464919507006371,
+                    28
+                ],
+                "scale": [
+                    8,
+                    22.929839014012742,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            22.929839014012742,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-1_2",
+                "position": [
+                    -9.0,
+                    4,
+                    28
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_-1_3",
+                "position": [
+                    -14,
+                    11.912837262529324,
+                    42
+                ],
+                "scale": [
+                    8,
+                    23.82567452505865,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            23.82567452505865,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_-1_3",
+                "position": [
+                    -9.0,
+                    4,
+                    42
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_0_-4",
+                "position": [
+                    0,
+                    12.151269722105601,
+                    -56
+                ],
+                "scale": [
+                    8,
+                    24.302539444211202,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            24.302539444211202,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_0_-4",
+                "position": [
+                    5.0,
+                    4,
+                    -56
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_0_-3",
+                "position": [
+                    0,
+                    11.678754391262597,
+                    -42
+                ],
+                "scale": [
+                    8,
+                    23.357508782525194,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            23.357508782525194,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_0_-2",
+                "position": [
+                    0,
+                    10.097655028748008,
+                    -28
+                ],
+                "scale": [
+                    8,
+                    20.195310057496016,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            20.195310057496016,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_0_-2",
+                "position": [
+                    5.0,
+                    4,
+                    -28
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_0_-1",
+                "position": [
+                    0,
+                    5.480691838730526,
+                    -14
+                ],
+                "scale": [
+                    8,
+                    10.961383677461052,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            10.961383677461052,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_0_-1",
+                "position": [
+                    5.0,
+                    4,
+                    -14
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_0_1",
+                "position": [
+                    0,
+                    4.420926276171651,
+                    14
+                ],
+                "scale": [
+                    8,
+                    8.841852552343301,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            8.841852552343301,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_0_1",
+                "position": [
+                    5.0,
+                    4,
+                    14
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_0_2",
+                "position": [
+                    0,
+                    11.901879340989144,
+                    28
+                ],
+                "scale": [
+                    8,
+                    23.803758681978287,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            23.803758681978287,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_0_2",
+                "position": [
+                    5.0,
+                    4,
+                    28
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_0_3",
+                "position": [
+                    0,
+                    6.569890148719772,
+                    42
+                ],
+                "scale": [
+                    8,
+                    13.139780297439543,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            13.139780297439543,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_0_3",
+                "position": [
+                    5.0,
+                    4,
+                    42
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_1_-4",
+                "position": [
+                    14,
+                    5.192026207176495,
+                    -56
+                ],
+                "scale": [
+                    8,
+                    10.38405241435299,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            10.38405241435299,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_1_-4",
+                "position": [
+                    19.0,
+                    4,
+                    -56
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_1_-3",
+                "position": [
+                    14,
+                    11.809359380004702,
+                    -42
+                ],
+                "scale": [
+                    8,
+                    23.618718760009404,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            23.618718760009404,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_1_-3",
+                "position": [
+                    19.0,
+                    4,
+                    -42
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_1_-2",
+                "position": [
+                    14,
+                    12.260608053222144,
+                    -28
+                ],
+                "scale": [
+                    8,
+                    24.52121610644429,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            24.52121610644429,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_1_-1",
+                "position": [
+                    14,
+                    10.25253346995121,
+                    -14
+                ],
+                "scale": [
+                    8,
+                    20.50506693990242,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            20.50506693990242,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_1_-1",
+                "position": [
+                    19.0,
+                    4,
+                    -14
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_1_0",
+                "position": [
+                    14,
+                    6.241266105835207,
+                    0
+                ],
+                "scale": [
+                    8,
+                    12.482532211670414,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            12.482532211670414,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_1_0",
+                "position": [
+                    19.0,
+                    4,
+                    0
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_1_1",
+                "position": [
+                    14,
+                    11.466352402692488,
+                    14
+                ],
+                "scale": [
+                    8,
+                    22.932704805384976,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            22.932704805384976,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_1_1",
+                "position": [
+                    19.0,
+                    4,
+                    14
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_1_2",
+                "position": [
+                    14,
+                    4.807933007182823,
+                    28
+                ],
+                "scale": [
+                    8,
+                    9.615866014365645,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            9.615866014365645,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_1_3",
+                "position": [
+                    14,
+                    4.676796682850259,
+                    42
+                ],
+                "scale": [
+                    8,
+                    9.353593365700519,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            9.353593365700519,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_1_3",
+                "position": [
+                    19.0,
+                    4,
+                    42
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_2_-4",
+                "position": [
+                    28,
+                    11.99152587664818,
+                    -56
+                ],
+                "scale": [
+                    8,
+                    23.98305175329636,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            23.98305175329636,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_2_-4",
+                "position": [
+                    33.0,
+                    4,
+                    -56
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_2_-3",
+                "position": [
+                    28,
+                    10.66710897003979,
+                    -42
+                ],
+                "scale": [
+                    8,
+                    21.33421794007958,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            21.33421794007958,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_2_-3",
+                "position": [
+                    33.0,
+                    4,
+                    -42
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_2_-2",
+                "position": [
+                    28,
+                    6.733600743749698,
+                    -28
+                ],
+                "scale": [
+                    8,
+                    13.467201487499397,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            13.467201487499397,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_2_-1",
+                "position": [
+                    28,
+                    7.650744076023638,
+                    -14
+                ],
+                "scale": [
+                    8,
+                    15.301488152047275,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            15.301488152047275,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_2_0",
+                "position": [
+                    28,
+                    8.951647985802943,
+                    0
+                ],
+                "scale": [
+                    8,
+                    17.903295971605885,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "metal"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            17.903295971605885,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_2_1",
+                "position": [
+                    28,
+                    4.0058141618823715,
+                    14
+                ],
+                "scale": [
+                    8,
+                    8.011628323764743,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            8.011628323764743,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_2_1",
+                "position": [
+                    33.0,
+                    4,
+                    14
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_2_2",
+                "position": [
+                    28,
+                    8.665952287214932,
+                    28
+                ],
+                "scale": [
+                    8,
+                    17.331904574429863,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            17.331904574429863,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_2_2",
+                "position": [
+                    33.0,
+                    4,
+                    28
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_2_3",
+                "position": [
+                    28,
+                    10.036357840361521,
+                    42
+                ],
+                "scale": [
+                    8,
+                    20.072715680723043,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            20.072715680723043,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_2_3",
+                "position": [
+                    33.0,
+                    4,
+                    42
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_3_-4",
+                "position": [
+                    42,
+                    9.483167042578863,
+                    -56
+                ],
+                "scale": [
+                    8,
+                    18.966334085157726,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            18.966334085157726,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_3_-4",
+                "position": [
+                    47.0,
+                    4,
+                    -56
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_3_-3",
+                "position": [
+                    42,
+                    5.057149827796656,
+                    -42
+                ],
+                "scale": [
+                    8,
+                    10.114299655593312,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "metal"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            10.114299655593312,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_3_-3",
+                "position": [
+                    47.0,
+                    4,
+                    -42
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_3_-2",
+                "position": [
+                    42,
+                    6.028746040184123,
+                    -28
+                ],
+                "scale": [
+                    8,
+                    12.057492080368245,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "stone_wall"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            12.057492080368245,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "building_3_-1",
+                "position": [
+                    42,
+                    10.206423941512183,
+                    -14
+                ],
+                "scale": [
+                    8,
+                    20.412847883024366,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            20.412847883024366,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_3_-1",
+                "position": [
+                    47.0,
+                    4,
+                    -14
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_3_0",
+                "position": [
+                    42,
+                    11.146142811838894,
+                    0
+                ],
+                "scale": [
+                    8,
+                    22.292285623677788,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            22.292285623677788,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_3_0",
+                "position": [
+                    47.0,
+                    4,
+                    0
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_3_1",
+                "position": [
+                    42,
+                    9.70585801733168,
+                    14
+                ],
+                "scale": [
+                    8,
+                    19.41171603466336,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "dark_stone"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            19.41171603466336,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_3_1",
+                "position": [
+                    47.0,
+                    4,
+                    14
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_3_2",
+                "position": [
+                    42,
+                    6.145646644476704,
+                    28
+                ],
+                "scale": [
+                    8,
+                    12.291293288953408,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "red_brick"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            12.291293288953408,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            },
+            {
+                "name": "lamp_3_2",
+                "position": [
+                    47.0,
+                    4,
+                    28
+                ],
+                "components": [
+                    {
+                        "type": "Light",
+                        "lightType": "point",
+                        "color": [
+                            1.0,
+                            0.7,
+                            0.3
+                        ],
+                        "intensity": 2.5,
+                        "attenuation": [
+                            1.0,
+                            0.1,
+                            0.01
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "building_3_3",
+                "position": [
+                    42,
+                    5.7454068016353705,
+                    42
+                ],
+                "scale": [
+                    8,
+                    11.490813603270741,
+                    8
+                ],
+                "components": [
+                    {
+                        "type": "Mesh Renderer",
+                        "mesh": "cube",
+                        "material": "metal"
+                    },
+                    {
+                        "type": "Collider",
+                        "size": [
+                            8,
+                            11.490813603270741,
+                            8
+                        ]
+                    },
+                    {
+                        "type": "Environment",
+                        "environmentType": "wall"
+                    }
+                ]
+            }
+        ]
+    }
+}

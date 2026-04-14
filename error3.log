@@ -1,0 +1,8 @@
+VENDOR          : AMD
+RENDERER        : AMD Radeon R6 Graphics (carrizo, LLVM 15.0.7, DRM 3.57, 6.8.0-107-generic)
+VERSION         : 4.6 (Core Profile) Mesa 23.2.1-1ubuntu3.1~22.04.3
+GLSL VERSION    : 4.60
+=== Scene Validation ===
+Total entities: 111
+Collidable entities: 67
+Environment entities: 67

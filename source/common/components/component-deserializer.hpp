@@ -5,6 +5,9 @@
 #include "mesh-renderer.hpp"
 #include "free-camera-controller.hpp"
 #include "movement.hpp"
+#include "collider.hpp"
+#include "environment.hpp"
+#include "light.hpp"
 
 namespace our
 {
@@ -31,6 +34,18 @@ namespace our
         else if (type == MovementComponent::getID())
         {
             component = entity->addComponent<MovementComponent>();
+        }
+        else if (type == ColliderComponent::getID())
+        {
+            component = entity->addComponent<ColliderComponent>();
+        }
+        else if (type == EnvironmentComponent::getID())
+        {
+            component = entity->addComponent<EnvironmentComponent>();
+        }
+        else if (type == LightComponent::getID())
+        {
+            component = entity->addComponent<LightComponent>();
         }
 
         if (component)
