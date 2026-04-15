@@ -19,6 +19,8 @@ namespace our
         crosshairShader->attach("assets/shaders/crosshair.frag", GL_FRAGMENT_SHADER);
         crosshairShader->link();
 
+        healthBar.initialize();
+
         // Then we check if there is a sky texture in the configuration
         if (config.contains("sky"))
         {
@@ -139,6 +141,8 @@ namespace our
 
         delete crosshairShader;
         crosshairShader = nullptr;
+
+        healthBar.destroy();
     }
 
     void ForwardRenderer::render(World *world)
@@ -271,6 +275,8 @@ namespace our
         }
 
         // Draw a centered crosshair (+) overlay on top of everything
+        healthBar.render(windowSize);
+
         if (crosshairShader)
         {
             PipelineState crosshairPipelineState{};

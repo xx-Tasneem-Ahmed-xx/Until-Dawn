@@ -4,6 +4,7 @@
 #include "../components/camera.hpp"
 #include "../components/mesh-renderer.hpp"
 #include "../asset-loader.hpp"
+#include "../ui/health-bar.hpp"
 
 #include <glad/gl.h>
 #include <vector>
@@ -44,6 +45,7 @@ namespace our
         TexturedMaterial *postprocessMaterial = nullptr;
         // Objects used for crosshair overlay
         ShaderProgram *crosshairShader = nullptr;
+        HealthBar healthBar;
         float muzzleFlashStrength = 0.0f;
         glm::vec2 muzzleFlashCenter = glm::vec2(0.5f, 0.5f);
 
@@ -61,6 +63,9 @@ namespace our
         void setMuzzleFlashStrength(float value) { muzzleFlashStrength = glm::clamp(value, 0.0f, 1.0f); }
         // Sets the UV center of the muzzle flash on the screen.
         void setMuzzleFlashCenter(glm::vec2 value) { muzzleFlashCenter = glm::clamp(value, glm::vec2(0.0f), glm::vec2(1.0f)); }
+
+        // Updates health bar input values. maxHealth values <= 0 are handled safely.
+        void setHealth(float currentHealth, float maxHealth, float deltaTime = 0.0f) { healthBar.setHealth(currentHealth, maxHealth, deltaTime); }
     };
 
 }

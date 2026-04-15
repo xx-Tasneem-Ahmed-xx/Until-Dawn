@@ -8,6 +8,7 @@
 #include "weapon.hpp"
 #include "health.hpp"
 #include "zombie.hpp"
+#include "player.hpp"
 
 namespace our
 {
@@ -55,7 +56,11 @@ namespace our
         {
             component = entity->addComponent<ZombieComponent>();
         }
-    
+        else if (type == PlayerComponent::getID())
+        {
+            component = entity->addComponent<PlayerComponent>();
+        }
+
         if (component)
             component->deserialize(data);
     }
