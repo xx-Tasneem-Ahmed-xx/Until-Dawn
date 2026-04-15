@@ -33,7 +33,11 @@ uniform Light lights[MAX_LIGHTS];
 uniform vec3 eye_position;
 
 void main() {
-    vec4 albedo = texture(tex, v_tex_coord) * tint * v_color;
+    vec4 texel = texture(tex, v_tex_coord);
+    // Fallback for materials without a bound albedo texture:
+    // if sampled texture is effectively black, keep tint/vertex color visible.
+    if(length(texel.rgb) < 0.0001) texel = vec4(1.0);
+    vec4 albedo = texel * tint * v_color;
     if(albedo.a < alphaThreshold) discard;
 
     vec3 normal = normalize(v_normal);
@@ -45,7 +49,7 @@ void main() {
     
     vec3 total_light = vec3(0.0);
     // Add simple ambient light
-    vec3 ambient = albedo.rgb * 0.1;
+    vec3 ambient = albedo.rgb * 0.25;
     total_light += ambient;
 
     for (int i = 0; i < light_count; ++i) {

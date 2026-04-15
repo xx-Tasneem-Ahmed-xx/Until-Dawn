@@ -116,4 +116,38 @@ namespace our {
         return endedCollisions;
     }
 
+    // resolveAABB — returns the push-back vector to move entityA OUT of entityB.
+    // Uses the minimum-penetration-depth axis so the separation is minimal and artefact-free.
+    glm::vec3 CollisionSystem::resolveAABB(const CollisionInfo& info) const {
+        glm::vec3 minA, maxA, minB, maxB;
+        info.colliderA->getWorldBounds(minA, maxA);
+        info.colliderB->getWorldBounds(minB, maxB);
+
+        // Overlap on each axis
+        float overlapX_pos = maxB.x - minA.x;  // push A in +X
+        float overlapX_neg = maxA.x - minB.x;  // push A in -X
+        float overlapY_pos = maxB.y - minA.y;
+        float overlapY_neg = maxA.y - minB.y;
+        float overlapZ_pos = maxB.z - minA.z;
+        float overlapZ_neg = maxA.z - minB.z;
+
+        // Minimum penetration per axis
+        float px = (overlapX_pos < overlapX_neg) ?  overlapX_pos : -overlapX_neg;
+        float py = (overlapY_pos < overlapY_neg) ?  overlapY_pos : -overlapY_neg;
+        float pz = (overlapZ_pos < overlapZ_neg) ?  overlapZ_pos : -overlapZ_neg;
+
+        float absPx = glm::abs(px);
+        float absPy = glm::abs(py);
+        float absPz = glm::abs(pz);
+
+        // Resolve along axis with smallest penetration
+        if (absPx <= absPy && absPx <= absPz) {
+            return glm::vec3(px, 0.0f, 0.0f);
+        } else if (absPy <= absPx && absPy <= absPz) {
+            return glm::vec3(0.0f, py, 0.0f);
+        } else {
+            return glm::vec3(0.0f, 0.0f, pz);
+        }
+    }
+
 }

@@ -52,6 +52,11 @@ namespace our {
         // Get collisions that just ended this frame
         std::vector<CollisionInfo> getEndedCollisions() const;
 
+        // Compute the minimum-penetration-depth push-back vector for a collision pair.
+        // Returns a vector that, when added to entityA's position, separates it from entityB.
+        // If entityA is the "static" body (wall), negate the result before applying.
+        glm::vec3 resolveAABB(const CollisionInfo& info) const;
+
         // Clear all tracked collisions
         void clear() {
             currentCollisions.clear();

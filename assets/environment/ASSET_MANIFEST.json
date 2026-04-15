@@ -1,0 +1,36 @@
+{
+    "version": 1,
+    "notes": "Drop downloaded OBJ files at the paths below, then run: python3 scripts/generate_town.py",
+    "required_meshes": [
+        {
+            "mesh_name": "env_house_a",
+            "target_path": "assets/environment/modular/env_house_a.obj",
+            "recommended_type": "building module"
+        },
+        {
+            "mesh_name": "env_house_b",
+            "target_path": "assets/environment/modular/env_house_b.obj",
+            "recommended_type": "building module"
+        },
+        {
+            "mesh_name": "env_tower_a",
+            "target_path": "assets/environment/modular/env_tower_a.obj",
+            "recommended_type": "tall landmark"
+        },
+        {
+            "mesh_name": "prop_barrel_a",
+            "target_path": "assets/environment/props/prop_barrel_a.obj",
+            "recommended_type": "small prop"
+        },
+        {
+            "mesh_name": "prop_crate_a",
+            "target_path": "assets/environment/props/prop_crate_a.obj",
+            "recommended_type": "cover prop"
+        },
+        {
+            "mesh_name": "prop_cart_a",
+            "target_path": "assets/environment/props/prop_cart_a.obj",
+            "recommended_type": "large prop"
+        }
+    ]
+}

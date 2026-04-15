@@ -297,6 +297,8 @@ namespace our {
             
             //TODO: (Req 11) Setup the postprocess material and draw the fullscreen triangle
             this->postprocessMaterial->setup();
+            // Pass elapsed time for animated effects (film grain, etc.)
+            this->postprocessMaterial->shader->set("time", elapsedTime);
             glBindVertexArray(postProcessVertexArray);
             glDrawArrays(GL_TRIANGLES, 0, 3);
         }

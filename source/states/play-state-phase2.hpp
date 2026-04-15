@@ -11,15 +11,19 @@
 #include <asset-loader.hpp>
 #include <components/environment.hpp>
 #include <components/movement.hpp>
+#include <components/free-camera-controller.hpp>
 
-// PHASE 2 PLAY STATE - With collision detection and scene management
+// PHASE 2 PLAY STATE - With collision detection, scene management, and animated postprocessing
 class PlaystatePhase2: public our::State {
 
     our::World world;
     our::ForwardRenderer renderer;
     our::FreeCameraControllerSystem cameraController;
     our::MovementSystem movementSystem;
-    our::CollisionSystem collisionSystem;  // NEW: Collision detection
+    our::CollisionSystem collisionSystem;
+
+    // Elapsed time — fed to animated postprocess shaders (film grain)
+    float totalTime = 0.0f;
 
     void onInitialize() override {
         // First of all, we get the scene configuration from the app config
@@ -38,43 +42,53 @@ class PlaystatePhase2: public our::State {
         auto size = getApp()->getFrameBufferSize();
         renderer.initialize(size, config["renderer"]);
 
-        // NEW: Validate the scene
+        // Validate the scene — prints entity/collider/environment counts to stdout
         our::SceneManager::validateWorld(&world);
+        totalTime = 0.0f;
     }
 
     void onDraw(double deltaTime) override {
+        totalTime += (float)deltaTime;
+
+        // Feed elapsed time to the renderer so animated postprocess shaders work
+        renderer.setTime(totalTime);
+
         // Run physics and input systems
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
 
-        // NEW: Update collision detection
+        // Update collision detection
         collisionSystem.update(&world);
 
-        // NEW: Handle collisions
+        // Handle collisions with proper AABB push-back
         handleCollisions((float)deltaTime);
 
         // Render the scene
         renderer.render(&world);
 
-        // Get a reference to the keyboard object
+        // Escape → back to menu
         auto& keyboard = getApp()->getKeyboard();
-
         if(keyboard.justPressed(GLFW_KEY_ESCAPE)){
-            // If the escape key is pressed, go back to menu
             getApp()->changeState("menu");
         }
     }
 
-    // NEW: Handle collision events
-    void handleCollisions(float deltaTime) {
-        // Get collisions that just started this frame
-        auto newCollisions = collisionSystem.getNewCollisions();
-        for (const auto& collision : newCollisions) {
-            // std::cout << "New collision detected: " << collision.entityA->name << " and " << collision.entityB->name << std::endl;
-        }
+    // ──────────────────────────────────────────────────────────────────────────
+    // handleCollisions — robust AABB push-back for player ↔ wall collisions
+    //
+    // Strategy:
+    //   • For each collision pair, identify which entity is STATIC (wall/floor)
+    //     and which is DYNAMIC (player or zombie).
+    //   • Use collisionSystem.resolveAABB() to compute the minimum-penetration
+    //     separation vector and apply it directly to the dynamic entity's position.
+    //   • This works for camera-controlled entities (no MovementComponent) AND
+    //     for velocity-driven entities.
+    //   • Floor collisions are skipped on the Y axis (prevent sinking but
+    //     don't block X/Z movement from the floor collider).
+    // ──────────────────────────────────────────────────────────────────────────
+    void handleCollisions(float /*deltaTime*/) {
+        auto& allCollisions = collisionSystem.getCurrentCollisions();
 
-        // Get all current collisions
-        auto allCollisions = collisionSystem.getCurrentCollisions();
         for (const auto& collision : allCollisions) {
             our::Entity* entityA = collision.entityA;
             our::Entity* entityB = collision.entityB;
@@ -82,50 +96,58 @@ class PlaystatePhase2: public our::State {
             auto envA = entityA->template getComponent<our::EnvironmentComponent>();
             auto envB = entityB->template getComponent<our::EnvironmentComponent>();
 
-            bool isWallA = envA && envA->environmentType == "wall";
-            bool isWallB = envB && envB->environmentType == "wall";
+            bool isStaticA = envA && (envA->environmentType == "wall" || envA->environmentType == "floor");
+            bool isStaticB = envB && (envB->environmentType == "wall" || envB->environmentType == "floor");
+            bool isFloorA  = envA && envA->environmentType == "floor";
+            bool isFloorB  = envB && envB->environmentType == "floor";
 
-            // If one is a wall and the other is not (like player/zombie), push the non-wall back out
-            our::Entity* dynamicEntity = nullptr;
-            if (isWallA && !isWallB) dynamicEntity = entityB;
-            else if (isWallB && !isWallA) dynamicEntity = entityA;
+            // Both static → nothing to do
+            if (isStaticA && isStaticB) continue;
+            // Neither is static → skip (zombie-zombie handled by zombie system)
+            if (!isStaticA && !isStaticB) continue;
 
-            if (dynamicEntity) {
-                // If it has a movement component, we reverse its velocity for this frame (basic separation)
-                auto movement = dynamicEntity->template getComponent<our::MovementComponent>();
-                if (movement) {
-                    dynamicEntity->localTransform.position -= movement->linearVelocity * deltaTime;
-                } else {
-                    // For camera controller (Member 1 usually updates directly from camera)
-                    // Pushing it back slightly
-                    glm::vec3 separationDir = glm::normalize(dynamicEntity->localTransform.position - (isWallA ? entityA->localTransform.position : entityB->localTransform.position));
-                    if(glm::length(separationDir) < 0.001f) separationDir = glm::vec3(0,0,1);
-                    dynamicEntity->localTransform.position += separationDir * 0.1f;
-                }
+            // Determine which entity is dynamic and which is static
+            our::Entity* dynamicEntity = isStaticA ? entityB : entityA;
+            bool         collidingWithFloor = isStaticA ? isFloorA : isFloorB;
+
+            // Build a corrected CollisionInfo so resolveAABB always pushes
+            // the dynamic body (A) out of the static body (B)
+            our::CollisionInfo oriented;
+            if (isStaticB) {
+                // entityA is dynamic, entityB is static — standard order
+                oriented = collision;
+            } else {
+                // Swap so A = dynamic, B = static (resolveAABB pushes A out of B)
+                oriented.entityA    = entityB;
+                oriented.entityB    = entityA;
+                oriented.colliderA  = collision.colliderB;
+                oriented.colliderB  = collision.colliderA;
             }
-        }
 
-        // Get collisions that ended this frame
-        auto endedCollisions = collisionSystem.getEndedCollisions();
-        for (const auto& collision : endedCollisions) {
-            std::cout << "Collision ended: " << collision.entityA->name << " and " << collision.entityB->name << std::endl;
+            glm::vec3 pushBack = collisionSystem.resolveAABB(oriented);
+
+            // For floor collisions, only allow upward push (prevent sinking);
+            // zero out X/Z to avoid the floor blocking lateral movement.
+            if (collidingWithFloor) {
+                pushBack.x = 0.0f;
+                pushBack.z = 0.0f;
+                if (pushBack.y < 0.0f) pushBack.y = 0.0f; // only push up
+            }
+
+            // Apply push-back — a small epsilon keeps the entity touching the surface
+            // instead of overlapping, which avoids flicker from re-detection
+            const float epsilon = 0.001f;
+            if (glm::length(pushBack) > epsilon) {
+                dynamicEntity->localTransform.position += pushBack;
+            }
         }
     }
 
     void onDestroy() override {
-        // Don't forget to destroy the renderer
         renderer.destroy();
-        // On exit, we call exit for the camera controller system to make sure that the mouse is unlocked
         cameraController.exit();
-        // Clear the world
         world.clear();
-        // Clear collision system
         collisionSystem.clear();
-        // and we delete all the loaded assets to free memory on the RAM and the VRAM
         our::clearAllAssets();
     }
 };
-
-// Note: To use this state, register it in main.cpp:
-// app.registerState<PlaystatePhase2>("play-phase2");
-// Then set "start-scene": "play-phase2" in your config file
