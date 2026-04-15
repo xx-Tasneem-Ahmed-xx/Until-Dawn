@@ -83,6 +83,10 @@ set(COMMON_SOURCES
         source/common/components/free-camera-controller.cpp
         source/common/components/movement.hpp
         source/common/components/movement.cpp
+        source/common/components/weapon.hpp
+        source/common/components/weapon.cpp
+        source/common/components/health.hpp
+        source/common/components/health.cpp
         source/common/components/component-deserializer.hpp
 
         source/common/systems/forward-renderer.hpp

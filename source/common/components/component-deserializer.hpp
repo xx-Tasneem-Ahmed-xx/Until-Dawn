@@ -5,6 +5,9 @@
 #include "mesh-renderer.hpp"
 #include "free-camera-controller.hpp"
 #include "movement.hpp"
+#include "weapon.hpp"
+#include "health.hpp"
+#include "zombie.hpp"
 
 namespace our
 {
@@ -32,7 +35,19 @@ namespace our
         {
             component = entity->addComponent<MovementComponent>();
         }
-
+        else if (type == WeaponComponent::getID())
+        {
+            component = entity->addComponent<WeaponComponent>();
+        }
+        else if (type == HealthComponent::getID())
+        {
+            component = entity->addComponent<HealthComponent>();
+        }
+        else if (type == ZombieComponent::getID())
+        {
+            component = entity->addComponent<ZombieComponent>();
+        }
+    
         if (component)
             component->deserialize(data);
     }
