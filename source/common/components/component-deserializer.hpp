@@ -35,9 +35,17 @@ namespace our
         {
             component = entity->addComponent<MovementComponent>();
         }
-        else if (type == WeaponComponent::getID())
+        else if (type == WeaponComponent::getID() || type == "weapon")
         {
             component = entity->addComponent<WeaponComponent>();
+        }
+        else if (type == Pistol::getID() || type == "pistol")
+        {
+            component = entity->addComponent<Pistol>();
+        }
+        else if (type == Rifle::getID() || type == "rifle")
+        {
+            component = entity->addComponent<Rifle>();
         }
         else if (type == HealthComponent::getID())
         {

@@ -113,7 +113,7 @@ namespace our
             fireRate = 5.0f;
             damage = 8.0f;
             reloadTime = 2.0f;
-            shootSound = ""; 
+            shootSound = "assets/audio/gunshot20.wav"; 
         }
 
         static std::string getID() { return "Pistol"; }
