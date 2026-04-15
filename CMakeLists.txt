@@ -1,10 +1,32 @@
-cmake_minimum_required(VERSION 3.0.0)   # Selects the minimum version of CMake required to run this file
+cmake_minimum_required(VERSION 3.14)   
 project(GFX-LAB VERSION 0.1.0)          # Here we select the project name and version
+
+# Include FetchContent for managing dependencies
+include(FetchContent)
 
 # Linux compatibility
 if(UNIX AND NOT APPLE)
         find_package(OpenGL REQUIRED)
         find_package(GLEW REQUIRED)
+        find_package(OpenAL QUIET)
+        find_library(
+                SYSTEM_OPENAL_LIBRARY
+                NAMES openal.so.1 openal
+                PATHS /lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu /lib /usr/lib
+                NO_DEFAULT_PATH
+        )
+        
+        # If OpenAL is not found, fetch and build it
+        if(NOT OPENAL_FOUND)
+                message(STATUS "OpenAL not found locally, downloading and building...")
+                FetchContent_Declare(
+                        openal
+                        GIT_REPOSITORY https://github.com/kcat/openal-soft.git
+                        GIT_TAG 1.24.1
+                )
+                FetchContent_MakeAvailable(openal)
+                set(OPENAL_FOUND TRUE)
+        endif()
 endif()
 
 # Here we select C++17 with all the standards required and all compiler-specific extensions disabled
@@ -83,6 +105,10 @@ set(COMMON_SOURCES
         source/common/components/free-camera-controller.cpp
         source/common/components/movement.hpp
         source/common/components/movement.cpp
+        source/common/components/weapon.hpp
+        source/common/components/weapon.cpp
+        source/common/components/health.hpp
+        source/common/components/health.cpp
         source/common/components/component-deserializer.hpp
 
         source/common/systems/forward-renderer.hpp
@@ -99,6 +125,7 @@ include_directories(
         vendor/glm
         vendor/imgui
         vendor/utils
+        vendor/tinygltf
 )
 
 
@@ -124,10 +151,33 @@ set(STATES_SOURCES
 # Each target compiles one example source file and the common & vendor source files
 # Then we link GLFW with each target
 add_executable(GAME_APPLICATION source/main.cpp ${STATES_SOURCES} ${COMMON_SOURCES} ${VENDOR_SOURCES})
+set_target_properties(GAME_APPLICATION PROPERTIES
+        SKIP_BUILD_RPATH TRUE
+        BUILD_WITH_INSTALL_RPATH FALSE
+)
 target_compile_definitions(GAME_APPLICATION PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLAD2)
 target_link_libraries(GAME_APPLICATION glfw)
 
 if(UNIX AND NOT APPLE)
         target_link_libraries(GAME_APPLICATION OpenGL::GL)
         target_link_libraries(GAME_APPLICATION GLEW::GLEW)
+        if(OPENAL_FOUND)
+                message(STATUS "OpenAL found - audio features enabled")
+                # Handle both system OpenAL and FetchContent OpenAL
+                if(SYSTEM_OPENAL_LIBRARY)
+                        message(STATUS "Using system OpenAL runtime: ${SYSTEM_OPENAL_LIBRARY}")
+                        target_link_libraries(GAME_APPLICATION ${SYSTEM_OPENAL_LIBRARY})
+                        if(TARGET al)
+                                target_include_directories(GAME_APPLICATION PRIVATE ${openal_SOURCE_DIR}/include)
+                        endif()
+                elseif(TARGET OpenAL::OpenAL)
+                        target_link_libraries(GAME_APPLICATION OpenAL::OpenAL)
+                elseif(TARGET al)
+                        target_link_libraries(GAME_APPLICATION al)
+                        target_include_directories(GAME_APPLICATION PRIVATE ${openal_SOURCE_DIR}/include)
+                endif()
+                target_compile_definitions(GAME_APPLICATION PRIVATE HAS_OPENAL=1)
+        else()
+                message(WARNING "OpenAL not found - audio features will be disabled")
+        endif()
 endif()

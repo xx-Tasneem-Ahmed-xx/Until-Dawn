@@ -1,5 +1,7 @@
 #include "asset-loader.hpp"
 
+#include <cctype>
+#include <iostream>
 #include "shader/shader.hpp"
 #include "texture/texture2d.hpp"
 #include "texture/texture-utils.hpp"
@@ -9,15 +11,19 @@
 #include "material/material.hpp"
 #include "deserialize-utils.hpp"
 
-namespace our {
+namespace our
+{
 
     // This will load all the shaders defined in "data"
     // data must be in the form:
     //    { shader_name : { "vs" : "path/to/vertex-shader", "fs" : "path/to/fragment-shader" }, ... }
-    template<>
-    void AssetLoader<ShaderProgram>::deserialize(const nlohmann::json& data) {
-        if(data.is_object()){
-            for(auto& [name, desc] : data.items()){
+    template <>
+    void AssetLoader<ShaderProgram>::deserialize(const nlohmann::json &data)
+    {
+        if (data.is_object())
+        {
+            for (auto &[name, desc] : data.items())
+            {
                 std::string vsPath = desc.value("vs", "");
                 std::string fsPath = desc.value("fs", "");
                 auto shader = new ShaderProgram();
@@ -32,10 +38,13 @@ namespace our {
     // This will load all the textures defined in "data"
     // data must be in the form:
     //    { texture_name : "path/to/image", ... }
-    template<>
-    void AssetLoader<Texture2D>::deserialize(const nlohmann::json& data) {
-        if(data.is_object()){
-            for(auto& [name, desc] : data.items()){
+    template <>
+    void AssetLoader<Texture2D>::deserialize(const nlohmann::json &data)
+    {
+        if (data.is_object())
+        {
+            for (auto &[name, desc] : data.items())
+            {
                 std::string path = desc.get<std::string>();
                 assets[name] = texture_utils::loadImage(path);
             }
@@ -49,10 +58,13 @@ namespace our {
     //      The key is the parameter name, e.g. "MAG_FILTER", "MIN_FILTER", "WRAP_S", "WRAP_T" or "MAX_ANISOTROPY"
     //      The value is the parameter value, e.g. "GL_NEAREST", "GL_REPEAT"
     //  For "MAX_ANISOTROPY", the value must be a float with a value >= 1.0f
-    template<>
-    void AssetLoader<Sampler>::deserialize(const nlohmann::json& data) {
-        if(data.is_object()){
-            for(auto& [name, desc] : data.items()){
+    template <>
+    void AssetLoader<Sampler>::deserialize(const nlohmann::json &data)
+    {
+        if (data.is_object())
+        {
+            for (auto &[name, desc] : data.items())
+            {
                 auto sampler = new Sampler();
                 sampler->deserialize(desc);
                 assets[name] = sampler;
@@ -63,12 +75,47 @@ namespace our {
     // This will load all the meshes defined in "data"
     // data must be in the form:
     //    { mesh_name : "path/to/3d-model-file", ... }
-    template<>
-    void AssetLoader<Mesh>::deserialize(const nlohmann::json& data) {
-        if(data.is_object()){
-            for(auto& [name, desc] : data.items()){
+    // Supports both .obj and .glb files
+    template <>
+    void AssetLoader<Mesh>::deserialize(const nlohmann::json &data)
+    {
+        if (data.is_object())
+        {
+            for (auto &[name, desc] : data.items())
+            {
                 std::string path = desc.get<std::string>();
-                assets[name] = mesh_utils::loadOBJ(path);
+
+                // Detect file extension and load accordingly
+                Mesh *mesh = nullptr;
+                if (path.size() >= 4)
+                {
+                    std::string ext = path.substr(path.size() - 4);
+                    // Convert to lowercase for comparison
+                    for (auto &c : ext)
+                        c = std::tolower(c);
+
+                    if (ext == ".glb")
+                    {
+                        mesh = mesh_utils::loadGLB(path);
+                    }
+                    else if (ext == ".obj")
+                    {
+                        mesh = mesh_utils::loadOBJ(path);
+                    }
+                    else
+                    {
+                        std::cerr << "Unknown mesh file format for \"" << path << "\". Supported formats: .obj, .glb" << std::endl;
+                    }
+                }
+                else
+                {
+                    std::cerr << "Invalid mesh file path \"" << path << "\"" << std::endl;
+                }
+
+                if (mesh)
+                {
+                    assets[name] = mesh;
+                }
             }
         }
     };
@@ -85,10 +132,13 @@ namespace our {
     //      "pipelineState" (optional) where the value is a json object that can be read by "PipelineState::deserialize"
     //      "transparent" (optional, default=false) where the value is a boolean indicating whether the material is transparent or not
     //      ... more keys/values can be added depending on the material type (e.g. "texture", "sampler", "tint")
-    template<>
-    void AssetLoader<Material>::deserialize(const nlohmann::json& data) {
-        if(data.is_object()){
-            for(auto& [name, desc] : data.items()){
+    template <>
+    void AssetLoader<Material>::deserialize(const nlohmann::json &data)
+    {
+        if (data.is_object())
+        {
+            for (auto &[name, desc] : data.items())
+            {
                 std::string type = desc.value("type", "");
                 auto material = createMaterialFromType(type);
                 material->deserialize(desc);
@@ -97,21 +147,24 @@ namespace our {
         }
     };
 
-    void deserializeAllAssets(const nlohmann::json& assetData){
-        if(!assetData.is_object()) return;
-        if(assetData.contains("shaders"))
+    void deserializeAllAssets(const nlohmann::json &assetData)
+    {
+        if (!assetData.is_object())
+            return;
+        if (assetData.contains("shaders"))
             AssetLoader<ShaderProgram>::deserialize(assetData["shaders"]);
-        if(assetData.contains("textures"))
+        if (assetData.contains("textures"))
             AssetLoader<Texture2D>::deserialize(assetData["textures"]);
-        if(assetData.contains("samplers"))
+        if (assetData.contains("samplers"))
             AssetLoader<Sampler>::deserialize(assetData["samplers"]);
-        if(assetData.contains("meshes"))
+        if (assetData.contains("meshes"))
             AssetLoader<Mesh>::deserialize(assetData["meshes"]);
-        if(assetData.contains("materials"))
+        if (assetData.contains("materials"))
             AssetLoader<Material>::deserialize(assetData["materials"]);
     }
 
-    void clearAllAssets(){
+    void clearAllAssets()
+    {
         AssetLoader<ShaderProgram>::clear();
         AssetLoader<Texture2D>::clear();
         AssetLoader<Sampler>::clear();
