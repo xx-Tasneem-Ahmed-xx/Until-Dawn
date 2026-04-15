@@ -18,10 +18,11 @@ namespace our
         float damage = 10.0f;
         float reloadTime = 1.5f;
         bool isReloading = false;
-        float reloadTimer = 0.0f;          // Time elapsed during current reload
-        float fireCooldown = 0.0f;         // Time until next shot can be fired
-        std::string shootSound = "";      
-        std::string reloadSound = "assets/audio/reload.wav"; 
+        float reloadTimer = 0.0f;  // Time elapsed during current reload
+        float fireCooldown = 0.0f; // Time until next shot can be fired
+        std::string shootSound = "";
+        std::string emptySound = "assets/audio/empty-gun.wav";
+        std::string reloadSound = "assets/audio/reload.wav";
 
         WeaponComponent() = default;
         virtual ~WeaponComponent() = default;
@@ -33,7 +34,15 @@ namespace our
 
         virtual bool shoot()
         {
-            if (ammo <= 0 || fireCooldown > 0.0f)
+            if (ammo <= 0)
+            {
+                if (AudioManager::getInstance().isInitialized() && !emptySound.empty())
+                {
+                    AudioManager::getInstance().playSound(emptySound);
+                }
+                return false;
+            }
+            if (fireCooldown > 0.0f)
             {
                 return false;
             }
@@ -113,7 +122,7 @@ namespace our
             fireRate = 5.0f;
             damage = 8.0f;
             reloadTime = 2.0f;
-            shootSound = "assets/audio/gunshot20.wav"; 
+            shootSound = "assets/audio/gunshot20.wav";
         }
 
         static std::string getID() { return "Pistol"; }
@@ -130,7 +139,7 @@ namespace our
             fireRate = 10.0f;
             damage = 15.0f;
             reloadTime = 1.5f;
-            shootSound = "";
+            shootSound = "assets/audio/ak47.wav";
         }
 
         static std::string getID() { return "Rifle"; }
