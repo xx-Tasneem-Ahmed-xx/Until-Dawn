@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../ecs/component.hpp"
+#include "../audio-manager.hpp"
 #include <iostream>
 
 namespace our
@@ -17,8 +18,10 @@ namespace our
         float damage = 10.0f;
         float reloadTime = 1.5f;
         bool isReloading = false;
-        float reloadTimer = 0.0f;  // Time elapsed during current reload
-        float fireCooldown = 0.0f; // Time until next shot can be fired
+        float reloadTimer = 0.0f;          // Time elapsed during current reload
+        float fireCooldown = 0.0f;         // Time until next shot can be fired
+        std::string shootSound = "";      
+        std::string reloadSound = "assets/audio/reload.wav"; 
 
         WeaponComponent() = default;
         virtual ~WeaponComponent() = default;
@@ -39,6 +42,11 @@ namespace our
             fireCooldown = 1.0f / fireRate; // Set cooldown based on fire rate
 
             std::cout << "shoot | Remaining ammo: " << ammo << std::endl;
+
+            if (AudioManager::getInstance().isInitialized() && !shootSound.empty())
+            {
+                AudioManager::getInstance().playSound(shootSound);
+            }
 
             return true;
         }
@@ -63,8 +71,34 @@ namespace our
                     ammo = maxAmmo;
                     isReloading = false;
                     reloadTimer = 0.0f;
+                    std::cout << "Reload complete | Ammo: " << ammo << "/" << maxAmmo << std::endl;
                 }
             }
+        }
+
+        virtual bool reload()
+        {
+            if (isReloading)
+            {
+                std::cout << "Already reloading..." << std::endl;
+                return false;
+            }
+
+            if (ammo == maxAmmo)
+            {
+                std::cout << "Magazine is full" << std::endl;
+                return false;
+            }
+
+            isReloading = true;
+            reloadTimer = 0.0f;
+            std::cout << "Reloading... (will take " << reloadTime << " seconds)" << std::endl;
+
+            if (AudioManager::getInstance().isInitialized() && !reloadSound.empty())
+            {
+                AudioManager::getInstance().playSound(reloadSound);
+            }
+            return true;
         }
     };
 
@@ -79,6 +113,7 @@ namespace our
             fireRate = 5.0f;
             damage = 8.0f;
             reloadTime = 2.0f;
+            shootSound = ""; 
         }
 
         static std::string getID() { return "Pistol"; }
@@ -95,6 +130,7 @@ namespace our
             fireRate = 10.0f;
             damage = 15.0f;
             reloadTime = 1.5f;
+            shootSound = "";
         }
 
         static std::string getID() { return "Rifle"; }

@@ -153,18 +153,21 @@
           },
           {
             "type": "Free Camera Controller"
+          },
+          {
+            "type": "Weapon"
           }
         ],
         "children": [
           {
             "position": [1, -1, -1],
-            "rotation": [45, 45, 0],
-            "scale": [0.1, 0.1, 1.0],
+            "rotation": [-110, -80, 180],
+            "scale": [40, 40, 40],
             "components": [
               {
                 "type": "Mesh Renderer",
-                "mesh": "cube",
-                "material": "metal"
+                "mesh": "pistol",
+                "material": "auto"
               }
             ]
           }
@@ -270,18 +273,6 @@
           {
             "type": "Movement",
             "angularVelocity": [0, 90, 0]
-          }
-        ]
-      },
-      {
-        "position": [0, 0, 7],
-        "rotation": [90, 90, 90],
-        "scale": [14, 14, 14],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "pistol",
-            "material": "auto"
           }
         ]
       },

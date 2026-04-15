@@ -22,8 +22,11 @@ namespace our
         // Deserialize reload parameters
         reloadTime = data.value("reloadTime", reloadTime);
 
-        // isReloading, reloadTimer, and fireCooldown are runtime state
-        // and should not be set during deserialization (they default to false/0)
+        // Deserialize sound paths
+        shootSound = data.value("shootSound", shootSound);
+        reloadSound = data.value("reloadSound", reloadSound);
+
+        // isReloading, reloadTimer, and fireCooldown are runtime state and should not be set during deserialization (they default to false/0)
     }
 
 }
