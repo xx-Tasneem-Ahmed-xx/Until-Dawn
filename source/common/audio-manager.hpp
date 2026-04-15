@@ -317,6 +317,10 @@ namespace our
                 return false;
             }
 
+            std::vector<int16_t> convertedAudio16;
+            const ALvoid *bufferDataPtr = audioData.data();
+            ALsizei bufferDataSize = static_cast<ALsizei>(audioData.size());
+
             // Determine format
             ALenum format;
             if (numChannels == 1 && bitsPerSample == 8)
@@ -327,6 +331,29 @@ namespace our
                 format = AL_FORMAT_STEREO8;
             else if (numChannels == 2 && bitsPerSample == 16)
                 format = AL_FORMAT_STEREO16;
+            else if ((numChannels == 1 || numChannels == 2) && bitsPerSample == 24)
+            {
+                format = (numChannels == 1) ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
+                const size_t sampleCount = audioData.size() / 3;
+                convertedAudio16.resize(sampleCount);
+
+                for (size_t i = 0, src = 0; i < sampleCount; ++i, src += 3)
+                {
+                    int32_t sample24 = static_cast<int32_t>(audioData[src]) |
+                                       (static_cast<int32_t>(audioData[src + 1]) << 8) |
+                                       (static_cast<int32_t>(audioData[src + 2]) << 16);
+
+                    if (sample24 & 0x00800000)
+                    {
+                        sample24 |= ~0x00FFFFFF;
+                    }
+
+                    convertedAudio16[i] = static_cast<int16_t>(sample24 >> 8);
+                }
+
+                bufferDataPtr = convertedAudio16.data();
+                bufferDataSize = static_cast<ALsizei>(convertedAudio16.size() * sizeof(int16_t));
+            }
             else
             {
                 std::cerr << "[AudioManager] Unsupported WAV format" << std::endl;
@@ -343,7 +370,7 @@ namespace our
                 return false;
             }
 
-            alBufferData(buffer, format, audioData.data(), static_cast<ALsizei>(audioData.size()), static_cast<ALsizei>(sampleRate));
+            alBufferData(buffer, format, bufferDataPtr, bufferDataSize, static_cast<ALsizei>(sampleRate));
             error = alGetError();
             if (error != AL_NO_ERROR)
             {

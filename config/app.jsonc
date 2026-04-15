@@ -10,8 +10,8 @@
   },
   "scene": {
     "renderer": {
-      "sky": "assets/textures/sky.jpg"
-      // "postprocess": "assets/shaders/postprocess/vignette.frag"
+      "sky": "assets/textures/sky.jpg",
+      "postprocess": "assets/shaders/postprocess/muzzle-flash.frag"
     },
     "assets": {
       "shaders": {
@@ -155,7 +155,7 @@
             "type": "Free Camera Controller"
           },
           {
-            "type": "Weapon"
+            "type": "Pistol"
           }
         ],
         "children": [
