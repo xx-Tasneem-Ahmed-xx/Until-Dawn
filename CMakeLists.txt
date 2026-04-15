@@ -103,6 +103,7 @@ include_directories(
         vendor/glm
         vendor/imgui
         vendor/utils
+        vendor/tinygltf
 )
 
 
