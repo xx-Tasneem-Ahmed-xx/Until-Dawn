@@ -7,10 +7,13 @@
 #include <systems/free-camera-controller.hpp>
 #include <systems/movement.hpp>
 #include <systems/shooting-system.hpp>
+#include <components/camera.hpp>
+#include <components/mesh-renderer.hpp>
 #include <components/weapon.hpp>
 #include <audio-manager.hpp>
 #include <asset-loader.hpp>
 #include <GLFW/glfw3.h>
+#include <algorithm>
 
 // This state shows how to use the ECS framework and deserialization.
 class Playstate : public our::State
@@ -21,6 +24,8 @@ class Playstate : public our::State
     our::FreeCameraControllerSystem cameraController;
     our::MovementSystem movementSystem;
     our::ShootingSystem shootingSystem;
+    float muzzleFlashTimeLeft = 0.0f;
+    const float muzzleFlashDuration = 0.06f;
 
     void onInitialize() override
     {
@@ -45,6 +50,54 @@ class Playstate : public our::State
 
     void onDraw(double deltaTime) override
     {
+        glm::vec2 muzzleFlashCenter = glm::vec2(0.66f, 0.28f);
+        our::Entity *cameraEntity = nullptr;
+        our::CameraComponent *camera = nullptr;
+        our::Entity *pistolEntity = nullptr;
+        our::Mesh *pistolMesh = our::AssetLoader<our::Mesh>::get("pistol");
+
+        for (auto entity : world.getEntities())
+        {
+            if (!camera)
+            {
+                camera = entity->getComponent<our::CameraComponent>();
+                if (camera)
+                    cameraEntity = entity;
+            }
+
+            if (!pistolEntity && pistolMesh)
+            {
+                if (auto meshRenderer = entity->getComponent<our::MeshRendererComponent>();
+                    meshRenderer && meshRenderer->mesh == pistolMesh)
+                {
+                    pistolEntity = entity;
+                }
+            }
+
+            if (camera && pistolEntity)
+                break;
+        }
+
+        if (camera && cameraEntity && pistolEntity)
+        {
+            auto frameBufferSize = getApp()->getFrameBufferSize();
+            glm::mat4 VP = camera->getProjectionMatrix(frameBufferSize) * camera->getViewMatrix();
+
+            glm::vec3 muzzleLocalOffset = glm::vec3(-0.3f, -0.1f, 0.3f);
+            glm::vec4 muzzleWorld = pistolEntity->getLocalToWorldMatrix() * glm::vec4(muzzleLocalOffset, 1.0f);
+            glm::vec4 clip = VP * muzzleWorld;
+            if (clip.w > 0.0001f)
+            {
+                glm::vec2 ndc = glm::vec2(clip) / clip.w;
+                muzzleFlashCenter = glm::clamp(ndc * 0.5f + 0.5f, glm::vec2(0.0f), glm::vec2(1.0f));
+            }
+        }
+
+        renderer.setMuzzleFlashCenter(muzzleFlashCenter);
+        muzzleFlashTimeLeft = std::max(0.0f, muzzleFlashTimeLeft - static_cast<float>(deltaTime));
+        float muzzleFlashStrength = muzzleFlashDuration > 0.0f ? (muzzleFlashTimeLeft / muzzleFlashDuration) : 0.0f;
+        renderer.setMuzzleFlashStrength(muzzleFlashStrength);
+
         // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
@@ -107,6 +160,7 @@ class Playstate : public our::State
                     // Attempt to shoot
                     if (weapon->shoot())
                     {
+                        muzzleFlashTimeLeft = muzzleFlashDuration;
                         // If shot was successful, build a ray and fire it
                         our::Ray ray = shootingSystem.buildRayFromCamera(&world);
                         shootingSystem.fireRay(ray, &world, weapon);
