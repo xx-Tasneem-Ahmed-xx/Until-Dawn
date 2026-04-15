@@ -37,7 +37,8 @@
         "plane": "assets/models/plane.obj",
         "sphere": "assets/models/sphere.obj",
         "pistol": "assets/models/pistol.glb",
-        "rifle": "assets/models/Assault Rifle.glb"
+        "rifle": "assets/models/Assault Rifle.glb",
+        "pickup-health": "assets/models/HealthBox.glb"
       },
       "samplers": {
         "default": {},
@@ -146,13 +147,17 @@
     },
     "world": [
       {
+        "name": "MainPlayer",
         "position": [0, 0, 10],
         "components": [
           {
-            "type": "Camera"
+            "type": "Player",
+            "isMainPlayer": true
           },
           {
-            "type": "Free Camera Controller"
+            "type": "Health",
+            "maxHealth": 100,
+            "currentHealth": 100
           },
           {
             "type": "Pistol"
@@ -160,14 +165,27 @@
         ],
         "children": [
           {
-            "position": [1, -1, -1],
-            "rotation": [-110, -80, 180],
-            "scale": [40, 40, 40],
+            "name": "MainCamera",
             "components": [
               {
-                "type": "Mesh Renderer",
-                "mesh": "pistol",
-                "material": "auto"
+                "type": "Camera"
+              },
+              {
+                "type": "Free Camera Controller"
+              }
+            ],
+            "children": [
+              {
+                "position": [1, -1, -1],
+                "rotation": [-110, -80, 180],
+                "scale": [40, 40, 40],
+                "components": [
+                  {
+                    "type": "Mesh Renderer",
+                    "mesh": "pistol",
+                    "material": "auto"
+                  }
+                ]
               }
             ]
           }
@@ -284,6 +302,18 @@
           {
             "type": "Mesh Renderer",
             "mesh": "rifle",
+            "material": "auto"
+          }
+        ]
+      },
+      {
+        "position": [6, 5, 10],
+        "rotation": [0, 0, 0],
+        "scale": [10, 10, 10],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "pickup-health",
             "material": "auto"
           }
         ]

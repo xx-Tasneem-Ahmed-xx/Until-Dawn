@@ -107,9 +107,14 @@ set(COMMON_SOURCES
         source/common/components/movement.cpp
         source/common/components/weapon.hpp
         source/common/components/weapon.cpp
+        source/common/components/player.hpp
+        source/common/components/player.cpp
         source/common/components/health.hpp
         source/common/components/health.cpp
         source/common/components/component-deserializer.hpp
+
+        source/common/ui/health-bar.hpp
+        source/common/ui/health-bar.cpp
 
         source/common/systems/forward-renderer.hpp
         source/common/systems/forward-renderer.cpp
