@@ -62,7 +62,8 @@ namespace our
         else if (type == PlayerComponent::getID())
         {
             component = entity->addComponent<PlayerComponent>();
-else if (type == ColliderComponent::getID())
+        }
+        else if (type == ColliderComponent::getID())
         {
             component = entity->addComponent<ColliderComponent>();
         }

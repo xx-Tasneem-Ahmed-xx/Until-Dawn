@@ -117,6 +117,10 @@ source/common/components/collider.hpp
         source/common/components/environment.cpp
         source/common/components/light.hpp
         source/common/components/light.cpp
+        source/common/components/zombie.hpp
+        source/common/components/zombie.cpp
+        source/common/components/player.hpp
+        source/common/components/player.cpp
         source/common/components/component-deserializer.hpp
 
         source/common/ui/health-bar.hpp

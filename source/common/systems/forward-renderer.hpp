@@ -40,7 +40,6 @@ namespace our
         // Objects used for rendering a skybox
         Mesh *skySphere = nullptr;
         TexturedMaterial *skyMaterial = nullptr;
-        // Objects used for Postprocessing
         GLuint postprocessFrameBuffer = 0, postProcessVertexArray = 0;
         Texture2D *colorTarget = nullptr, *depthTarget = nullptr;
         TexturedMaterial *postprocessMaterial = nullptr;
@@ -49,10 +48,6 @@ namespace our
         HealthBar healthBar;
         float muzzleFlashStrength = 0.0f;
         glm::vec2 muzzleFlashCenter = glm::vec2(0.5f, 0.5f);
-
-        GLuint postprocessFrameBuffer, postProcessVertexArray;
-        Texture2D *colorTarget, *depthTarget;
-        TexturedMaterial* postprocessMaterial;
         // Elapsed time in seconds — fed to animated postprocess shaders (e.g. film grain)
         float elapsedTime = 0.0f;
     public:
@@ -63,7 +58,6 @@ namespace our
         void destroy();
         // This function should be called every frame to draw the given world
         void render(World *world);
-        void render(World* world);
         // Update elapsed time so animated postprocess shaders receive a time uniform
         void setTime(float t) { elapsedTime = t; }
 
