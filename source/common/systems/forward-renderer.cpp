@@ -224,25 +224,6 @@ namespace our
         // TODO: (Req 9) Clear the color and depth buffers
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // TODO: (Req 9) Draw all the opaque commands
-        //  Don't forget to set the "transform" uniform to be equal the model-view-projection matrix for each render command
-        for (auto &command : opaqueCommands)
-        {
-            command.material->setup();
-
-            if (command.mesh && command.mesh->hasGLTFBaseColorTexture())
-            {
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, command.mesh->getGLTFBaseColorTextureID());
-                command.material->shader->set("uBaseColorTex", 0);
-                command.material->shader->set("hasTexture", 1);
-            }
-            else
-            {
-                command.material->shader->set("hasTexture", 0);
-            }
-
-        
         //TODO: (Req 9) Draw all the opaque commands
         // Don't forget to set the "transform" uniform to be equal the model-view-projection matrix for each render command
         for(auto& command : opaqueCommands){
@@ -306,24 +287,6 @@ namespace our
             // TODO: (Req 10) draw the sky sphere
             this->skySphere->draw();
         }
-        // TODO: (Req 9) Draw all the transparent commands
-        //  Don't forget to set the "transform" uniform to be equal the model-view-projection matrix for each render command
-        for (auto &command : transparentCommands)
-        {
-            command.material->setup();
-
-            if (command.mesh && command.mesh->hasGLTFBaseColorTexture())
-            {
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, command.mesh->getGLTFBaseColorTextureID());
-                command.material->shader->set("uBaseColorTex", 0);
-                command.material->shader->set("hasTexture", 1);
-            }
-            else
-            {
-                command.material->shader->set("hasTexture", 0);
-            }
-
         //TODO: (Req 9) Draw all the transparent commands
         // Don't forget to set the "transform" uniform to be equal the model-view-projection matrix for each render command
         for(auto& command : transparentCommands){

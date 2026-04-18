@@ -109,6 +109,26 @@ our::Mesh* our::mesh_utils::loadOBJ(const std::string& filename) {
     return new our::Mesh(vertices, elements);
 }
 
+// Load a ".glb" file into the mesh
+our::Mesh* our::mesh_utils::loadGLB(const std::string& filename) {
+    // For now, return a simple placeholder mesh
+    // A full implementation would use tinygltf to parse the GLB file
+    std::vector<our::Vertex> vertices;
+    std::vector<GLuint> elements;
+    
+    // Placeholder: Create a simple cube
+    vertices = {
+        {{-0.5f, -0.5f, -0.5f}, {255, 255, 255, 255}, {0, 0}, {0, 0, -1}},
+        {{0.5f, -0.5f, -0.5f}, {255, 255, 255, 255}, {1, 0}, {0, 0, -1}},
+        {{0.5f, 0.5f, -0.5f}, {255, 255, 255, 255}, {1, 1}, {0, 0, -1}},
+        {{-0.5f, 0.5f, -0.5f}, {255, 255, 255, 255}, {0, 1}, {0, 0, -1}}
+    };
+    
+    elements = {0, 1, 2, 2, 3, 0};
+    
+    return new our::Mesh(vertices, elements);
+}
+
 // Create a sphere (the vertex order in the triangles are CCW from the outside)
 // Segments define the number of divisions on the both the latitude and the longitude
 our::Mesh* our::mesh_utils::sphere(const glm::ivec2& segments){
