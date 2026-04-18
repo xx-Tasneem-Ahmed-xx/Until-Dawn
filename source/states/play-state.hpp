@@ -201,6 +201,24 @@ class Playstate : public our::State
         return glm::vec3(0.0f);
     }
 
+    void lockCameraAndPlayerVerticalToZero()
+    {
+        if (!mainCameraEntity)
+            mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
+        if (!mainPlayerEntity)
+            mainPlayerEntity = findMainPlayerEntity();
+
+        if (mainPlayerEntity)
+            mainPlayerEntity->localTransform.position.y = 0.0f;
+
+        if (mainCameraEntity)
+        {
+            mainCameraEntity->localTransform.position.y = 0.0f;
+            if (mainCameraEntity->parent)
+                mainCameraEntity->parent->localTransform.position.y = 0.0f;
+        }
+    }
+
     glm::vec3 getCameraForwardOnGround()
     {
         if (!mainCameraEntity)
@@ -930,6 +948,7 @@ class Playstate : public our::State
 
         mainPlayerEntity = findMainPlayerEntity();
         mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
+        lockCameraAndPlayerVerticalToZero();
         cacheZombiePrototypeAndSpawnPoints();
         cacheBloodSplashAssets();
         waitingForNextWave = true;
@@ -1034,6 +1053,7 @@ class Playstate : public our::State
         updateZombies((float)deltaTime);
         collisionSystem.update(&world);
         handleCollisions();
+        lockCameraAndPlayerVerticalToZero();
         updateBloodSplashEffects((float)deltaTime);
         world.deleteMarkedEntities();
 
