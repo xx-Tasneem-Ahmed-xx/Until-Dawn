@@ -7,6 +7,7 @@
 namespace
 {
     constexpr int MAX_SKIN_BONES = 128;
+    constexpr int MAX_LIGHTS = 16;
 }
 
 namespace our
@@ -250,6 +251,27 @@ namespace our
 
             glm::mat4 transform = VP * command.localToWorld;
             command.material->shader->set("transform", transform);
+            command.material->shader->set("M", command.localToWorld);
+            command.material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
+            command.material->shader->set("eye_position", cameraPosition);
+
+            int lightCount = std::min(static_cast<int>(lights.size()), MAX_LIGHTS);
+            command.material->shader->set("light_count", lightCount);
+            for (int i = 0; i < lightCount; ++i)
+            {
+                auto *light = lights[i];
+                glm::mat4 lightWorld = light->getOwner()->getLocalToWorldMatrix();
+                glm::vec3 lightPosition = glm::vec3(lightWorld * glm::vec4(0, 0, 0, 1));
+                glm::vec3 lightDirection = glm::normalize(glm::vec3(lightWorld * glm::vec4(0, 0, -1, 0)));
+
+                std::string prefix = "lights[" + std::to_string(i) + "].";
+                command.material->shader->set(prefix + "type", static_cast<int>(light->lightType));
+                command.material->shader->set(prefix + "position", lightPosition);
+                command.material->shader->set(prefix + "direction", lightDirection);
+                command.material->shader->set(prefix + "color", light->diffuse);
+                command.material->shader->set(prefix + "attenuation", light->attenuation);
+                command.material->shader->set(prefix + "cone_angles", light->cone_angles);
+            }
 
             if (command.mesh->hasGLTFBaseColorTexture())
             {
@@ -316,6 +338,27 @@ namespace our
 
             glm::mat4 transform = VP * command.localToWorld;
             command.material->shader->set("transform", transform);
+            command.material->shader->set("M", command.localToWorld);
+            command.material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
+            command.material->shader->set("eye_position", cameraPosition);
+
+            int lightCount = std::min(static_cast<int>(lights.size()), MAX_LIGHTS);
+            command.material->shader->set("light_count", lightCount);
+            for (int i = 0; i < lightCount; ++i)
+            {
+                auto *light = lights[i];
+                glm::mat4 lightWorld = light->getOwner()->getLocalToWorldMatrix();
+                glm::vec3 lightPosition = glm::vec3(lightWorld * glm::vec4(0, 0, 0, 1));
+                glm::vec3 lightDirection = glm::normalize(glm::vec3(lightWorld * glm::vec4(0, 0, -1, 0)));
+
+                std::string prefix = "lights[" + std::to_string(i) + "].";
+                command.material->shader->set(prefix + "type", static_cast<int>(light->lightType));
+                command.material->shader->set(prefix + "position", lightPosition);
+                command.material->shader->set(prefix + "direction", lightDirection);
+                command.material->shader->set(prefix + "color", light->diffuse);
+                command.material->shader->set(prefix + "attenuation", light->attenuation);
+                command.material->shader->set(prefix + "cone_angles", light->cone_angles);
+            }
 
             if (command.mesh->hasGLTFBaseColorTexture())
             {
@@ -357,6 +400,7 @@ namespace our
 
             // TODO: (Req 11) Setup the postprocess material and draw the fullscreen triangle
             this->postprocessMaterial->setup();
+            this->postprocessMaterial->shader->set("time", elapsedTime);
             this->postprocessMaterial->shader->set("flashCenter", muzzleFlashCenter);
             this->postprocessMaterial->shader->set("flash", muzzleFlashStrength);
             glBindVertexArray(postProcessVertexArray);
@@ -383,11 +427,6 @@ namespace our
             crosshairShader->set("halfThickness", 0.0018f);
             crosshairShader->set("color", glm::vec4(1.0f, 1.0f, 1.0f, 0.95f));
 
-            // Pass elapsed time for animated effects (film grain, etc.)
-            if (this->postprocessMaterial && this->postprocessMaterial->shader)
-            {
-                this->postprocessMaterial->shader->set("time", elapsedTime);
-            }
             glBindVertexArray(postProcessVertexArray);
             glDrawArrays(GL_TRIANGLES, 0, 3);
         }

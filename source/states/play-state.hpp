@@ -7,7 +7,10 @@
 #include <systems/free-camera-controller.hpp>
 #include <systems/movement.hpp>
 #include <systems/shooting-system.hpp>
+#include <systems/collision-system.hpp>
+#include <systems/scene-manager.hpp>
 #include <components/camera.hpp>
+#include <components/environment.hpp>
 #include <components/free-camera-controller.hpp>
 #include <components/health.hpp>
 #include <components/mesh-renderer.hpp>
@@ -41,8 +44,10 @@ class Playstate : public our::State
     our::FreeCameraControllerSystem cameraController;
     our::MovementSystem movementSystem;
     our::ShootingSystem shootingSystem;
+    our::CollisionSystem collisionSystem;
     float muzzleFlashTimeLeft = 0.0f;
     const float muzzleFlashDuration = 0.06f;
+    float totalTime = 0.0f;
     our::Entity *mainCameraEntity = nullptr;
     our::Entity *mainPlayerEntity = nullptr;
 
@@ -849,6 +854,62 @@ class Playstate : public our::State
         }
     }
 
+    void handleCollisions()
+    {
+        auto &allCollisions = collisionSystem.getCurrentCollisions();
+
+        for (const auto &collision : allCollisions)
+        {
+            our::Entity *entityA = collision.entityA;
+            our::Entity *entityB = collision.entityB;
+
+            auto envA = entityA->getComponent<our::EnvironmentComponent>();
+            auto envB = entityB->getComponent<our::EnvironmentComponent>();
+
+            bool isStaticA = envA && (envA->environmentType == "wall" || envA->environmentType == "floor");
+            bool isStaticB = envB && (envB->environmentType == "wall" || envB->environmentType == "floor");
+            bool isFloorA = envA && envA->environmentType == "floor";
+            bool isFloorB = envB && envB->environmentType == "floor";
+
+            if (isStaticA && isStaticB)
+                continue;
+            if (!isStaticA && !isStaticB)
+                continue;
+
+            our::Entity *dynamicEntity = isStaticA ? entityB : entityA;
+            bool collidingWithFloor = isStaticA ? isFloorA : isFloorB;
+
+            our::CollisionInfo oriented;
+            if (isStaticB)
+            {
+                oriented = collision;
+            }
+            else
+            {
+                oriented.entityA = entityB;
+                oriented.entityB = entityA;
+                oriented.colliderA = collision.colliderB;
+                oriented.colliderB = collision.colliderA;
+            }
+
+            glm::vec3 pushBack = collisionSystem.resolveAABB(oriented);
+
+            if (collidingWithFloor)
+            {
+                pushBack.x = 0.0f;
+                pushBack.z = 0.0f;
+                if (pushBack.y < 0.0f)
+                    pushBack.y = 0.0f;
+            }
+
+            const float epsilon = 0.001f;
+            if (glm::length(pushBack) > epsilon)
+            {
+                dynamicEntity->localTransform.position += pushBack;
+            }
+        }
+    }
+
     void onInitialize() override
     {
         // First of all, we get the scene configuration from the app config
@@ -879,10 +940,15 @@ class Playstate : public our::State
         // Then we initialize the renderer
         auto size = getApp()->getFrameBufferSize();
         renderer.initialize(size, config["renderer"]);
+        our::SceneManager::validateWorld(&world);
+        totalTime = 0.0f;
     }
 
     void onDraw(double deltaTime) override
     {
+        totalTime += (float)deltaTime;
+        renderer.setTime(totalTime);
+
         glm::vec2 muzzleFlashCenter = glm::vec2(0.66f, 0.28f);
         our::Entity *cameraEntity = mainCameraEntity;
         our::CameraComponent *camera = nullptr;
@@ -966,6 +1032,8 @@ class Playstate : public our::State
 
         updateWaveSystem((float)deltaTime);
         updateZombies((float)deltaTime);
+        collisionSystem.update(&world);
+        handleCollisions();
         updateBloodSplashEffects((float)deltaTime);
         world.deleteMarkedEntities();
 
@@ -1052,6 +1120,7 @@ class Playstate : public our::State
         cameraController.exit();
         // Clear the world
         world.clear();
+        collisionSystem.clear();
         // and we delete all the loaded assets to free memory on the RAM and the VRAM
         our::clearAllAssets();
     }
