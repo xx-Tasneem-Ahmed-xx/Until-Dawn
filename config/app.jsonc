@@ -13,6 +13,41 @@
       "sky": "assets/textures/sky.jpg",
       "postprocess": "assets/shaders/postprocess/muzzle-flash.frag"
     },
+    "zombies": {
+      "waveZombieCounts": [3, 5, 7, 10],
+      "initialWaveDelaySeconds": 0.2,
+      "betweenWavesDelaySeconds": 4.0,
+      "spawnIntervalSeconds": 0.8,
+      "minSpawnPlayerDistance": 16.0,
+      "spawnMaxDistance": 26.0,
+      "spawnViewHalfAngleDegrees": 20.0,
+      "walkSpeed": 1.8,
+      "crawlSpeed": 0.8,
+      "damage": 8.0,
+      "attackRange": 2.6,
+      "attackCooldown": 1.0,
+      "corpseLifetime": 1.25,
+      "radius": 1.0,
+      "spawnHeightOffset": -0.25,
+      "modelScaleMultiplier": 0.42,
+      "modelYawOffsetDegrees": 180.0,
+      "walkBobAmplitude": 0.11,
+      "crawlBobAmplitude": 0.055,
+      "attackBobAmplitude": 0.14,
+      "walkBobFrequency": 7.0,
+      "crawlBobFrequency": 4.2,
+      "attackBobFrequency": 11.0,
+      "walkRollDegrees": 8.0,
+      "attackPitchDegrees": 17.0,
+      "attackPitchFrequency": 9.0,
+      "crawlPitchDegrees": 58.0,
+      "crawlHeightDrop": 0.24,
+      "deathFallDegrees": 82.0,
+  "deathSink": 0.32,
+  "bloodSplashLifetimeSeconds": 1.1,
+  "bloodSplashScaleMultiplier": 10.0,
+  "bloodSplashHeightOffset": 0.25
+    },
     "assets": {
       "shaders": {
         "tinted": {
@@ -33,7 +68,11 @@
         "pistol": "assets/models/pistol.glb",
         "rifle": "assets/models/Assault Rifle.glb",
         "pickup-health": "assets/models/HealthBox.glb",
+        "blood-splash": "assets/models/Blood.glb",
         "zombie": "assets/models/Zombie.glb"
+      },
+      "motions": {
+        "zombie-motion": "assets/models/Zombie.glb"
       },
       "samplers": {
         "default": {},
@@ -107,6 +146,26 @@
             }
           },
           "tint": [1, 1, 1, 1]
+        },
+        "blood-fx": {
+          "type": "tinted",
+          "shader": "tinted",
+          "pipelineState": {
+            "faceCulling": {
+              "enabled": false
+            },
+            "depthTesting": {
+              "enabled": true
+            },
+            "blending": {
+              "enabled": true,
+              "sourceFactor": "GL_SRC_ALPHA",
+              "destinationFactor": "GL_ONE_MINUS_SRC_ALPHA"
+            },
+            "depthMask": false
+          },
+          "transparent": true,
+          "tint": [1, 0.15, 0.15, 1]
         }
       }
     },

@@ -27,6 +27,14 @@ namespace our
         float distance = -1.0f;   // Distance from ray origin to hit point (-1 if no hit)
     };
 
+    struct FireResult
+    {
+        bool hitZombie = false;
+        bool killedZombie = false;
+        Entity *hitEntity = nullptr;
+        float hitDistance = -1.0f;
+    };
+
     // The shooting system is responsible for building rays from the camera
     // and handling hit detection and damage calculations
     class ShootingSystem
@@ -123,11 +131,39 @@ namespace our
 
                 if (zombie && health && health->isAlive)
                 {
-                    // Get zombie position in world space
-                    glm::vec3 zombiePosition = glm::vec3(entity->getLocalToWorldMatrix() * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+                    glm::mat4 zombieWorld = entity->getLocalToWorldMatrix();
+                    glm::vec3 zombiePosition = glm::vec3(zombieWorld * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 
-                    // Test ray-sphere intersection
-                    float hitDistance = testRaySphereIntersection(ray, zombiePosition, zombie->radius, weapon);
+                    glm::vec3 scaleVec = entity->localTransform.scale;
+                    float maxScale = std::max({std::abs(scaleVec.x), std::abs(scaleVec.y), std::abs(scaleVec.z), 1.0f});
+                    float baseRadius = std::max(0.1f, zombie->radius * maxScale);
+
+                    float centerHeight = baseRadius * 0.9f;
+                    if (zombie->state == ZombieState::Crawling)
+                    {
+                        centerHeight = baseRadius * 0.40f;
+                    }
+                    else if (zombie->state == ZombieState::Dead)
+                    {
+                        centerHeight = baseRadius * 0.25f;
+                    }
+
+                    // Use a forgiving 3-sphere body approximation (torso/head/hips)
+                    std::vector<glm::vec3> hitCenters = {
+                        zombiePosition + glm::vec3(0.0f, centerHeight, 0.0f),
+                        zombiePosition + glm::vec3(0.0f, centerHeight + baseRadius * 0.70f, 0.0f),
+                        zombiePosition + glm::vec3(0.0f, centerHeight - baseRadius * 0.55f, 0.0f)};
+
+                    float hitDistance = -1.0f;
+                    const float hitRadius = baseRadius * 1.15f;
+                    for (const auto &center : hitCenters)
+                    {
+                        float candidate = testRaySphereIntersection(ray, center, hitRadius, weapon);
+                        if (candidate >= 0.0f && (hitDistance < 0.0f || candidate < hitDistance))
+                        {
+                            hitDistance = candidate;
+                        }
+                    }
 
                     // If hit and closer than previous closest, update closest hit
                     if (hitDistance >= 0.0f && hitDistance < closestHit.distance)
@@ -149,10 +185,11 @@ namespace our
 
         // Fire a ray and damage the closest zombie it hits
         // Collects all intersections with t > 0, sorts by distance, and applies damage to the closest
-        void fireRay(const Ray &ray, World *world, WeaponComponent *weapon)
+        FireResult fireRay(const Ray &ray, World *world, WeaponComponent *weapon)
         {
+            FireResult result;
             if (!weapon)
-                return;
+                return result;
 
             // Print ray information: Camera position and direction
             std::cout << "Ray fired: (" << ray.origin.x << ", " << ray.origin.y << ", " << ray.origin.z << ")"
@@ -168,11 +205,38 @@ namespace our
 
                 if (zombie && health && health->isAlive)
                 {
-                    // Get zombie position in world space
-                    glm::vec3 zombiePosition = glm::vec3(entity->getLocalToWorldMatrix() * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+                    glm::mat4 zombieWorld = entity->getLocalToWorldMatrix();
+                    glm::vec3 zombiePosition = glm::vec3(zombieWorld * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 
-                    // Test ray-sphere intersection
-                    float hitDistance = testRaySphereIntersection(ray, zombiePosition, zombie->radius, weapon);
+                    glm::vec3 scaleVec = entity->localTransform.scale;
+                    float maxScale = std::max({std::abs(scaleVec.x), std::abs(scaleVec.y), std::abs(scaleVec.z), 1.0f});
+                    float baseRadius = std::max(0.1f, zombie->radius * maxScale);
+
+                    float centerHeight = baseRadius * 0.9f;
+                    if (zombie->state == ZombieState::Crawling)
+                    {
+                        centerHeight = baseRadius * 0.40f;
+                    }
+                    else if (zombie->state == ZombieState::Dead)
+                    {
+                        centerHeight = baseRadius * 0.25f;
+                    }
+
+                    std::vector<glm::vec3> hitCenters = {
+                        zombiePosition + glm::vec3(0.0f, centerHeight, 0.0f),
+                        zombiePosition + glm::vec3(0.0f, centerHeight + baseRadius * 0.70f, 0.0f),
+                        zombiePosition + glm::vec3(0.0f, centerHeight - baseRadius * 0.55f, 0.0f)};
+
+                    float hitDistance = -1.0f;
+                    const float hitRadius = baseRadius * 1.15f;
+                    for (const auto &center : hitCenters)
+                    {
+                        float candidate = testRaySphereIntersection(ray, center, hitRadius, weapon);
+                        if (candidate >= 0.0f && (hitDistance < 0.0f || candidate < hitDistance))
+                        {
+                            hitDistance = candidate;
+                        }
+                    }
 
                     // Collect only positive hits (in front of camera)
                     if (hitDistance > 0.0f)
@@ -189,7 +253,7 @@ namespace our
             if (hits.empty())
             {
                 std::cout << "No zombies hit" << std::endl;
-                return;
+                return result;
             }
 
             // Sort hits by distance (ascending order)
@@ -199,12 +263,36 @@ namespace our
             // Apply damage to the closest hit only
             RayHit closestHit = hits[0];
             HealthComponent *targetHealth = closestHit.entity->getComponent<HealthComponent>();
+            ZombieComponent *targetZombie = closestHit.entity->getComponent<ZombieComponent>();
 
             if (targetHealth)
             {
-                std::cout << "Hit detected at distance: " << closestHit.distance << " | Damage applied: " << weapon->damage << std::endl;
-                targetHealth->takeDamage(weapon->damage);
+                if (targetZombie)
+                {
+                    result.hitZombie = true;
+                    result.hitEntity = closestHit.entity;
+                    result.hitDistance = closestHit.distance;
+
+                    bool killed = targetZombie->registerShot();
+                    if (killed)
+                    {
+                        result.killedZombie = true;
+                        std::cout << "Zombie second shot: dead at distance " << closestHit.distance << std::endl;
+                        targetHealth->takeDamage(targetHealth->currentHealth);
+                    }
+                    else
+                    {
+                        std::cout << "Zombie first shot: now crawling at distance " << closestHit.distance << std::endl;
+                    }
+                }
+                else
+                {
+                    std::cout << "Hit detected at distance: " << closestHit.distance << " | Damage applied: " << weapon->damage << std::endl;
+                    targetHealth->takeDamage(weapon->damage);
+                }
             }
+
+            return result;
         }
     };
 

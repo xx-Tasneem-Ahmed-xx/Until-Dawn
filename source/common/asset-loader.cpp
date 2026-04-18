@@ -8,6 +8,7 @@
 #include "texture/sampler.hpp"
 #include "mesh/mesh.hpp"
 #include "mesh/mesh-utils.hpp"
+#include "animation/motion.hpp"
 #include "material/material.hpp"
 #include "deserialize-utils.hpp"
 
@@ -120,6 +121,43 @@ namespace our
         }
     };
 
+    // This will load all motions defined in "data"
+    // data must be in the form:
+    //    { motion_name : "path/to/glb", ... }
+    template <>
+    void AssetLoader<Motion>::deserialize(const nlohmann::json &data)
+    {
+        if (data.is_object())
+        {
+            for (auto &[name, desc] : data.items())
+            {
+                std::string path = desc.get<std::string>();
+
+                Motion *motion = nullptr;
+                if (path.size() >= 4)
+                {
+                    std::string ext = path.substr(path.size() - 4);
+                    for (auto &c : ext)
+                        c = std::tolower(c);
+
+                    if (ext == ".glb")
+                    {
+                        motion = mesh_utils::loadMotion(path);
+                    }
+                    else
+                    {
+                        std::cerr << "Unknown motion file format for \"" << path << "\". Supported format: .glb" << std::endl;
+                    }
+                }
+
+                if (motion)
+                {
+                    assets[name] = motion;
+                }
+            }
+        }
+    };
+
     // This will load all the materials defined in "data"
     // Material deserialization depends on shaders, textures and samplers
     // so you must deserialize these 3 asset types before deserializing materials
@@ -159,6 +197,8 @@ namespace our
             AssetLoader<Sampler>::deserialize(assetData["samplers"]);
         if (assetData.contains("meshes"))
             AssetLoader<Mesh>::deserialize(assetData["meshes"]);
+        if (assetData.contains("motions"))
+            AssetLoader<Motion>::deserialize(assetData["motions"]);
         if (assetData.contains("materials"))
             AssetLoader<Material>::deserialize(assetData["materials"]);
     }
@@ -169,6 +209,7 @@ namespace our
         AssetLoader<Texture2D>::clear();
         AssetLoader<Sampler>::clear();
         AssetLoader<Mesh>::clear();
+        AssetLoader<Motion>::clear();
         AssetLoader<Material>::clear();
     }
 

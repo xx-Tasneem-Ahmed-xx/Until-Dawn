@@ -13,10 +13,24 @@
 #include <components/mesh-renderer.hpp>
 #include <components/player.hpp>
 #include <components/weapon.hpp>
+#include <components/zombie.hpp>
+#include <animation/motion.hpp>
 #include <audio-manager.hpp>
 #include <asset-loader.hpp>
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include <cctype>
+#include <cmath>
+#include <iostream>
+#include <glm/gtc/constants.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <string>
+#include <vector>
+
+#define ZOMBIE_ATTACK_TRIGGER_DISTANCE 1.8f
+#define ZOMBIE_INITIAL_WAVE_DELAY_SECONDS 0.2f
+#define ZOMBIE_BETWEEN_WAVES_DELAY_SECONDS 4.0f
+#define ZOMBIE_MIN_SPAWN_PLAYER_DISTANCE 7.0f
 
 // This state shows how to use the ECS framework and deserialization.
 class Playstate : public our::State
@@ -31,6 +45,72 @@ class Playstate : public our::State
     const float muzzleFlashDuration = 0.06f;
     our::Entity *mainCameraEntity = nullptr;
     our::Entity *mainPlayerEntity = nullptr;
+
+    our::Mesh *zombieMesh = nullptr;
+    our::Material *zombieMaterial = nullptr;
+    our::Mesh *bloodSplashMesh = nullptr;
+    our::Material *bloodSplashMaterial = nullptr;
+    our::Motion *zombieMotion = nullptr;
+    const our::MotionClip *walkClip = nullptr;
+    const our::MotionClip *attackClip = nullptr;
+    const our::MotionClip *crawlClip = nullptr;
+    const our::MotionClip *dieClip = nullptr;
+    const our::MotionClip *crawlDieClip = nullptr;
+    our::Transform zombiePrototypeTransform{};
+    float zombieModelYawOffset = 0.0f;
+    float zombieGroundY = -0.5f;
+    std::vector<glm::vec3> zombieSpawnPoints;
+
+    std::vector<int> waveZombieCounts = {3, 5, 7, 10};
+    size_t currentWaveIndex = 0;
+    int zombiesSpawnedThisWave = 0;
+    float zombieSpawnIntervalSeconds = 0.8f;
+    float zombieSpawnTimer = 0.0f;
+    bool waitingForNextWave = true;
+    float betweenWaveTimer = ZOMBIE_INITIAL_WAVE_DELAY_SECONDS;
+    bool allWavesCompleted = false;
+
+    float initialWaveDelaySeconds = ZOMBIE_INITIAL_WAVE_DELAY_SECONDS;
+    float betweenWavesDelaySeconds = ZOMBIE_BETWEEN_WAVES_DELAY_SECONDS;
+    float minSpawnPlayerDistance = ZOMBIE_MIN_SPAWN_PLAYER_DISTANCE;
+
+    float zombieWalkSpeed = 1.8f;
+    float zombieCrawlSpeed = 0.8f;
+    float zombieDamage = 8.0f;
+    float zombieAttackRange = ZOMBIE_ATTACK_TRIGGER_DISTANCE;
+    float zombieAttackCooldown = 1.0f;
+    float zombieCorpseLifetime = 1.25f;
+    float zombieRadius = 1.0f;
+    float zombieSpawnHeightOffset = 0.0f;
+    float zombieModelScaleMultiplier = 1.0f;
+    float zombieSpawnMaxDistance = 22.0f;
+    float zombieSpawnViewHalfAngleDegrees = 24.0f;
+    float zombieModelYawOffsetDegrees = 0.0f;
+
+    float zombieWalkBobAmplitude = 0.055f;
+    float zombieCrawlBobAmplitude = 0.025f;
+    float zombieAttackBobAmplitude = 0.085f;
+    float zombieWalkBobFrequency = 7.0f;
+    float zombieCrawlBobFrequency = 4.2f;
+    float zombieAttackBobFrequency = 11.0f;
+    float zombieWalkRollDegrees = 7.0f;
+    float zombieAttackPitchDegrees = 13.0f;
+    float zombieAttackPitchFrequency = 8.0f;
+    float zombieCrawlPitchDegrees = 58.0f;
+    float zombieCrawlHeightDrop = 0.22f;
+    float zombieDeathFallDegrees = 82.0f;
+    float zombieDeathSink = 0.30f;
+    float bloodSplashLifetimeSeconds = 1.1f;
+    float bloodSplashScaleMultiplier = 8.0f;
+    float bloodSplashHeightOffset = 0.9f;
+
+    struct BloodSplashFx
+    {
+        our::Entity *entity = nullptr;
+        float timeLeft = 0.0f;
+    };
+
+    std::vector<BloodSplashFx> activeBloodSplashes;
 
     our::Entity *findMainPlayerEntity()
     {
@@ -101,6 +181,674 @@ class Playstate : public our::State
         return playerEntity->getComponent<our::WeaponComponent>();
     }
 
+    glm::vec3 getPlayerTargetPosition()
+    {
+        if (!mainCameraEntity)
+            mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
+        if (mainCameraEntity)
+        {
+            return glm::vec3(mainCameraEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+        }
+        if (mainPlayerEntity)
+        {
+            return glm::vec3(mainPlayerEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+        }
+        return glm::vec3(0.0f);
+    }
+
+    glm::vec3 getCameraForwardOnGround()
+    {
+        if (!mainCameraEntity)
+            mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
+
+        glm::vec3 forward = glm::vec3(0.0f, 0.0f, -1.0f);
+        if (mainCameraEntity)
+        {
+            glm::mat4 worldMatrix = mainCameraEntity->getLocalToWorldMatrix();
+            forward = glm::vec3(worldMatrix * glm::vec4(0, 0, -1, 0));
+        }
+
+        forward.y = 0.0f;
+        if (glm::dot(forward, forward) < 0.0001f)
+            return glm::vec3(0.0f, 0.0f, -1.0f);
+        return glm::normalize(forward);
+    }
+
+    const our::MotionClip *getMotionClipForState(const our::ZombieComponent *zombie) const
+    {
+        if (!zombie)
+            return walkClip;
+
+        our::ZombieState state = zombie->state;
+        if (state == our::ZombieState::Attacking)
+            return attackClip;
+        if (state == our::ZombieState::Crawling)
+            return crawlClip;
+        if (state == our::ZombieState::Dead)
+        {
+            // Prefer a floor-style death animation for second-shot zombie deaths.
+            if (zombie->shotsTaken >= 2 && crawlDieClip)
+                return crawlDieClip;
+            return dieClip;
+        }
+        return walkClip;
+    }
+
+    void updateZombieClipPlayback(our::ZombieComponent *zombie, float deltaTime)
+    {
+        const our::MotionClip *clip = getMotionClipForState(zombie);
+        if (!clip)
+            return;
+
+        if (zombie->activeMotionClip != clip->name)
+        {
+            zombie->activeMotionClip = clip->name;
+            zombie->motionClipTime = 0.0f;
+        }
+        else
+        {
+            zombie->motionClipTime += deltaTime;
+        }
+
+        if (clip->duration > 0.0001f)
+        {
+            if (zombie->state == our::ZombieState::Dead)
+            {
+                zombie->motionClipTime = std::min(zombie->motionClipTime, clip->duration);
+            }
+            else
+            {
+                zombie->motionClipTime = std::fmod(zombie->motionClipTime, clip->duration);
+            }
+        }
+    }
+
+    void updateZombieSkinMatrices(our::Entity *entity, our::ZombieComponent *zombie)
+    {
+        if (!(entity && zombie && zombieMotion))
+        {
+            return;
+        }
+
+        auto *renderer = entity->getComponent<our::MeshRendererComponent>();
+        if (!(renderer && renderer->mesh && renderer->mesh->hasSkinning()))
+        {
+            zombie->skinMatrices.clear();
+            return;
+        }
+
+        const our::MotionClip *clip = getMotionClipForState(zombie);
+        if (!clip)
+        {
+            zombie->skinMatrices.clear();
+            return;
+        }
+
+        if (!zombieMotion->computeSkinMatrices(
+                clip,
+                zombie->motionClipTime,
+                renderer->mesh->getSkinJointNodes(),
+                renderer->mesh->getInverseBindMatrices(),
+                zombie->skinMatrices))
+        {
+            zombie->skinMatrices.clear();
+        }
+    }
+
+    void bindZombieMotionClips()
+    {
+        zombieMotion = our::AssetLoader<our::Motion>::get("zombie-motion");
+        if (!zombieMotion)
+        {
+            std::cout << "[Motion] zombie-motion asset not found.\n";
+            return;
+        }
+
+        auto toLower = [](std::string s)
+        {
+            std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c)
+                           { return static_cast<char>(std::tolower(c)); });
+            return s;
+        };
+
+        auto hasAnyKeyword = [&](const std::string &name, std::initializer_list<std::string> words)
+        {
+            std::string lowered = toLower(name);
+            for (const auto &w : words)
+            {
+                if (lowered.find(toLower(w)) != std::string::npos)
+                    return true;
+            }
+            return false;
+        };
+
+        // Pick a likely locomotion clip while avoiding crawl/attack/death clips.
+        walkClip = nullptr;
+        for (const auto &clip : zombieMotion->clips)
+        {
+            bool hasWalkWord = hasAnyKeyword(clip.name, {"walk", "run", "locomotion", "move"});
+            bool hasBadWord = hasAnyKeyword(clip.name, {"crawl", "attack", "hit", "bite", "die", "death", "dead", "hurt", "injured"});
+            if (hasWalkWord && !hasBadWord)
+            {
+                if (!walkClip || clip.duration > walkClip->duration)
+                    walkClip = &clip;
+            }
+        }
+
+        if (!walkClip)
+            walkClip = zombieMotion->findClipByKeywords({"walk", "run", "locomotion", "move"});
+        if (!walkClip)
+            walkClip = zombieMotion->findClipByKeywords({"idle"});
+        attackClip = zombieMotion->findClipByKeywords({"attack", "hit", "slash", "bite"});
+        crawlClip = zombieMotion->findClipByKeywords({"crawl", "injured", "hurt"});
+
+        // Split death clips into standing-style vs floor/prone-style.
+        dieClip = nullptr;
+        crawlDieClip = nullptr;
+        for (const auto &clip : zombieMotion->clips)
+        {
+            const bool isDeath = hasAnyKeyword(clip.name, {"die", "death", "dead", "fall"});
+            const bool isFloorStyle = hasAnyKeyword(clip.name, {"die2", "die_2", "death2", "ground", "prone", "lying", "bite_ground", "crawl"});
+
+            if (isDeath && isFloorStyle)
+            {
+                if (!crawlDieClip || clip.duration > crawlDieClip->duration)
+                    crawlDieClip = &clip;
+            }
+            else if (isDeath)
+            {
+                if (!dieClip || clip.duration > dieClip->duration)
+                    dieClip = &clip;
+            }
+        }
+
+        if (!dieClip)
+            dieClip = zombieMotion->findClipByKeywords({"die", "death", "dead", "fall"});
+        if (!crawlDieClip)
+            crawlDieClip = zombieMotion->findClipByKeywords({"die2", "die_2", "death2", "ground", "prone", "lying", "bite_ground"});
+
+        if (!walkClip && !zombieMotion->clips.empty())
+            walkClip = &zombieMotion->clips[0];
+        if (!attackClip)
+            attackClip = walkClip;
+        if (!crawlClip)
+            crawlClip = walkClip;
+        if (!dieClip)
+            dieClip = walkClip;
+        if (!crawlDieClip)
+            crawlDieClip = dieClip;
+
+        std::cout << "[Motion] Loaded " << zombieMotion->clips.size() << " clip(s) from " << zombieMotion->sourcePath << "\n";
+        for (const auto &clip : zombieMotion->clips)
+        {
+            std::cout << "  - " << clip.name << " | duration=" << clip.duration << " | channels=" << clip.channelCount << "\n";
+        }
+        std::cout << "[Motion] Bound clips -> walk: " << (walkClip ? walkClip->name : "none")
+                  << ", attack: " << (attackClip ? attackClip->name : "none")
+                  << ", crawl: " << (crawlClip ? crawlClip->name : "none")
+                  << ", die: " << (dieClip ? dieClip->name : "none")
+                  << ", crawl-die: " << (crawlDieClip ? crawlDieClip->name : "none") << "\n";
+    }
+
+    void loadZombieGameplayConfig(const nlohmann::json &sceneConfig)
+    {
+        if (!sceneConfig.contains("zombies"))
+            return;
+        const auto &zombiesConfig = sceneConfig["zombies"];
+        if (!zombiesConfig.is_object())
+            return;
+
+        if (zombiesConfig.contains("waveZombieCounts") && zombiesConfig["waveZombieCounts"].is_array())
+        {
+            std::vector<int> parsedCounts;
+            for (const auto &v : zombiesConfig["waveZombieCounts"])
+            {
+                if (!v.is_number_integer())
+                    continue;
+                int c = v.get<int>();
+                if (c > 0)
+                    parsedCounts.push_back(c);
+            }
+            if (!parsedCounts.empty())
+            {
+                waveZombieCounts = parsedCounts;
+            }
+        }
+
+        zombieSpawnIntervalSeconds = std::max(0.01f, zombiesConfig.value("spawnIntervalSeconds", zombieSpawnIntervalSeconds));
+        initialWaveDelaySeconds = std::max(0.0f, zombiesConfig.value("initialWaveDelaySeconds", initialWaveDelaySeconds));
+        betweenWavesDelaySeconds = std::max(0.0f, zombiesConfig.value("betweenWavesDelaySeconds", betweenWavesDelaySeconds));
+        minSpawnPlayerDistance = std::max(0.0f, zombiesConfig.value("minSpawnPlayerDistance", minSpawnPlayerDistance));
+
+        zombieWalkSpeed = std::max(0.0f, zombiesConfig.value("walkSpeed", zombieWalkSpeed));
+        zombieCrawlSpeed = std::max(0.0f, zombiesConfig.value("crawlSpeed", zombieCrawlSpeed));
+        zombieDamage = std::max(0.0f, zombiesConfig.value("damage", zombieDamage));
+        zombieAttackRange = std::max(0.05f, zombiesConfig.value("attackRange", zombieAttackRange));
+        zombieAttackCooldown = std::max(0.01f, zombiesConfig.value("attackCooldown", zombieAttackCooldown));
+        zombieCorpseLifetime = std::max(0.0f, zombiesConfig.value("corpseLifetime", zombieCorpseLifetime));
+        zombieRadius = std::max(0.05f, zombiesConfig.value("radius", zombieRadius));
+        zombieSpawnHeightOffset = zombiesConfig.value("spawnHeightOffset", zombieSpawnHeightOffset);
+        zombieModelScaleMultiplier = std::max(0.05f, zombiesConfig.value("modelScaleMultiplier", zombieModelScaleMultiplier));
+        zombieSpawnMaxDistance = std::max(minSpawnPlayerDistance + 0.1f, zombiesConfig.value("spawnMaxDistance", zombieSpawnMaxDistance));
+        zombieSpawnViewHalfAngleDegrees = std::clamp(zombiesConfig.value("spawnViewHalfAngleDegrees", zombieSpawnViewHalfAngleDegrees), 1.0f, 85.0f);
+        zombieModelYawOffsetDegrees = zombiesConfig.value("modelYawOffsetDegrees", zombieModelYawOffsetDegrees);
+        zombieModelYawOffset = glm::radians(zombieModelYawOffsetDegrees);
+
+        zombieWalkBobAmplitude = std::max(0.0f, zombiesConfig.value("walkBobAmplitude", zombieWalkBobAmplitude));
+        zombieCrawlBobAmplitude = std::max(0.0f, zombiesConfig.value("crawlBobAmplitude", zombieCrawlBobAmplitude));
+        zombieAttackBobAmplitude = std::max(0.0f, zombiesConfig.value("attackBobAmplitude", zombieAttackBobAmplitude));
+        zombieWalkBobFrequency = std::max(0.0f, zombiesConfig.value("walkBobFrequency", zombieWalkBobFrequency));
+        zombieCrawlBobFrequency = std::max(0.0f, zombiesConfig.value("crawlBobFrequency", zombieCrawlBobFrequency));
+        zombieAttackBobFrequency = std::max(0.0f, zombiesConfig.value("attackBobFrequency", zombieAttackBobFrequency));
+        zombieWalkRollDegrees = std::max(0.0f, zombiesConfig.value("walkRollDegrees", zombieWalkRollDegrees));
+        zombieAttackPitchDegrees = std::max(0.0f, zombiesConfig.value("attackPitchDegrees", zombieAttackPitchDegrees));
+        zombieAttackPitchFrequency = std::max(0.0f, zombiesConfig.value("attackPitchFrequency", zombieAttackPitchFrequency));
+        zombieCrawlPitchDegrees = std::max(0.0f, zombiesConfig.value("crawlPitchDegrees", zombieCrawlPitchDegrees));
+        zombieCrawlHeightDrop = std::max(0.0f, zombiesConfig.value("crawlHeightDrop", zombieCrawlHeightDrop));
+        zombieDeathFallDegrees = std::max(0.0f, zombiesConfig.value("deathFallDegrees", zombieDeathFallDegrees));
+        zombieDeathSink = std::max(0.0f, zombiesConfig.value("deathSink", zombieDeathSink));
+
+        bloodSplashLifetimeSeconds = std::max(0.05f, zombiesConfig.value("bloodSplashLifetimeSeconds", bloodSplashLifetimeSeconds));
+        bloodSplashScaleMultiplier = std::max(0.05f, zombiesConfig.value("bloodSplashScaleMultiplier", bloodSplashScaleMultiplier));
+        bloodSplashHeightOffset = zombiesConfig.value("bloodSplashHeightOffset", bloodSplashHeightOffset);
+    }
+
+    void cacheZombiePrototypeAndSpawnPoints()
+    {
+        zombieMesh = our::AssetLoader<our::Mesh>::get("zombie");
+        zombieMaterial = our::AssetLoader<our::Material>::get("auto");
+        zombiePrototypeTransform = our::Transform{};
+        zombiePrototypeTransform.position = glm::vec3(0.0f, -0.5f, 0.0f);
+
+        std::vector<our::Entity *> startupZombieEntities;
+        for (auto entity : world.getEntities())
+        {
+            auto *renderer = entity->getComponent<our::MeshRendererComponent>();
+            if (!(renderer && renderer->mesh == zombieMesh))
+                continue;
+
+            startupZombieEntities.push_back(entity);
+            zombieSpawnPoints.push_back(entity->localTransform.position);
+            zombiePrototypeTransform = entity->localTransform;
+            if (renderer->material)
+                zombieMaterial = renderer->material;
+        }
+
+        for (auto entity : startupZombieEntities)
+        {
+            world.markForRemoval(entity);
+        }
+        world.deleteMarkedEntities();
+
+        zombieGroundY = zombiePrototypeTransform.position.y + zombieSpawnHeightOffset;
+
+        if (zombieSpawnPoints.empty())
+        {
+            zombieSpawnPoints.push_back(glm::vec3(0.0f, -0.5f, 2.0f));
+            zombieSpawnPoints.push_back(glm::vec3(5.0f, -0.5f, 4.0f));
+            zombieSpawnPoints.push_back(glm::vec3(-5.0f, -0.5f, 4.0f));
+            zombieSpawnPoints.push_back(glm::vec3(0.0f, -0.5f, -2.0f));
+        }
+    }
+
+    void cacheBloodSplashAssets()
+    {
+        bloodSplashMesh = our::AssetLoader<our::Mesh>::get("blood-splash");
+        if (!bloodSplashMesh)
+            bloodSplashMesh = our::AssetLoader<our::Mesh>::get("blood");
+        if (!bloodSplashMesh)
+            bloodSplashMesh = our::AssetLoader<our::Mesh>::get("Blood");
+
+        bloodSplashMaterial = our::AssetLoader<our::Material>::get("blood-fx");
+        if (!bloodSplashMaterial)
+            bloodSplashMaterial = our::AssetLoader<our::Material>::get("auto");
+
+        // Some GLB blood assets rely on textures with alpha that may end up effectively invisible in this pipeline.
+        // Force no mesh texture so tinted material color is always visible.
+        if (bloodSplashMesh)
+        {
+            bloodSplashMesh->setGLTFBaseColorTexture(0);
+            bloodSplashMesh->setGLTFBaseColorFactor(glm::vec4(1.0f));
+        }
+
+        std::cout << "[BloodFX] mesh=" << (bloodSplashMesh ? "loaded" : "missing")
+                  << ", material=" << (bloodSplashMaterial ? "loaded" : "missing")
+                  << ", lifetime=" << bloodSplashLifetimeSeconds
+                  << ", scale=" << bloodSplashScaleMultiplier
+                  << ", yOffset=" << bloodSplashHeightOffset << "\n";
+    }
+
+    bool spawnBloodSplashAt(const glm::vec3 &position, float yaw, float sourceScale)
+    {
+        if (!bloodSplashMesh)
+        {
+            std::cout << "[BloodFX] spawn skipped: blood mesh not loaded\n";
+            return false;
+        }
+
+        auto makeSplashEntity = [&](const glm::vec3 &rotation)
+        {
+            our::Entity *splash = world.add();
+            splash->name = "BloodSplash";
+            splash->parent = nullptr;
+            splash->localTransform = zombiePrototypeTransform;
+            splash->localTransform.position = position;
+            splash->localTransform.position.y += bloodSplashHeightOffset;
+            splash->localTransform.rotation = rotation;
+            float finalScale = std::max(0.05f, sourceScale * bloodSplashScaleMultiplier);
+            splash->localTransform.scale = glm::vec3(finalScale);
+
+            auto *renderer = splash->addComponent<our::MeshRendererComponent>();
+            renderer->mesh = bloodSplashMesh;
+            renderer->material = bloodSplashMaterial ? bloodSplashMaterial : zombieMaterial;
+
+            activeBloodSplashes.push_back({splash, bloodSplashLifetimeSeconds});
+        };
+
+        // Spawn as a crossed pair to keep visibility even if the asset is a thin card.
+        makeSplashEntity(glm::vec3(0.0f, yaw, 0.0f));
+        makeSplashEntity(glm::vec3(glm::half_pi<float>(), yaw, 0.0f));
+
+        std::cout << "[BloodFX] spawned at ("
+                  << position.x << ", " << position.y << ", " << position.z
+                  << ") with scale=" << (sourceScale * bloodSplashScaleMultiplier) << "\n";
+        return true;
+    }
+
+    void updateBloodSplashEffects(float deltaTime)
+    {
+        for (auto &fx : activeBloodSplashes)
+        {
+            fx.timeLeft -= deltaTime;
+            if (fx.timeLeft <= 0.0f && fx.entity)
+            {
+                world.markForRemoval(fx.entity);
+                fx.entity = nullptr;
+            }
+        }
+
+        activeBloodSplashes.erase(
+            std::remove_if(activeBloodSplashes.begin(), activeBloodSplashes.end(), [](const BloodSplashFx &fx)
+                           { return fx.timeLeft <= 0.0f || fx.entity == nullptr; }),
+            activeBloodSplashes.end());
+    }
+
+    glm::vec3 pickSpawnPoint(int spawnedIndex)
+    {
+        glm::vec3 playerPos = getPlayerTargetPosition();
+        glm::vec3 forward = getCameraForwardOnGround();
+
+        // Deterministic spread inside the camera view cone to keep zombies spawning in front of player.
+        int hash = spawnedIndex * 73 + static_cast<int>(currentWaveIndex) * 131 + 17;
+        float tAngle = static_cast<float>(hash % 1000) / 999.0f; // [0,1]
+        float tDist = static_cast<float>((hash * 37) % 1000) / 999.0f;
+
+        float halfAngleRad = glm::radians(zombieSpawnViewHalfAngleDegrees);
+        float angle = (tAngle * 2.0f - 1.0f) * halfAngleRad;
+
+        float c = std::cos(angle);
+        float s = std::sin(angle);
+        glm::vec3 dir;
+        dir.x = forward.x * c - forward.z * s;
+        dir.y = 0.0f;
+        dir.z = forward.x * s + forward.z * c;
+        if (glm::dot(dir, dir) < 0.0001f)
+            dir = forward;
+        else
+            dir = glm::normalize(dir);
+
+        float distance = minSpawnPlayerDistance + (zombieSpawnMaxDistance - minSpawnPlayerDistance) * tDist;
+        glm::vec3 spawn = playerPos + dir * distance;
+        spawn.y = zombieGroundY;
+        return spawn;
+    }
+
+    void spawnZombie(const glm::vec3 &spawnPosition)
+    {
+        if (!zombieMesh)
+            return;
+
+        our::Entity *zombieEntity = world.add();
+        zombieEntity->name = "WaveZombie_" + std::to_string(currentWaveIndex + 1) + "_" + std::to_string(zombiesSpawnedThisWave + 1);
+        zombieEntity->parent = nullptr;
+        zombieEntity->localTransform = zombiePrototypeTransform;
+        zombieEntity->localTransform.position = spawnPosition;
+        zombieEntity->localTransform.position.y = zombieGroundY;
+        zombieEntity->localTransform.scale *= zombieModelScaleMultiplier;
+
+        auto *renderer = zombieEntity->addComponent<our::MeshRendererComponent>();
+        renderer->mesh = zombieMesh;
+        renderer->material = zombieMaterial;
+
+        auto *health = zombieEntity->addComponent<our::HealthComponent>();
+        health->maxHealth = 2.0f;
+        health->currentHealth = 2.0f;
+        health->isAlive = true;
+
+        auto *zombie = zombieEntity->addComponent<our::ZombieComponent>();
+        zombie->state = our::ZombieState::Walking;
+        zombie->shotsTaken = 0;
+        zombie->radius = zombieRadius;
+        zombie->speed = zombieWalkSpeed;
+        zombie->crawlSpeed = zombieCrawlSpeed;
+        zombie->damage = zombieDamage;
+        zombie->attackRange = zombieAttackRange;
+        zombie->attackCooldown = zombieAttackCooldown;
+        zombie->corpseLifetime = zombieCorpseLifetime;
+        zombie->baseY = zombieGroundY;
+
+        if (zombieMesh && zombieMesh->hasSkinning())
+        {
+            zombie->skinMatrices.assign(zombieMesh->getSkinJointNodes().size(), glm::mat4(1.0f));
+        }
+
+        glm::vec3 playerPos = getPlayerTargetPosition();
+        glm::vec3 toPlayer = playerPos - zombieEntity->localTransform.position;
+        toPlayer.y = 0.0f;
+        if (glm::dot(toPlayer, toPlayer) > 0.0001f)
+        {
+            glm::vec3 direction = glm::normalize(toPlayer);
+            float yaw = std::atan2(-direction.x, -direction.z);
+            zombieEntity->localTransform.rotation.y = yaw + zombieModelYawOffset;
+        }
+    }
+
+    int getAliveZombieCount()
+    {
+        int alive = 0;
+        for (auto entity : world.getEntities())
+        {
+            auto *zombie = entity->getComponent<our::ZombieComponent>();
+            auto *health = entity->getComponent<our::HealthComponent>();
+            if (zombie && health && health->isAlive)
+                alive++;
+        }
+        return alive;
+    }
+
+    void beginWave(size_t waveIndex)
+    {
+        currentWaveIndex = waveIndex;
+        zombiesSpawnedThisWave = 0;
+        zombieSpawnTimer = 0.0f;
+        waitingForNextWave = false;
+    }
+
+    void updateWaveSystem(float deltaTime)
+    {
+        if (allWavesCompleted)
+            return;
+
+        if (waitingForNextWave)
+        {
+            betweenWaveTimer -= deltaTime;
+            if (betweenWaveTimer <= 0.0f)
+            {
+                beginWave(currentWaveIndex);
+            }
+            return;
+        }
+
+        int targetForWave = waveZombieCounts[currentWaveIndex];
+        zombieSpawnTimer -= deltaTime;
+        while (zombiesSpawnedThisWave < targetForWave && zombieSpawnTimer <= 0.0f)
+        {
+            spawnZombie(pickSpawnPoint(zombiesSpawnedThisWave));
+            zombiesSpawnedThisWave++;
+            zombieSpawnTimer += zombieSpawnIntervalSeconds;
+        }
+
+        if (zombiesSpawnedThisWave >= targetForWave && getAliveZombieCount() == 0)
+        {
+            if (currentWaveIndex + 1 >= waveZombieCounts.size())
+            {
+                allWavesCompleted = true;
+                waitingForNextWave = false;
+            }
+            else
+            {
+                waitingForNextWave = true;
+                currentWaveIndex++;
+                betweenWaveTimer = betweenWavesDelaySeconds;
+            }
+        }
+    }
+
+    void updateZombies(float deltaTime)
+    {
+        glm::vec3 playerTarget = getPlayerTargetPosition();
+        our::HealthComponent *playerHealth = getMainPlayerHealth();
+
+        for (auto entity : world.getEntities())
+        {
+            auto *zombie = entity->getComponent<our::ZombieComponent>();
+            auto *health = entity->getComponent<our::HealthComponent>();
+            if (!(zombie && health))
+                continue;
+
+            zombie->update(deltaTime);
+            updateZombieClipPlayback(zombie, deltaTime);
+            updateZombieSkinMatrices(entity, zombie);
+
+            if (!health->isAlive)
+            {
+                zombie->state = our::ZombieState::Dead;
+            }
+
+            if (zombie->isDead())
+            {
+                float corpseDuration = std::max(0.01f, zombie->corpseLifetime);
+                float t = std::clamp(zombie->deathTime / corpseDuration, 0.0f, 1.0f);
+                entity->localTransform.rotation.x = -glm::radians(zombieDeathFallDegrees) * t;
+                entity->localTransform.rotation.z = 0.0f;
+                entity->localTransform.position.y = zombie->baseY - zombieDeathSink * t;
+
+                if (zombie->shouldDespawn())
+                {
+                    world.markForRemoval(entity);
+                }
+                continue;
+            }
+
+            glm::vec3 zombiePosition = glm::vec3(entity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+            glm::vec3 toPlayer = playerTarget - zombiePosition;
+            toPlayer.y = 0.0f;
+            float distanceToPlayer = glm::length(toPlayer);
+
+            if (distanceToPlayer > 0.0001f)
+            {
+                glm::vec3 direction = toPlayer / distanceToPlayer;
+                float yaw = std::atan2(-direction.x, -direction.z);
+                entity->localTransform.rotation.y = yaw + zombieModelYawOffset;
+
+                float desiredCombatDistance = zombie->attackRange;
+                if (distanceToPlayer > desiredCombatDistance)
+                {
+                    if (zombie->shotsTaken >= 1)
+                    {
+                        zombie->state = our::ZombieState::Crawling;
+                    }
+                    else
+                    {
+                        zombie->state = our::ZombieState::Walking;
+                    }
+                    entity->localTransform.position += direction * (zombie->getCurrentSpeed() * deltaTime);
+                }
+                else
+                {
+                    zombie->state = our::ZombieState::Attacking;
+
+                    if (playerHealth && playerHealth->isAlive && zombie->canAttack())
+                    {
+                        playerHealth->takeDamage(zombie->damage);
+                        zombie->resetAttackCooldown();
+                    }
+                }
+
+                const bool usingSkinnedAnimation = !zombie->skinMatrices.empty();
+
+                if (usingSkinnedAnimation)
+                {
+                    // Let the skeleton drive pose; keep entity transform stable.
+                    entity->localTransform.position.y = zombie->baseY;
+                    entity->localTransform.rotation.x = 0.0f;
+                    entity->localTransform.rotation.z = 0.0f;
+                    entity->localTransform.scale = zombiePrototypeTransform.scale * zombieModelScaleMultiplier;
+                }
+                else
+                {
+                    float bobAmplitude = zombieWalkBobAmplitude;
+                    float bobFrequency = zombieWalkBobFrequency;
+                    float posePitch = 0.0f;
+                    float poseRoll = 0.0f;
+                    float poseBaseY = zombie->baseY;
+                    float attackPitchFrequencyLocal = zombieAttackPitchFrequency;
+
+                    if (const our::MotionClip *active = getMotionClipForState(zombie); active && active->duration > 0.0001f)
+                    {
+                        float baseFrequency = glm::two_pi<float>() / active->duration;
+                        if (zombie->state == our::ZombieState::Attacking)
+                        {
+                            bobFrequency = baseFrequency;
+                            attackPitchFrequencyLocal = baseFrequency;
+                        }
+                        else if (zombie->state == our::ZombieState::Crawling)
+                            bobFrequency = baseFrequency;
+                        else if (zombie->state == our::ZombieState::Walking)
+                            bobFrequency = baseFrequency;
+                    }
+
+                    if (zombie->state == our::ZombieState::Crawling)
+                    {
+                        bobAmplitude = zombieCrawlBobAmplitude;
+                        bobFrequency = zombieCrawlBobFrequency;
+                        posePitch = glm::radians(zombieCrawlPitchDegrees);
+                        poseBaseY -= zombieCrawlHeightDrop;
+                    }
+                    else if (zombie->state == our::ZombieState::Attacking)
+                    {
+                        bobAmplitude = zombieAttackBobAmplitude;
+                        float attackPoseOsc = std::abs(std::sin(zombie->motionTime * attackPitchFrequencyLocal));
+                        posePitch = glm::radians(zombieAttackPitchDegrees) * attackPoseOsc;
+                    }
+                    else
+                    {
+                        poseRoll = glm::radians(zombieWalkRollDegrees) * std::sin(zombie->motionTime * 0.5f * zombieWalkBobFrequency);
+                    }
+
+                    float bob = (bobAmplitude > 0.0f && bobFrequency > 0.0f)
+                                    ? std::sin(zombie->motionTime * bobFrequency) * bobAmplitude
+                                    : 0.0f;
+
+                    entity->localTransform.position.y = poseBaseY + bob;
+                    entity->localTransform.rotation.x = -posePitch;
+                    entity->localTransform.rotation.z = poseRoll;
+                    entity->localTransform.scale = zombiePrototypeTransform.scale * zombieModelScaleMultiplier;
+                }
+            }
+        }
+    }
+
     void onInitialize() override
     {
         // First of all, we get the scene configuration from the app config
@@ -116,8 +864,15 @@ class Playstate : public our::State
             world.deserialize(config["world"]);
         }
 
+        loadZombieGameplayConfig(config);
+        bindZombieMotionClips();
+
         mainPlayerEntity = findMainPlayerEntity();
         mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
+        cacheZombiePrototypeAndSpawnPoints();
+        cacheBloodSplashAssets();
+        waitingForNextWave = true;
+        betweenWaveTimer = initialWaveDelaySeconds;
 
         // We initialize the camera controller system since it needs a pointer to the app
         cameraController.enter(getApp());
@@ -199,15 +954,6 @@ class Playstate : public our::State
             }
         }
 
-        float currentHealth = 100.0f;
-        float maxHealth = 100.0f;
-        if (auto health = getMainPlayerHealth(); health)
-        {
-            currentHealth = health->currentHealth;
-            maxHealth = health->maxHealth;
-        }
-        renderer.setHealth(currentHealth, maxHealth, (float)deltaTime);
-
         // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
@@ -217,6 +963,20 @@ class Playstate : public our::State
         {
             mainPlayerWeapon->update((float)deltaTime);
         }
+
+        updateWaveSystem((float)deltaTime);
+        updateZombies((float)deltaTime);
+        updateBloodSplashEffects((float)deltaTime);
+        world.deleteMarkedEntities();
+
+        float currentHealth = 100.0f;
+        float maxHealth = 100.0f;
+        if (auto health = getMainPlayerHealth(); health)
+        {
+            currentHealth = health->currentHealth;
+            maxHealth = health->maxHealth;
+        }
+        renderer.setHealth(currentHealth, maxHealth, (float)deltaTime);
 
         // Clean up finished audio sources
         our::AudioManager::getInstance().cleanupFinishedSources();
@@ -266,7 +1026,19 @@ class Playstate : public our::State
                     muzzleFlashTimeLeft = muzzleFlashDuration;
                     // If shot was successful, build a ray and fire it
                     our::Ray ray = shootingSystem.buildRayFromCamera(&world);
-                    shootingSystem.fireRay(ray, &world, weapon);
+                    our::FireResult fireResult = shootingSystem.fireRay(ray, &world, weapon);
+
+                    // Spawn blood instantly on second-shot kill and remove zombie before render.
+                    if (fireResult.killedZombie && fireResult.hitEntity)
+                    {
+                        glm::vec3 worldPos = glm::vec3(fireResult.hitEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+                        float maxAxisScale = std::max({std::abs(fireResult.hitEntity->localTransform.scale.x),
+                                                       std::abs(fireResult.hitEntity->localTransform.scale.y),
+                                                       std::abs(fireResult.hitEntity->localTransform.scale.z),
+                                                       1.0f});
+                        spawnBloodSplashAt(worldPos, fireResult.hitEntity->localTransform.rotation.y, maxAxisScale);
+                        world.markForRemoval(fireResult.hitEntity);
+                    }
                 }
             }
         }

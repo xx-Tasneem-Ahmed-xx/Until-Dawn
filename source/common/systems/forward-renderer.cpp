@@ -1,6 +1,12 @@
 #include "forward-renderer.hpp"
 #include "../mesh/mesh-utils.hpp"
 #include "../texture/texture-utils.hpp"
+#include "../components/zombie.hpp"
+
+namespace
+{
+    constexpr int MAX_SKIN_BONES = 128;
+}
 
 namespace our
 {
@@ -165,6 +171,13 @@ namespace our
                 command.center = glm::vec3(command.localToWorld * glm::vec4(0, 0, 0, 1));
                 command.mesh = meshRenderer->mesh;
                 command.material = meshRenderer->material;
+
+                if (auto zombie = entity->getComponent<ZombieComponent>())
+                {
+                    command.skinMatrices = &zombie->skinMatrices;
+                    command.skinJointCount = static_cast<int>(zombie->skinMatrices.size());
+                }
+
                 // if it is transparent, we add it to the transparent commands list
                 if (command.material->transparent)
                 {
@@ -235,6 +248,25 @@ namespace our
 
             glm::mat4 transform = VP * command.localToWorld;
             command.material->shader->set("transform", transform);
+
+            if (command.mesh && command.mesh->hasSkinning() && command.skinMatrices && !command.skinMatrices->empty())
+            {
+                int boneCount = std::min({static_cast<int>(command.skinMatrices->size()),
+                                          static_cast<int>(command.mesh->getSkinJointNodes().size()),
+                                          MAX_SKIN_BONES});
+                command.material->shader->set("hasSkinning", 1);
+                command.material->shader->set("boneCount", boneCount);
+                if (boneCount > 0)
+                {
+                    command.material->shader->setMat4Array("uBones", command.skinMatrices->data(), boneCount);
+                }
+            }
+            else
+            {
+                command.material->shader->set("hasSkinning", 0);
+                command.material->shader->set("boneCount", 0);
+            }
+
             command.mesh->draw();
         }
         // If there is a sky material, draw the sky
@@ -283,6 +315,25 @@ namespace our
 
             glm::mat4 transform = VP * command.localToWorld;
             command.material->shader->set("transform", transform);
+
+            if (command.mesh && command.mesh->hasSkinning() && command.skinMatrices && !command.skinMatrices->empty())
+            {
+                int boneCount = std::min({static_cast<int>(command.skinMatrices->size()),
+                                          static_cast<int>(command.mesh->getSkinJointNodes().size()),
+                                          MAX_SKIN_BONES});
+                command.material->shader->set("hasSkinning", 1);
+                command.material->shader->set("boneCount", boneCount);
+                if (boneCount > 0)
+                {
+                    command.material->shader->setMat4Array("uBones", command.skinMatrices->data(), boneCount);
+                }
+            }
+            else
+            {
+                command.material->shader->set("hasSkinning", 0);
+                command.material->shader->set("boneCount", 0);
+            }
+
             command.mesh->draw();
         }
 
