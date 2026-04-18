@@ -3,9 +3,11 @@
 #include <glad/gl.h>
 #include <cstddef>
 #include <vector>
+#include <unordered_set>
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 #include "vertex.hpp"
+#include "../shader/shader.hpp"
 
 namespace our
 {
@@ -19,12 +21,23 @@ namespace our
 
     class Mesh
     {
+    public:
+        struct SubMesh
+        {
+            GLuint firstIndex = 0;
+            GLsizei indexCount = 0;
+            bool hasBaseColorTexture = false;
+            GLuint baseColorTextureID = 0;
+        };
+
+    private:
         // Here, we store the object names of the 3 main components of a mesh:
         // A vertex array object, A vertex buffer and an element buffer
         unsigned int VBO, EBO;
         unsigned int VAO;
         // We need to remember the number of elements that will be drawn by glDrawElements
         GLsizei elementCount;
+        std::vector<SubMesh> subMeshes;
 
         // Optional glTF PBR base color material data
         glm::vec4 gltfBaseColorFactor = glm::vec4(1.0f);
@@ -44,12 +57,13 @@ namespace our
         // a vertex buffer to store the vertex data on the VRAM,
         // an element buffer to store the element data on the VRAM,
         // a vertex array object to define how to read the vertex & element buffer during rendering
-        Mesh(const std::vector<Vertex> &vertices, const std::vector<unsigned int> &elements)
+        Mesh(const std::vector<Vertex> &vertices, const std::vector<unsigned int> &elements, const std::vector<SubMesh> &subMeshes = {})
         {
             // TODO: (Req 2) Write this function
             //  remember to store the number of elements in "elementCount" since you will need it for drawing
             //  For the attribute locations, use the constants defined above: ATTRIB_LOC_POSITION, ATTRIB_LOC_COLOR, etc
             elementCount = static_cast<GLsizei>(elements.size());
+            this->subMeshes = subMeshes;
 
             glGenVertexArrays(1, &VAO);
             glBindVertexArray(VAO);
@@ -92,6 +106,61 @@ namespace our
             glBindVertexArray(0);
         }
 
+        void drawWithGLTFMaterials(ShaderProgram *shader)
+        {
+            glBindVertexArray(VAO);
+
+            if (subMeshes.empty())
+            {
+                if (shader)
+                {
+                    if (gltfHasBaseColorTexture && gltfBaseColorTextureID != 0)
+                    {
+                        glActiveTexture(GL_TEXTURE0);
+                        glBindTexture(GL_TEXTURE_2D, gltfBaseColorTextureID);
+                        shader->set("uBaseColorTex", 0);
+                        shader->set("hasTexture", 1);
+                    }
+                    else
+                    {
+                        shader->set("hasTexture", 0);
+                    }
+                }
+
+                glDrawElements(GL_TRIANGLES, elementCount, GL_UNSIGNED_INT, nullptr);
+                glBindVertexArray(0);
+                return;
+            }
+
+            for (const auto &subMesh : subMeshes)
+            {
+                if (shader)
+                {
+                    if (subMesh.hasBaseColorTexture && subMesh.baseColorTextureID != 0)
+                    {
+                        glActiveTexture(GL_TEXTURE0);
+                        glBindTexture(GL_TEXTURE_2D, subMesh.baseColorTextureID);
+                        shader->set("uBaseColorTex", 0);
+                        shader->set("hasTexture", 1);
+                    }
+                    else
+                    {
+                        shader->set("hasTexture", 0);
+                    }
+                }
+
+                const void *indexOffset = reinterpret_cast<const void *>(static_cast<size_t>(subMesh.firstIndex) * sizeof(GLuint));
+                glDrawElements(GL_TRIANGLES, subMesh.indexCount, GL_UNSIGNED_INT, indexOffset);
+            }
+
+            glBindVertexArray(0);
+        }
+
+        bool hasSubMeshes() const
+        {
+            return !subMeshes.empty();
+        }
+
         // this function should delete the vertex & element buffers and the vertex array object
         ~Mesh()
         {
@@ -105,6 +174,16 @@ namespace our
                 glDeleteTextures(1, &gltfBaseColorTextureID);
                 gltfBaseColorTextureID = 0;
                 gltfHasBaseColorTexture = false;
+            }
+
+            std::unordered_set<GLuint> deletedTextures;
+            for (const auto &subMesh : subMeshes)
+            {
+                if (subMesh.hasBaseColorTexture && subMesh.baseColorTextureID != 0 && !deletedTextures.count(subMesh.baseColorTextureID))
+                {
+                    glDeleteTextures(1, &subMesh.baseColorTextureID);
+                    deletedTextures.insert(subMesh.baseColorTextureID);
+                }
             }
         }
 

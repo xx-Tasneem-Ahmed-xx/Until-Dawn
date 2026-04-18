@@ -302,7 +302,7 @@ namespace our
                 command.material->shader->set("hasSkinning", 0);
                 command.material->shader->set("boneCount", 0);
             }
-            command.mesh->draw();
+            command.mesh->drawWithGLTFMaterials(command.material->shader);
         }
         // If there is a sky material, draw the sky
         if (this->skyMaterial)
@@ -389,7 +389,7 @@ namespace our
                 command.material->shader->set("hasSkinning", 0);
                 command.material->shader->set("boneCount", 0);
             }
-            command.mesh->draw();
+            command.mesh->drawWithGLTFMaterials(command.material->shader);
         }
 
         // If there is a postprocess material, apply postprocessing
