@@ -44,9 +44,9 @@
       "crawlHeightDrop": 0.24,
       "deathFallDegrees": 82.0,
   "deathSink": 0.32,
-  "bloodSplashLifetimeSeconds": 1.1,
-  "bloodSplashScaleMultiplier": 10.0,
-  "bloodSplashHeightOffset": 0.25
+  "bloodSplashLifetimeSeconds": 1.0,
+  "bloodSplashScaleMultiplier": 14.0,
+  "bloodSplashHeightOffset": 0.75
     },
     "assets": {
       "shaders": {
