@@ -23,6 +23,8 @@ namespace our
         glm::vec3 center;
         Mesh *mesh;
         Material *material;
+        const std::vector<glm::mat4> *skinMatrices = nullptr;
+        int skinJointCount = 0;
     };
 
     // A forward renderer is a renderer that draw the object final color directly to the framebuffer

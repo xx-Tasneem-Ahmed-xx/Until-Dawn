@@ -75,6 +75,8 @@ set(COMMON_SOURCES
         source/common/mesh/mesh.hpp
         source/common/mesh/mesh-utils.hpp
         source/common/mesh/mesh-utils.cpp
+        source/common/animation/motion.hpp
+        source/common/animation/motion.cpp
 
         source/common/texture/sampler.hpp
         source/common/texture/sampler.cpp

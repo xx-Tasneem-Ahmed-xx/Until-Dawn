@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mesh.hpp"
+#include "../animation/motion.hpp"
 #include <string>
 
 namespace our::mesh_utils
@@ -9,6 +10,8 @@ namespace our::mesh_utils
     Mesh *loadOBJ(const std::string &filename);
     // Load a ".glb" file into the mesh
     Mesh *loadGLB(const std::string &filename);
+    // Load motion clips metadata from a ".glb" file
+    Motion *loadMotion(const std::string &filename);
     // Create a sphere (the vertex order in the triangles are CCW from the outside)
     // Segments define the number of divisions on the both the latitude and the longitude
     Mesh *sphere(const glm::ivec2 &segments);
