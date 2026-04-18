@@ -45,9 +45,25 @@ namespace our {
     // An example where this material can be used is when the object has a texture
     class TexturedMaterial : public TintedMaterial {
     public:
-        Texture2D* texture;
-        Sampler* sampler;
+        Texture2D* texture = nullptr;
+        Sampler* sampler = nullptr;
         float alphaThreshold;
+
+        void setup() const override;
+        void deserialize(const nlohmann::json& data) override;
+    };
+
+    // LitMaterial adds properties needed for lighting calculations (Phong/Blinn-Phong)
+    class LitMaterial : public TexturedMaterial {
+    public:
+        // By default we could just use albedo, specular, ambient occlusion textures.
+        // For simplicity we will assume 'texture' is albedo.
+        Texture2D* specular = nullptr;       // Specular map
+        Texture2D* roughness = nullptr;      // Roughness map
+        Texture2D* ambient_occlusion = nullptr; // AO map
+        Texture2D* emission = nullptr;       // Emission map
+        
+        Sampler* sampler = nullptr; // Shared sampler for all maps
 
         void setup() const override;
         void deserialize(const nlohmann::json& data) override;
@@ -59,6 +75,8 @@ namespace our {
             return new TintedMaterial();
         } else if(type == "textured"){
             return new TexturedMaterial();
+        } else if(type == "lit"){
+            return new LitMaterial();
         } else {
             return new Material();
         }

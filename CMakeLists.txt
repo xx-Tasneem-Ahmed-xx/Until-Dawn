@@ -113,8 +113,16 @@ set(COMMON_SOURCES
         source/common/components/player.cpp
         source/common/components/health.hpp
         source/common/components/health.cpp
+source/common/components/collider.hpp
+        source/common/components/collider.cpp
+        source/common/components/environment.hpp
+        source/common/components/environment.cpp
+        source/common/components/light.hpp
+        source/common/components/light.cpp
         source/common/components/zombie.hpp
         source/common/components/zombie.cpp
+        source/common/components/player.hpp
+        source/common/components/player.cpp
         source/common/components/component-deserializer.hpp
 
         source/common/ui/health-bar.hpp
@@ -124,6 +132,10 @@ set(COMMON_SOURCES
         source/common/systems/forward-renderer.cpp
         source/common/systems/free-camera-controller.hpp
         source/common/systems/movement.hpp
+        source/common/systems/collision-system.hpp
+        source/common/systems/collision-system.cpp
+        source/common/systems/scene-manager.hpp
+        source/common/systems/scene-manager.cpp
 )
 
 # Define the directories in which to search for the included headers

@@ -2,6 +2,7 @@
 #include "../mesh/mesh-utils.hpp"
 #include "../texture/texture-utils.hpp"
 #include "../components/zombie.hpp"
+#include <glm/gtx/euler_angles.hpp>
 
 namespace
 {
@@ -165,6 +166,9 @@ namespace our
             // If this entity has a mesh renderer component
             if (auto meshRenderer = entity->getComponent<MeshRendererComponent>(); meshRenderer)
             {
+                if (!meshRenderer->mesh || !meshRenderer->material || !meshRenderer->material->shader)
+                    continue;
+
                 // We construct a command from it
                 RenderCommand command;
                 command.localToWorld = meshRenderer->getOwner()->getLocalToWorldMatrix();
@@ -188,6 +192,16 @@ namespace our
                     // Otherwise, we add it to the opaque command list
                     opaqueCommands.push_back(command);
                 }
+            }
+        }
+
+        // Collect all lights in the scene
+        std::vector<LightComponent *> lights;
+        for (auto entity : world->getEntities())
+        {
+            if (auto light = entity->getComponent<LightComponent>(); light)
+            {
+                lights.push_back(light);
             }
         }
 
@@ -234,7 +248,10 @@ namespace our
         {
             command.material->setup();
 
-            if (command.mesh && command.mesh->hasGLTFBaseColorTexture())
+            glm::mat4 transform = VP * command.localToWorld;
+            command.material->shader->set("transform", transform);
+
+            if (command.mesh->hasGLTFBaseColorTexture())
             {
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, command.mesh->getGLTFBaseColorTextureID());
@@ -246,10 +263,7 @@ namespace our
                 command.material->shader->set("hasTexture", 0);
             }
 
-            glm::mat4 transform = VP * command.localToWorld;
-            command.material->shader->set("transform", transform);
-
-            if (command.mesh && command.mesh->hasSkinning() && command.skinMatrices && !command.skinMatrices->empty())
+            if (command.mesh->hasSkinning() && command.skinMatrices && !command.skinMatrices->empty())
             {
                 int boneCount = std::min({static_cast<int>(command.skinMatrices->size()),
                                           static_cast<int>(command.mesh->getSkinJointNodes().size()),
@@ -266,7 +280,6 @@ namespace our
                 command.material->shader->set("hasSkinning", 0);
                 command.material->shader->set("boneCount", 0);
             }
-
             command.mesh->draw();
         }
         // If there is a sky material, draw the sky
@@ -301,7 +314,10 @@ namespace our
         {
             command.material->setup();
 
-            if (command.mesh && command.mesh->hasGLTFBaseColorTexture())
+            glm::mat4 transform = VP * command.localToWorld;
+            command.material->shader->set("transform", transform);
+
+            if (command.mesh->hasGLTFBaseColorTexture())
             {
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, command.mesh->getGLTFBaseColorTextureID());
@@ -313,10 +329,7 @@ namespace our
                 command.material->shader->set("hasTexture", 0);
             }
 
-            glm::mat4 transform = VP * command.localToWorld;
-            command.material->shader->set("transform", transform);
-
-            if (command.mesh && command.mesh->hasSkinning() && command.skinMatrices && !command.skinMatrices->empty())
+            if (command.mesh->hasSkinning() && command.skinMatrices && !command.skinMatrices->empty())
             {
                 int boneCount = std::min({static_cast<int>(command.skinMatrices->size()),
                                           static_cast<int>(command.mesh->getSkinJointNodes().size()),
@@ -333,7 +346,6 @@ namespace our
                 command.material->shader->set("hasSkinning", 0);
                 command.material->shader->set("boneCount", 0);
             }
-
             command.mesh->draw();
         }
 
@@ -371,6 +383,11 @@ namespace our
             crosshairShader->set("halfThickness", 0.0018f);
             crosshairShader->set("color", glm::vec4(1.0f, 1.0f, 1.0f, 0.95f));
 
+            // Pass elapsed time for animated effects (film grain, etc.)
+            if (this->postprocessMaterial && this->postprocessMaterial->shader)
+            {
+                this->postprocessMaterial->shader->set("time", elapsedTime);
+            }
             glBindVertexArray(postProcessVertexArray);
             glDrawArrays(GL_TRIANGLES, 0, 3);
         }
