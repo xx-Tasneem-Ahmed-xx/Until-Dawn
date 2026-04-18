@@ -29,6 +29,7 @@
         "wood": "assets/textures/wood.jpg"
       },
       "meshes": {
+        "female-player": "assets/models/Olivia.glb",
         "plane": "assets/models/plane.obj",
         "pistol": "assets/models/pistol.glb",
         "rifle": "assets/models/Assault Rifle.glb",
@@ -181,13 +182,25 @@
         ]
       },
       {
-        "position": [0, -0.5, 9.2],
+        "position": [0, -1, 8],
         "rotation": [0, 90, 0],
-        "scale": [1, 1, 1],
+        "scale": [0.5, 0.5, 0.5],
         "components": [
           {
             "type": "Mesh Renderer",
             "mesh": "zombie",
+            "material": "auto"
+          }
+        ]
+      },
+      {
+        "position": [0, -1, 9.2],
+        "rotation": [0, 90, 0],
+        "scale": [30, 30, 30],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "female-player",
             "material": "auto"
           }
         ]

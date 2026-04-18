@@ -221,21 +221,9 @@ namespace our
         {
             command.material->setup();
 
-            if (command.mesh && command.mesh->hasGLTFBaseColorTexture())
-            {
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, command.mesh->getGLTFBaseColorTextureID());
-                command.material->shader->set("uBaseColorTex", 0);
-                command.material->shader->set("hasTexture", 1);
-            }
-            else
-            {
-                command.material->shader->set("hasTexture", 0);
-            }
-
             glm::mat4 transform = VP * command.localToWorld;
             command.material->shader->set("transform", transform);
-            command.mesh->draw();
+            command.mesh->drawWithGLTFMaterials(command.material->shader);
         }
         // If there is a sky material, draw the sky
         if (this->skyMaterial)
@@ -269,21 +257,9 @@ namespace our
         {
             command.material->setup();
 
-            if (command.mesh && command.mesh->hasGLTFBaseColorTexture())
-            {
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, command.mesh->getGLTFBaseColorTextureID());
-                command.material->shader->set("uBaseColorTex", 0);
-                command.material->shader->set("hasTexture", 1);
-            }
-            else
-            {
-                command.material->shader->set("hasTexture", 0);
-            }
-
             glm::mat4 transform = VP * command.localToWorld;
             command.material->shader->set("transform", transform);
-            command.mesh->draw();
+            command.mesh->drawWithGLTFMaterials(command.material->shader);
         }
 
         // If there is a postprocess material, apply postprocessing

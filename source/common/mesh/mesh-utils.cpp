@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <unordered_map>
+#include <map>
 #include <filesystem>
 #include <cstring>
 
@@ -204,11 +205,13 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
 
     std::vector<our::Vertex> vertices;
     std::vector<GLuint> elements;
+    std::vector<our::Mesh::SubMesh> subMeshes;
     glm::vec4 meshBaseColorFactor(1.0f);
     bool meshHasBaseColorTexture = false;
     GLuint meshBaseColorTextureID = 0;
     bool baseColorMaterialInitialized = false;
     std::filesystem::path gltfPath(filename);
+    std::map<int, GLuint> uploadedTexturesByIndex;
 
     // Helper function to get vec3 data from an accessor
     auto getVec3Data = [&model](int accessorIndex) -> std::vector<glm::vec3>
@@ -425,12 +428,16 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
         // Loop through all primitives in this mesh
         for (const auto &primitive : mesh.primitives)
         {
+            size_t primitiveFirstIndex = elements.size();
+
             // Get the vertex count before adding new vertices (used for index offset)
             GLuint vertexOffset = static_cast<GLuint>(vertices.size());
 
             // Resolve primitive material first so we can select the correct UV set for baseColorTexture
             int baseColorTexCoordSet = 0;
             glm::vec4 materialColor(1.0f, 1.0f, 1.0f, 1.0f);
+            bool primitiveHasBaseColorTexture = false;
+            GLuint primitiveBaseColorTextureID = 0;
             if (primitive.material >= 0 && primitive.material < static_cast<int>(model.materials.size()))
             {
                 const auto &material = model.materials[primitive.material];
@@ -454,13 +461,30 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
                 {
                     baseColorTexCoordSet = baseColorTexture.texCoord;
                 }
-                if (!meshHasBaseColorTexture && baseColorTexture.index >= 0 && baseColorTexture.index < static_cast<int>(model.textures.size()))
+
+                if (baseColorTexture.index >= 0 && baseColorTexture.index < static_cast<int>(model.textures.size()))
                 {
-                    const auto &gltfTexture = model.textures[baseColorTexture.index];
-                    if (gltfTexture.source >= 0 && gltfTexture.source < static_cast<int>(model.images.size()))
+                    auto uploadedIt = uploadedTexturesByIndex.find(baseColorTexture.index);
+                    if (uploadedIt != uploadedTexturesByIndex.end())
                     {
-                        meshBaseColorTextureID = uploadGLTFImageToTexture(model.images[gltfTexture.source], gltfPath);
-                        meshHasBaseColorTexture = meshBaseColorTextureID != 0;
+                        primitiveBaseColorTextureID = uploadedIt->second;
+                        primitiveHasBaseColorTexture = primitiveBaseColorTextureID != 0;
+                    }
+                    else
+                    {
+                        const auto &gltfTexture = model.textures[baseColorTexture.index];
+                        if (gltfTexture.source >= 0 && gltfTexture.source < static_cast<int>(model.images.size()))
+                        {
+                            primitiveBaseColorTextureID = uploadGLTFImageToTexture(model.images[gltfTexture.source], gltfPath);
+                            uploadedTexturesByIndex[baseColorTexture.index] = primitiveBaseColorTextureID;
+                            primitiveHasBaseColorTexture = primitiveBaseColorTextureID != 0;
+                        }
+                    }
+
+                    if (!meshHasBaseColorTexture && primitiveHasBaseColorTexture)
+                    {
+                        meshBaseColorTextureID = primitiveBaseColorTextureID;
+                        meshHasBaseColorTexture = true;
                     }
                 }
             }
@@ -602,6 +626,17 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
                     elements.push_back(static_cast<GLuint>(i) + vertexOffset);
                 }
             }
+
+            size_t primitiveIndexCount = elements.size() - primitiveFirstIndex;
+            if (primitiveIndexCount > 0)
+            {
+                our::Mesh::SubMesh subMesh;
+                subMesh.firstIndex = static_cast<GLuint>(primitiveFirstIndex);
+                subMesh.indexCount = static_cast<GLsizei>(primitiveIndexCount);
+                subMesh.hasBaseColorTexture = primitiveHasBaseColorTexture;
+                subMesh.baseColorTextureID = primitiveBaseColorTextureID;
+                subMeshes.push_back(subMesh);
+            }
         }
     }
 
@@ -611,7 +646,7 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
         return nullptr;
     }
 
-    auto *mesh = new our::Mesh(vertices, elements);
+    auto *mesh = new our::Mesh(vertices, elements, subMeshes);
     mesh->setGLTFBaseColorFactor(meshBaseColorFactor);
     if (meshHasBaseColorTexture)
     {
