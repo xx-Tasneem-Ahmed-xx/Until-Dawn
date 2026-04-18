@@ -220,6 +220,19 @@ namespace our
         for (auto &command : opaqueCommands)
         {
             command.material->setup();
+
+            if (command.mesh && command.mesh->hasGLTFBaseColorTexture())
+            {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, command.mesh->getGLTFBaseColorTextureID());
+                command.material->shader->set("uBaseColorTex", 0);
+                command.material->shader->set("hasTexture", 1);
+            }
+            else
+            {
+                command.material->shader->set("hasTexture", 0);
+            }
+
             glm::mat4 transform = VP * command.localToWorld;
             command.material->shader->set("transform", transform);
             command.mesh->draw();
@@ -255,6 +268,19 @@ namespace our
         for (auto &command : transparentCommands)
         {
             command.material->setup();
+
+            if (command.mesh && command.mesh->hasGLTFBaseColorTexture())
+            {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, command.mesh->getGLTFBaseColorTextureID());
+                command.material->shader->set("uBaseColorTex", 0);
+                command.material->shader->set("hasTexture", 1);
+            }
+            else
+            {
+                command.material->shader->set("hasTexture", 0);
+            }
+
             glm::mat4 transform = VP * command.localToWorld;
             command.material->shader->set("transform", transform);
             command.mesh->draw();

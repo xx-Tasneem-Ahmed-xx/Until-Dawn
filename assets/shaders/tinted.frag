@@ -2,14 +2,21 @@
 
 in Varyings {
     vec4 color;
+    vec2 tex_coord;
 } fs_in;
 
 out vec4 frag_color;
 
 uniform vec4 tint;
+uniform int hasTexture;
+uniform sampler2D uBaseColorTex;
 
 void main(){
-    //TODO: (Req 7) Modify the following line to compute the fragment color
-    // by multiplying the tint with the vertex color
-    frag_color = tint * fs_in.color;
+    vec4 albedo = tint * fs_in.color;
+
+    if(hasTexture == 1){
+        albedo *= texture(uBaseColorTex, fs_in.tex_coord);
+    }
+
+    frag_color = albedo;
 }

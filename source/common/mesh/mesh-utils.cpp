@@ -7,6 +7,10 @@
 #include <iostream>
 #include <vector>
 #include <unordered_map>
+#include <filesystem>
+#include <cstring>
+
+#include <stb/stb_image.h>
 
 our::Mesh *our::mesh_utils::loadOBJ(const std::string &filename)
 {
@@ -92,6 +96,86 @@ our::Mesh *our::mesh_utils::loadOBJ(const std::string &filename)
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #include <tiny_gltf.h>
 
+namespace
+{
+    GLuint uploadGLTFImageToTexture(const tinygltf::Image &image, const std::filesystem::path &gltfPath)
+    {
+        int width = image.width;
+        int height = image.height;
+        int channels = image.component;
+        std::vector<unsigned char> decodedPixels;
+        const unsigned char *pixelData = nullptr;
+
+        // tinygltf usually decodes image bytes into image.image for both embedded and external textures.
+        if (!image.image.empty())
+        {
+            pixelData = image.image.data();
+        }
+        else if (!image.uri.empty())
+        {
+            // Fallback path: manually load external images if they are not already decoded.
+            auto texturePath = gltfPath.parent_path() / image.uri;
+            stbi_set_flip_vertically_on_load(false);
+            unsigned char *loaded = stbi_load(texturePath.string().c_str(), &width, &height, &channels, 0);
+            if (!loaded)
+            {
+                std::cerr << "Failed to load external glTF image: " << texturePath << std::endl;
+                return 0;
+            }
+            decodedPixels.assign(loaded, loaded + (width * height * channels));
+            stbi_image_free(loaded);
+            pixelData = decodedPixels.data();
+        }
+        else
+        {
+            return 0;
+        }
+
+        if (!pixelData || width <= 0 || height <= 0)
+        {
+            return 0;
+        }
+
+        GLenum format = GL_RGBA;
+        GLenum internalFormat = GL_RGBA8;
+        switch (channels)
+        {
+        case 1:
+            format = GL_RED;
+            internalFormat = GL_R8;
+            break;
+        case 2:
+            format = GL_RG;
+            internalFormat = GL_RG8;
+            break;
+        case 3:
+            format = GL_RGB;
+            internalFormat = GL_SRGB8;
+            break;
+        case 4:
+            format = GL_RGBA;
+            internalFormat = GL_SRGB8_ALPHA8;
+            break;
+        default:
+            std::cerr << "Unsupported glTF image channel count: " << channels << std::endl;
+            return 0;
+        }
+
+        GLuint texture = 0;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, pixelData);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        return texture;
+    }
+}
+
 our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
 {
     tinygltf::Model model;
@@ -120,6 +204,11 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
 
     std::vector<our::Vertex> vertices;
     std::vector<GLuint> elements;
+    glm::vec4 meshBaseColorFactor(1.0f);
+    bool meshHasBaseColorTexture = false;
+    GLuint meshBaseColorTextureID = 0;
+    bool baseColorMaterialInitialized = false;
+    std::filesystem::path gltfPath(filename);
 
     // Helper function to get vec3 data from an accessor
     auto getVec3Data = [&model](int accessorIndex) -> std::vector<glm::vec3>
@@ -149,6 +238,7 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
     };
 
     // Helper function to get vec2 data from an accessor
+    // Supports FLOAT and normalized UNSIGNED_BYTE/UNSIGNED_SHORT (common glTF texcoord formats)
     auto getVec2Data = [&model](int accessorIndex) -> std::vector<glm::vec2>
     {
         std::vector<glm::vec2> result;
@@ -159,7 +249,15 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
         }
 
         const auto &accessor = model.accessors[accessorIndex];
+        if (accessor.bufferView < 0 || accessor.bufferView >= static_cast<int>(model.bufferViews.size()))
+        {
+            return result;
+        }
         const auto &bufferView = model.bufferViews[accessor.bufferView];
+        if (bufferView.buffer < 0 || bufferView.buffer >= static_cast<int>(model.buffers.size()))
+        {
+            return result;
+        }
         const auto &buffer = model.buffers[bufferView.buffer];
 
         size_t byteStride = bufferView.byteStride == 0 ? sizeof(glm::vec2) : bufferView.byteStride;
@@ -169,13 +267,48 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
         for (size_t i = 0; i < accessor.count; ++i)
         {
             size_t offset = bufferView.byteOffset + accessor.byteOffset + i * byteStride;
-            std::memcpy(&result[i], &buffer.data[offset], sizeof(glm::vec2));
+
+            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
+            {
+                std::memcpy(&result[i], &buffer.data[offset], sizeof(glm::vec2));
+            }
+            else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+            {
+                uint16_t uv[2] = {0, 0};
+                std::memcpy(uv, &buffer.data[offset], sizeof(uv));
+                if (accessor.normalized)
+                {
+                    result[i] = glm::vec2(uv[0] / 65535.0f, uv[1] / 65535.0f);
+                }
+                else
+                {
+                    result[i] = glm::vec2(static_cast<float>(uv[0]), static_cast<float>(uv[1]));
+                }
+            }
+            else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+            {
+                uint8_t uv[2] = {0, 0};
+                std::memcpy(uv, &buffer.data[offset], sizeof(uv));
+                if (accessor.normalized)
+                {
+                    result[i] = glm::vec2(uv[0] / 255.0f, uv[1] / 255.0f);
+                }
+                else
+                {
+                    result[i] = glm::vec2(static_cast<float>(uv[0]), static_cast<float>(uv[1]));
+                }
+            }
+            else
+            {
+                result[i] = glm::vec2(0.0f);
+            }
         }
 
         return result;
     };
 
     // Helper function to get vec4 data from an accessor (for colors)
+    // Supports VEC3/VEC4 with FLOAT/UNSIGNED_BYTE/UNSIGNED_SHORT components.
     auto getVec4Data = [&model](int accessorIndex) -> std::vector<glm::vec4>
     {
         std::vector<glm::vec4> result;
@@ -186,32 +319,101 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
         }
 
         const auto &accessor = model.accessors[accessorIndex];
+        if (accessor.bufferView < 0 || accessor.bufferView >= static_cast<int>(model.bufferViews.size()))
+        {
+            return result;
+        }
         const auto &bufferView = model.bufferViews[accessor.bufferView];
+        if (bufferView.buffer < 0 || bufferView.buffer >= static_cast<int>(model.buffers.size()))
+        {
+            return result;
+        }
         const auto &buffer = model.buffers[bufferView.buffer];
 
-        size_t byteStride = bufferView.byteStride == 0 ? sizeof(glm::vec4) : bufferView.byteStride;
+        int componentCount = 4;
+        if (accessor.type == TINYGLTF_TYPE_VEC3)
+            componentCount = 3;
+        else if (accessor.type == TINYGLTF_TYPE_VEC4)
+            componentCount = 4;
+
+        size_t bytesPerComponent = 4;
+        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+            bytesPerComponent = 1;
+        else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+            bytesPerComponent = 2;
+        else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
+            bytesPerComponent = 4;
+
+        size_t packedSize = static_cast<size_t>(componentCount) * bytesPerComponent;
+        size_t byteStride = bufferView.byteStride == 0 ? packedSize : bufferView.byteStride;
 
         result.resize(accessor.count);
 
         for (size_t i = 0; i < accessor.count; ++i)
         {
             size_t offset = bufferView.byteOffset + accessor.byteOffset + i * byteStride;
+            result[i] = glm::vec4(1.0f);
 
-            // Handle different component types for colors
+            if (offset + packedSize > buffer.data.size())
+            {
+                continue;
+            }
+
             if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
             {
-                glm::uvec4 colorUB;
-                std::memcpy(&colorUB, &buffer.data[offset], sizeof(glm::uvec4));
-                result[i] = glm::vec4(colorUB) / 255.0f;
+                const uint8_t *src = reinterpret_cast<const uint8_t *>(&buffer.data[offset]);
+                for (int c = 0; c < componentCount; ++c)
+                {
+                    float v = static_cast<float>(src[c]);
+                    if (accessor.normalized)
+                        v /= 255.0f;
+                    if (c == 0)
+                        result[i].r = v;
+                    else if (c == 1)
+                        result[i].g = v;
+                    else if (c == 2)
+                        result[i].b = v;
+                    else
+                        result[i].a = v;
+                }
+            }
+            else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+            {
+                const uint16_t *src = reinterpret_cast<const uint16_t *>(&buffer.data[offset]);
+                for (int c = 0; c < componentCount; ++c)
+                {
+                    float v = static_cast<float>(src[c]);
+                    if (accessor.normalized)
+                        v /= 65535.0f;
+                    if (c == 0)
+                        result[i].r = v;
+                    else if (c == 1)
+                        result[i].g = v;
+                    else if (c == 2)
+                        result[i].b = v;
+                    else
+                        result[i].a = v;
+                }
             }
             else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
             {
-                std::memcpy(&result[i], &buffer.data[offset], sizeof(glm::vec4));
+                const float *src = reinterpret_cast<const float *>(&buffer.data[offset]);
+                for (int c = 0; c < componentCount; ++c)
+                {
+                    float v = src[c];
+                    if (c == 0)
+                        result[i].r = v;
+                    else if (c == 1)
+                        result[i].g = v;
+                    else if (c == 2)
+                        result[i].b = v;
+                    else
+                        result[i].a = v;
+                }
             }
-            else
-            {
-                result[i] = glm::vec4(1.0f);
-            }
+
+            if (componentCount == 3)
+                result[i].a = 1.0f;
         }
 
         return result;
@@ -225,6 +427,43 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
         {
             // Get the vertex count before adding new vertices (used for index offset)
             GLuint vertexOffset = static_cast<GLuint>(vertices.size());
+
+            // Resolve primitive material first so we can select the correct UV set for baseColorTexture
+            int baseColorTexCoordSet = 0;
+            glm::vec4 materialColor(1.0f, 1.0f, 1.0f, 1.0f);
+            if (primitive.material >= 0 && primitive.material < static_cast<int>(model.materials.size()))
+            {
+                const auto &material = model.materials[primitive.material];
+                if (material.pbrMetallicRoughness.baseColorFactor.size() >= 4)
+                {
+                    materialColor = glm::vec4(
+                        material.pbrMetallicRoughness.baseColorFactor[0],
+                        material.pbrMetallicRoughness.baseColorFactor[1],
+                        material.pbrMetallicRoughness.baseColorFactor[2],
+                        material.pbrMetallicRoughness.baseColorFactor[3]);
+                }
+
+                if (!baseColorMaterialInitialized)
+                {
+                    meshBaseColorFactor = materialColor;
+                    baseColorMaterialInitialized = true;
+                }
+
+                const auto &baseColorTexture = material.pbrMetallicRoughness.baseColorTexture;
+                if (baseColorTexture.texCoord >= 0)
+                {
+                    baseColorTexCoordSet = baseColorTexture.texCoord;
+                }
+                if (!meshHasBaseColorTexture && baseColorTexture.index >= 0 && baseColorTexture.index < static_cast<int>(model.textures.size()))
+                {
+                    const auto &gltfTexture = model.textures[baseColorTexture.index];
+                    if (gltfTexture.source >= 0 && gltfTexture.source < static_cast<int>(model.images.size()))
+                    {
+                        meshBaseColorTextureID = uploadGLTFImageToTexture(model.images[gltfTexture.source], gltfPath);
+                        meshHasBaseColorTexture = meshBaseColorTextureID != 0;
+                    }
+                }
+            }
 
             // Get position data (VEC3, FLOAT)
             std::vector<glm::vec3> positions;
@@ -248,9 +487,14 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
                 normals = getVec3Data(normalIt->second);
             }
 
-            // Get texcoord data (VEC2, FLOAT)
+            // Get texcoord data (VEC2) from selected UV set for baseColorTexture
             std::vector<glm::vec2> texcoords;
-            auto texcoordIt = primitive.attributes.find("TEXCOORD_0");
+            std::string texcoordSemantic = "TEXCOORD_" + std::to_string(baseColorTexCoordSet);
+            auto texcoordIt = primitive.attributes.find(texcoordSemantic);
+            if (texcoordIt == primitive.attributes.end())
+            {
+                texcoordIt = primitive.attributes.find("TEXCOORD_0");
+            }
             if (texcoordIt != primitive.attributes.end())
             {
                 texcoords = getVec2Data(texcoordIt->second);
@@ -264,28 +508,21 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
                 vertexColors = getVec4Data(colorIt->second);
             }
 
-            // Get material base color factor if this primitive has a material
-            glm::vec4 materialColor(1.0f, 1.0f, 1.0f, 1.0f);
-            if (primitive.material >= 0 && primitive.material < static_cast<int>(model.materials.size()))
-            {
-                const auto &material = model.materials[primitive.material];
-                if (material.pbrMetallicRoughness.baseColorFactor.size() >= 4)
-                {
-                    materialColor = glm::vec4(
-                        material.pbrMetallicRoughness.baseColorFactor[0],
-                        material.pbrMetallicRoughness.baseColorFactor[1],
-                        material.pbrMetallicRoughness.baseColorFactor[2],
-                        material.pbrMetallicRoughness.baseColorFactor[3]);
-                }
-            }
-
             // Create vertices from the data
             for (size_t i = 0; i < positions.size(); ++i)
             {
                 Vertex vertex = {};
                 vertex.position = positions[i];
                 vertex.normal = (i < normals.size()) ? normals[i] : glm::vec3(0.0f, 0.0f, 1.0f);
-                vertex.tex_coord = (i < texcoords.size()) ? texcoords[i] : glm::vec2(0.0f, 0.0f);
+                if (i < texcoords.size())
+                {
+                    // glTF UV origin is top-left while OpenGL expects bottom-left texture origin.
+                    vertex.tex_coord = glm::vec2(texcoords[i].x, 1.0f - texcoords[i].y);
+                }
+                else
+                {
+                    vertex.tex_coord = glm::vec2(0.0f, 0.0f);
+                }
 
                 // Use vertex color if available, otherwise use material color
                 if (i < vertexColors.size())
@@ -374,7 +611,14 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
         return nullptr;
     }
 
-    return new our::Mesh(vertices, elements);
+    auto *mesh = new our::Mesh(vertices, elements);
+    mesh->setGLTFBaseColorFactor(meshBaseColorFactor);
+    if (meshHasBaseColorTexture)
+    {
+        mesh->setGLTFBaseColorTexture(meshBaseColorTextureID);
+    }
+
+    return mesh;
 }
 
 // Create a sphere (the vertex order in the triangles are CCW from the outside)
