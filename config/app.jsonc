@@ -25,20 +25,15 @@
         }
       },
       "textures": {
-        "moon": "assets/textures/moon.jpg",
         "grass": "assets/textures/grass_ground_d.jpg",
-        "wood": "assets/textures/wood.jpg",
-        "glass": "assets/textures/glass-panels.png",
-        "monkey": "assets/textures/monkey.png"
+        "wood": "assets/textures/wood.jpg"
       },
       "meshes": {
-        "cube": "assets/models/cube.obj",
-        "monkey": "assets/models/monkey.obj",
         "plane": "assets/models/plane.obj",
-        "sphere": "assets/models/sphere.obj",
         "pistol": "assets/models/pistol.glb",
         "rifle": "assets/models/Assault Rifle.glb",
-        "pickup-health": "assets/models/HealthBox.glb"
+        "pickup-health": "assets/models/HealthBox.glb",
+        "zombie": "assets/models/Zombie.glb"
       },
       "samplers": {
         "default": {},
@@ -98,36 +93,6 @@
           },
           "tint": [1, 1, 1, 1],
           "texture": "grass",
-          "sampler": "default"
-        },
-        "monkey": {
-          "type": "textured",
-          "shader": "textured",
-          "pipelineState": {
-            "faceCulling": {
-              "enabled": false
-            },
-            "depthTesting": {
-              "enabled": true
-            }
-          },
-          "tint": [1, 1, 1, 1],
-          "texture": "monkey",
-          "sampler": "default"
-        },
-        "moon": {
-          "type": "textured",
-          "shader": "textured",
-          "pipelineState": {
-            "faceCulling": {
-              "enabled": false
-            },
-            "depthTesting": {
-              "enabled": true
-            }
-          },
-          "tint": [1, 1, 1, 1],
-          "texture": "moon",
           "sampler": "default"
         },
         "auto": {
@@ -192,109 +157,6 @@
         ]
       },
       {
-        "rotation": [-45, 0, 0],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "monkey",
-            "material": "monkey"
-          },
-          {
-            "type": "Movement",
-            "linearVelocity": [0, 0.1, 0],
-            "angularVelocity": [0, 45, 0]
-          }
-        ]
-      },
-      {
-        "position": [0, -1, 0],
-        "rotation": [-90, 0, 0],
-        "scale": [10, 10, 1],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "plane",
-            "material": "grass"
-          }
-        ]
-      },
-      {
-        "position": [0, 1, 2],
-        "rotation": [0, 0, 0],
-        "scale": [2, 2, 2],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "plane",
-            "material": "glass"
-          }
-        ]
-      },
-      {
-        "position": [0, 1, -2],
-        "rotation": [0, 0, 0],
-        "scale": [2, 2, 2],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "plane",
-            "material": "glass"
-          }
-        ]
-      },
-      {
-        "position": [2, 1, 0],
-        "rotation": [0, 90, 0],
-        "scale": [2, 2, 2],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "plane",
-            "material": "glass"
-          }
-        ]
-      },
-      {
-        "position": [-2, 1, 0],
-        "rotation": [0, 90, 0],
-        "scale": [2, 2, 2],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "plane",
-            "material": "glass"
-          }
-        ]
-      },
-      {
-        "position": [0, 3, 0],
-        "rotation": [90, 0, 0],
-        "scale": [2, 2, 2],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "plane",
-            "material": "glass"
-          }
-        ]
-      },
-      {
-        "position": [0, 10, 0],
-        "rotation": [45, 45, 0],
-        "scale": [5, 5, 5],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "sphere",
-            "material": "moon"
-          },
-          {
-            "type": "Movement",
-            "angularVelocity": [0, 90, 0]
-          }
-        ]
-      },
-      {
         "position": [6, 7, 10],
         "rotation": [0, 0, 0],
         "scale": [0.5, 0.5, 0.5],
@@ -314,6 +176,18 @@
           {
             "type": "Mesh Renderer",
             "mesh": "pickup-health",
+            "material": "auto"
+          }
+        ]
+      },
+      {
+        "position": [0, -0.5, 9.2],
+        "rotation": [0, 90, 0],
+        "scale": [1, 1, 1],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "zombie",
             "material": "auto"
           }
         ]
