@@ -57,8 +57,8 @@ namespace our
         shader->set("alphaThreshold", alphaThreshold);
 
         glActiveTexture(GL_TEXTURE0);
-        texture->bind();
-        sampler->bind(0);
+        if (texture) texture->bind();
+        if (sampler) sampler->bind(0);
         shader->set("tex", 0);
     }
 
@@ -70,6 +70,46 @@ namespace our
             return;
         alphaThreshold = data.value("alphaThreshold", 0.0f);
         texture = AssetLoader<Texture2D>::get(data.value("texture", ""));
+        sampler = AssetLoader<Sampler>::get(data.value("sampler", ""));
+    }
+
+    void LitMaterial::setup() const {
+        TexturedMaterial::setup(); // Sets up albedo on texture unit 0
+
+        // Bind additional maps
+        glActiveTexture(GL_TEXTURE1);
+        if (specular) specular->bind();
+        if (sampler) sampler->bind(1);
+        shader->set("tex_specular", 1);
+
+        glActiveTexture(GL_TEXTURE2);
+        if (roughness) roughness->bind();
+        if (sampler) sampler->bind(2);
+        shader->set("tex_roughness", 2);
+
+        glActiveTexture(GL_TEXTURE3);
+        if (ambient_occlusion) ambient_occlusion->bind();
+        if (sampler) sampler->bind(3);
+        shader->set("tex_ambient_occlusion", 3);
+
+        glActiveTexture(GL_TEXTURE4);
+        if (emission) emission->bind();
+        if (sampler) sampler->bind(4);
+        shader->set("tex_emission", 4);
+        
+        glActiveTexture(GL_TEXTURE0); // restore default
+    }
+
+    void LitMaterial::deserialize(const nlohmann::json& data){
+        TexturedMaterial::deserialize(data);
+        if(!data.is_object()) return;
+        
+        specular = AssetLoader<Texture2D>::get(data.value("specular", ""));
+        roughness = AssetLoader<Texture2D>::get(data.value("roughness", ""));
+        ambient_occlusion = AssetLoader<Texture2D>::get(data.value("ambient_occlusion", ""));
+        emission = AssetLoader<Texture2D>::get(data.value("emission", ""));
+
+        // If a shared sampler isn't defined explicitly for these, use the albedo sampler
         sampler = AssetLoader<Sampler>::get(data.value("sampler", ""));
     }
 

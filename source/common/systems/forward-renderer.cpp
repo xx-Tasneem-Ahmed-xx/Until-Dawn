@@ -1,6 +1,7 @@
 #include "forward-renderer.hpp"
 #include "../mesh/mesh-utils.hpp"
 #include "../texture/texture-utils.hpp"
+#include <glm/gtx/euler_angles.hpp>
 
 namespace our
 {
@@ -178,6 +179,14 @@ namespace our
             }
         }
 
+        // Collect all lights in the scene
+        std::vector<LightComponent*> lights;
+        for(auto entity : world->getEntities()){
+            if(auto light = entity->getComponent<LightComponent>(); light){
+                lights.push_back(light);
+            }
+        }
+        
         // If there is no camera, we return (we cannot render without a camera)
         if (camera == nullptr)
             return;
@@ -233,8 +242,42 @@ namespace our
                 command.material->shader->set("hasTexture", 0);
             }
 
+        
+        //TODO: (Req 9) Draw all the opaque commands
+        // Don't forget to set the "transform" uniform to be equal the model-view-projection matrix for each render command
+        for(auto& command : opaqueCommands){
+            if (!command.material->shader) continue;
+            command.material->setup();
+            
             glm::mat4 transform = VP * command.localToWorld;
             command.material->shader->set("transform", transform);
+            
+            // If the material is dynamic (lit), it might need M and M_IT
+            command.material->shader->set("M", command.localToWorld);
+            glm::mat4 M_IT = glm::transpose(glm::inverse(command.localToWorld));
+            command.material->shader->set("M_IT", M_IT);
+
+            // Send light data
+            command.material->shader->set("eye_position", cameraPosition);
+            command.material->shader->set("light_count", (int)lights.size());
+            for(int i = 0; i < (int)lights.size(); ++i){
+                std::string prefix = "lights[" + std::to_string(i) + "].";
+                command.material->shader->set(prefix + "type", (int)lights[i]->lightType);
+                command.material->shader->set(prefix + "color", lights[i]->diffuse);
+                command.material->shader->set(prefix + "attenuation", lights[i]->attenuation);
+                command.material->shader->set(prefix + "cone_angles", lights[i]->cone_angles);
+                
+                // Position and direction from Transform
+                auto& transform = lights[i]->getOwner()->localTransform;
+                command.material->shader->set(prefix + "position", transform.position);
+                // Direction is usually local forward vector (0,0,-1) rotated by the transform
+                glm::vec3 dir = transform.rotation * glm::vec3(0, -1, 0); // or forward based on project conventions
+                // In generic Euler angles, compute direction from euler using glm::mat4
+                glm::mat4 rotMatrix = glm::yawPitchRoll(transform.rotation.y, transform.rotation.x, transform.rotation.z);
+                dir = glm::vec3(rotMatrix * glm::vec4(0.0f, -1.0f, 0.0f, 0.0f)); // assuming pointing down by default, usually -z is forward though
+                command.material->shader->set(prefix + "direction", dir);
+            }
+
             command.mesh->draw();
         }
         // If there is a sky material, draw the sky
@@ -281,8 +324,38 @@ namespace our
                 command.material->shader->set("hasTexture", 0);
             }
 
+        //TODO: (Req 9) Draw all the transparent commands
+        // Don't forget to set the "transform" uniform to be equal the model-view-projection matrix for each render command
+        for(auto& command : transparentCommands){
+            if (!command.material->shader) continue;
+            command.material->setup();
+
             glm::mat4 transform = VP * command.localToWorld;
             command.material->shader->set("transform", transform);
+            
+            // If the material is dynamic (lit), it might need M and M_IT
+            command.material->shader->set("M", command.localToWorld);
+            glm::mat4 M_IT = glm::transpose(glm::inverse(command.localToWorld));
+            command.material->shader->set("M_IT", M_IT);
+
+            // Send light data
+            command.material->shader->set("eye_position", cameraPosition);
+            command.material->shader->set("light_count", (int)lights.size());
+            for(int i = 0; i < (int)lights.size(); ++i){
+                std::string prefix = "lights[" + std::to_string(i) + "].";
+                command.material->shader->set(prefix + "type", (int)lights[i]->lightType);
+                command.material->shader->set(prefix + "color", lights[i]->diffuse);
+                command.material->shader->set(prefix + "attenuation", lights[i]->attenuation);
+                command.material->shader->set(prefix + "cone_angles", lights[i]->cone_angles);
+                
+                // Position and direction from Transform
+                auto& transform = lights[i]->getOwner()->localTransform;
+                command.material->shader->set(prefix + "position", transform.position);
+                glm::mat4 rotMatrix = glm::yawPitchRoll(transform.rotation.y, transform.rotation.x, transform.rotation.z);
+                glm::vec3 dir = glm::vec3(rotMatrix * glm::vec4(0.0f, -1.0f, 0.0f, 0.0f));
+                command.material->shader->set(prefix + "direction", dir);
+            }
+
             command.mesh->draw();
         }
 
@@ -320,6 +393,8 @@ namespace our
             crosshairShader->set("halfThickness", 0.0018f);
             crosshairShader->set("color", glm::vec4(1.0f, 1.0f, 1.0f, 0.95f));
 
+            // Pass elapsed time for animated effects (film grain, etc.)
+            this->postprocessMaterial->shader->set("time", elapsedTime);
             glBindVertexArray(postProcessVertexArray);
             glDrawArrays(GL_TRIANGLES, 0, 3);
         }
