@@ -1,0 +1,131 @@
+# Auto-generated to satisfy OBJ material references
+# This project assigns renderer materials in scene config,
+# so these are compatibility stubs for OBJ loading only.
+
+newmtl mat10
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat12
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat14
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat15
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat17
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat18
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat19
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat20
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat21
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat22
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat23
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat24
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat3
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat4
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat8
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2
+
+newmtl mat9
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.000
+d 1.000
+illum 2

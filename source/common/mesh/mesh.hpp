@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <vector>
 #include <unordered_set>
+#include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 #include "vertex.hpp"
 #include "../shader/shader.hpp"
@@ -15,6 +16,8 @@ namespace our
 #define ATTRIB_LOC_COLOR 1
 #define ATTRIB_LOC_TEXCOORD 2
 #define ATTRIB_LOC_NORMAL 3
+#define ATTRIB_LOC_JOINTS 4
+#define ATTRIB_LOC_WEIGHTS 5
 
     class Mesh
     {
@@ -40,6 +43,11 @@ namespace our
         glm::vec4 gltfBaseColorFactor = glm::vec4(1.0f);
         bool gltfHasBaseColorTexture = false;
         GLuint gltfBaseColorTextureID = 0;
+
+        // Optional skinning data
+        bool hasSkinningData = false;
+        std::vector<int> skinJointNodes;
+        std::vector<glm::mat4> inverseBindMatrices;
 
     public:
         // The constructor takes two vectors:
@@ -79,6 +87,12 @@ namespace our
 
             glEnableVertexAttribArray(ATTRIB_LOC_NORMAL);
             glVertexAttribPointer(ATTRIB_LOC_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, normal));
+
+            glEnableVertexAttribArray(ATTRIB_LOC_JOINTS);
+            glVertexAttribIPointer(ATTRIB_LOC_JOINTS, 4, GL_UNSIGNED_INT, sizeof(Vertex), (void *)offsetof(Vertex, joints));
+
+            glEnableVertexAttribArray(ATTRIB_LOC_WEIGHTS);
+            glVertexAttribPointer(ATTRIB_LOC_WEIGHTS, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, weights));
 
             glBindVertexArray(0);
         }
@@ -197,6 +211,28 @@ namespace our
         GLuint getGLTFBaseColorTextureID() const
         {
             return gltfBaseColorTextureID;
+        }
+
+        void setSkinData(const std::vector<int> &jointNodes, const std::vector<glm::mat4> &inverseBind)
+        {
+            skinJointNodes = jointNodes;
+            inverseBindMatrices = inverseBind;
+            hasSkinningData = !skinJointNodes.empty() && skinJointNodes.size() == inverseBindMatrices.size();
+        }
+
+        bool hasSkinning() const
+        {
+            return hasSkinningData;
+        }
+
+        const std::vector<int> &getSkinJointNodes() const
+        {
+            return skinJointNodes;
+        }
+
+        const std::vector<glm::mat4> &getInverseBindMatrices() const
+        {
+            return inverseBindMatrices;
         }
 
         Mesh(Mesh const &) = delete;

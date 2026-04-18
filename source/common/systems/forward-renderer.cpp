@@ -1,6 +1,14 @@
 #include "forward-renderer.hpp"
 #include "../mesh/mesh-utils.hpp"
 #include "../texture/texture-utils.hpp"
+#include "../components/zombie.hpp"
+#include <glm/gtx/euler_angles.hpp>
+
+namespace
+{
+    constexpr int MAX_SKIN_BONES = 128;
+    constexpr int MAX_LIGHTS = 16;
+}
 
 namespace our
 {
@@ -159,12 +167,22 @@ namespace our
             // If this entity has a mesh renderer component
             if (auto meshRenderer = entity->getComponent<MeshRendererComponent>(); meshRenderer)
             {
+                if (!meshRenderer->mesh || !meshRenderer->material || !meshRenderer->material->shader)
+                    continue;
+
                 // We construct a command from it
                 RenderCommand command;
                 command.localToWorld = meshRenderer->getOwner()->getLocalToWorldMatrix();
                 command.center = glm::vec3(command.localToWorld * glm::vec4(0, 0, 0, 1));
                 command.mesh = meshRenderer->mesh;
                 command.material = meshRenderer->material;
+
+                if (auto zombie = entity->getComponent<ZombieComponent>())
+                {
+                    command.skinMatrices = &zombie->skinMatrices;
+                    command.skinJointCount = static_cast<int>(zombie->skinMatrices.size());
+                }
+
                 // if it is transparent, we add it to the transparent commands list
                 if (command.material->transparent)
                 {
@@ -175,6 +193,16 @@ namespace our
                     // Otherwise, we add it to the opaque command list
                     opaqueCommands.push_back(command);
                 }
+            }
+        }
+
+        // Collect all lights in the scene
+        std::vector<LightComponent *> lights;
+        for (auto entity : world->getEntities())
+        {
+            if (auto light = entity->getComponent<LightComponent>(); light)
+            {
+                lights.push_back(light);
             }
         }
 
@@ -223,6 +251,57 @@ namespace our
 
             glm::mat4 transform = VP * command.localToWorld;
             command.material->shader->set("transform", transform);
+            command.material->shader->set("M", command.localToWorld);
+            command.material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
+            command.material->shader->set("eye_position", cameraPosition);
+
+            int lightCount = std::min(static_cast<int>(lights.size()), MAX_LIGHTS);
+            command.material->shader->set("light_count", lightCount);
+            for (int i = 0; i < lightCount; ++i)
+            {
+                auto *light = lights[i];
+                glm::mat4 lightWorld = light->getOwner()->getLocalToWorldMatrix();
+                glm::vec3 lightPosition = glm::vec3(lightWorld * glm::vec4(0, 0, 0, 1));
+                glm::vec3 lightDirection = glm::normalize(glm::vec3(lightWorld * glm::vec4(0, 0, -1, 0)));
+
+                std::string prefix = "lights[" + std::to_string(i) + "].";
+                command.material->shader->set(prefix + "type", static_cast<int>(light->lightType));
+                command.material->shader->set(prefix + "position", lightPosition);
+                command.material->shader->set(prefix + "direction", lightDirection);
+                command.material->shader->set(prefix + "color", light->diffuse);
+                command.material->shader->set(prefix + "attenuation", light->attenuation);
+                command.material->shader->set(prefix + "cone_angles", light->cone_angles);
+            }
+
+            if (command.mesh->hasGLTFBaseColorTexture())
+            {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, command.mesh->getGLTFBaseColorTextureID());
+                command.material->shader->set("uBaseColorTex", 0);
+                command.material->shader->set("hasTexture", 1);
+            }
+            else
+            {
+                command.material->shader->set("hasTexture", 0);
+            }
+
+            if (command.mesh->hasSkinning() && command.skinMatrices && !command.skinMatrices->empty())
+            {
+                int boneCount = std::min({static_cast<int>(command.skinMatrices->size()),
+                                          static_cast<int>(command.mesh->getSkinJointNodes().size()),
+                                          MAX_SKIN_BONES});
+                command.material->shader->set("hasSkinning", 1);
+                command.material->shader->set("boneCount", boneCount);
+                if (boneCount > 0)
+                {
+                    command.material->shader->setMat4Array("uBones", command.skinMatrices->data(), boneCount);
+                }
+            }
+            else
+            {
+                command.material->shader->set("hasSkinning", 0);
+                command.material->shader->set("boneCount", 0);
+            }
             command.mesh->drawWithGLTFMaterials(command.material->shader);
         }
         // If there is a sky material, draw the sky
@@ -259,6 +338,57 @@ namespace our
 
             glm::mat4 transform = VP * command.localToWorld;
             command.material->shader->set("transform", transform);
+            command.material->shader->set("M", command.localToWorld);
+            command.material->shader->set("M_IT", glm::transpose(glm::inverse(command.localToWorld)));
+            command.material->shader->set("eye_position", cameraPosition);
+
+            int lightCount = std::min(static_cast<int>(lights.size()), MAX_LIGHTS);
+            command.material->shader->set("light_count", lightCount);
+            for (int i = 0; i < lightCount; ++i)
+            {
+                auto *light = lights[i];
+                glm::mat4 lightWorld = light->getOwner()->getLocalToWorldMatrix();
+                glm::vec3 lightPosition = glm::vec3(lightWorld * glm::vec4(0, 0, 0, 1));
+                glm::vec3 lightDirection = glm::normalize(glm::vec3(lightWorld * glm::vec4(0, 0, -1, 0)));
+
+                std::string prefix = "lights[" + std::to_string(i) + "].";
+                command.material->shader->set(prefix + "type", static_cast<int>(light->lightType));
+                command.material->shader->set(prefix + "position", lightPosition);
+                command.material->shader->set(prefix + "direction", lightDirection);
+                command.material->shader->set(prefix + "color", light->diffuse);
+                command.material->shader->set(prefix + "attenuation", light->attenuation);
+                command.material->shader->set(prefix + "cone_angles", light->cone_angles);
+            }
+
+            if (command.mesh->hasGLTFBaseColorTexture())
+            {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, command.mesh->getGLTFBaseColorTextureID());
+                command.material->shader->set("uBaseColorTex", 0);
+                command.material->shader->set("hasTexture", 1);
+            }
+            else
+            {
+                command.material->shader->set("hasTexture", 0);
+            }
+
+            if (command.mesh->hasSkinning() && command.skinMatrices && !command.skinMatrices->empty())
+            {
+                int boneCount = std::min({static_cast<int>(command.skinMatrices->size()),
+                                          static_cast<int>(command.mesh->getSkinJointNodes().size()),
+                                          MAX_SKIN_BONES});
+                command.material->shader->set("hasSkinning", 1);
+                command.material->shader->set("boneCount", boneCount);
+                if (boneCount > 0)
+                {
+                    command.material->shader->setMat4Array("uBones", command.skinMatrices->data(), boneCount);
+                }
+            }
+            else
+            {
+                command.material->shader->set("hasSkinning", 0);
+                command.material->shader->set("boneCount", 0);
+            }
             command.mesh->drawWithGLTFMaterials(command.material->shader);
         }
 
@@ -270,6 +400,7 @@ namespace our
 
             // TODO: (Req 11) Setup the postprocess material and draw the fullscreen triangle
             this->postprocessMaterial->setup();
+            this->postprocessMaterial->shader->set("time", elapsedTime);
             this->postprocessMaterial->shader->set("flashCenter", muzzleFlashCenter);
             this->postprocessMaterial->shader->set("flash", muzzleFlashStrength);
             glBindVertexArray(postProcessVertexArray);

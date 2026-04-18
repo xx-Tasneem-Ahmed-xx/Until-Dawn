@@ -10,6 +10,7 @@
 #include <map>
 #include <filesystem>
 #include <cstring>
+#include <algorithm>
 
 #include <stb/stb_image.h>
 
@@ -206,6 +207,8 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
     std::vector<our::Vertex> vertices;
     std::vector<GLuint> elements;
     std::vector<our::Mesh::SubMesh> subMeshes;
+    std::vector<int> skinJointNodes;
+    std::vector<glm::mat4> inverseBindMatrices;
     glm::vec4 meshBaseColorFactor(1.0f);
     bool meshHasBaseColorTexture = false;
     GLuint meshBaseColorTextureID = 0;
@@ -422,6 +425,180 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
         return result;
     };
 
+    // Helper function to get JOINTS_0 data as uvec4
+    auto getUVec4Data = [&model](int accessorIndex) -> std::vector<glm::uvec4>
+    {
+        std::vector<glm::uvec4> result;
+        if (accessorIndex < 0 || accessorIndex >= static_cast<int>(model.accessors.size()))
+            return result;
+
+        const auto &accessor = model.accessors[accessorIndex];
+        if (accessor.type != TINYGLTF_TYPE_VEC4)
+            return result;
+        if (accessor.bufferView < 0 || accessor.bufferView >= static_cast<int>(model.bufferViews.size()))
+            return result;
+
+        const auto &bufferView = model.bufferViews[accessor.bufferView];
+        if (bufferView.buffer < 0 || bufferView.buffer >= static_cast<int>(model.buffers.size()))
+            return result;
+        const auto &buffer = model.buffers[bufferView.buffer];
+
+        size_t bytesPerComponent = 0;
+        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+            bytesPerComponent = 1;
+        else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+            bytesPerComponent = 2;
+        else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
+            bytesPerComponent = 4;
+        else
+            return result;
+
+        const size_t packedSize = 4 * bytesPerComponent;
+        const size_t stride = bufferView.byteStride == 0 ? packedSize : bufferView.byteStride;
+
+        result.resize(accessor.count, glm::uvec4(0));
+        for (size_t i = 0; i < accessor.count; ++i)
+        {
+            size_t offset = bufferView.byteOffset + accessor.byteOffset + i * stride;
+            if (offset + packedSize > buffer.data.size())
+                break;
+
+            if (bytesPerComponent == 1)
+            {
+                const uint8_t *src = reinterpret_cast<const uint8_t *>(&buffer.data[offset]);
+                result[i] = glm::uvec4(src[0], src[1], src[2], src[3]);
+            }
+            else if (bytesPerComponent == 2)
+            {
+                const uint16_t *src = reinterpret_cast<const uint16_t *>(&buffer.data[offset]);
+                result[i] = glm::uvec4(src[0], src[1], src[2], src[3]);
+            }
+            else
+            {
+                const uint32_t *src = reinterpret_cast<const uint32_t *>(&buffer.data[offset]);
+                result[i] = glm::uvec4(src[0], src[1], src[2], src[3]);
+            }
+        }
+        return result;
+    };
+
+    // Helper function to get WEIGHTS_0 data as vec4
+    auto getWeightVec4Data = [&model](int accessorIndex) -> std::vector<glm::vec4>
+    {
+        std::vector<glm::vec4> result;
+        if (accessorIndex < 0 || accessorIndex >= static_cast<int>(model.accessors.size()))
+            return result;
+
+        const auto &accessor = model.accessors[accessorIndex];
+        if (accessor.type != TINYGLTF_TYPE_VEC4)
+            return result;
+        if (accessor.bufferView < 0 || accessor.bufferView >= static_cast<int>(model.bufferViews.size()))
+            return result;
+
+        const auto &bufferView = model.bufferViews[accessor.bufferView];
+        if (bufferView.buffer < 0 || bufferView.buffer >= static_cast<int>(model.buffers.size()))
+            return result;
+        const auto &buffer = model.buffers[bufferView.buffer];
+
+        size_t bytesPerComponent = 0;
+        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
+            bytesPerComponent = 4;
+        else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+            bytesPerComponent = 1;
+        else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+            bytesPerComponent = 2;
+        else
+            return result;
+
+        const size_t packedSize = 4 * bytesPerComponent;
+        const size_t stride = bufferView.byteStride == 0 ? packedSize : bufferView.byteStride;
+
+        result.resize(accessor.count, glm::vec4(0.0f));
+        for (size_t i = 0; i < accessor.count; ++i)
+        {
+            size_t offset = bufferView.byteOffset + accessor.byteOffset + i * stride;
+            if (offset + packedSize > buffer.data.size())
+                break;
+
+            if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT)
+            {
+                const float *src = reinterpret_cast<const float *>(&buffer.data[offset]);
+                result[i] = glm::vec4(src[0], src[1], src[2], src[3]);
+            }
+            else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+            {
+                const uint8_t *src = reinterpret_cast<const uint8_t *>(&buffer.data[offset]);
+                glm::vec4 w = glm::vec4(src[0], src[1], src[2], src[3]);
+                result[i] = accessor.normalized ? (w / 255.0f) : w;
+            }
+            else
+            {
+                const uint16_t *src = reinterpret_cast<const uint16_t *>(&buffer.data[offset]);
+                glm::vec4 w = glm::vec4(src[0], src[1], src[2], src[3]);
+                result[i] = accessor.normalized ? (w / 65535.0f) : w;
+            }
+
+            float sum = result[i].x + result[i].y + result[i].z + result[i].w;
+            if (sum > 0.000001f)
+                result[i] /= sum;
+        }
+
+        return result;
+    };
+
+    // Helper function to get MAT4 float data from an accessor (inverse bind matrices)
+    auto getMat4Data = [&model](int accessorIndex) -> std::vector<glm::mat4>
+    {
+        std::vector<glm::mat4> result;
+        if (accessorIndex < 0 || accessorIndex >= static_cast<int>(model.accessors.size()))
+            return result;
+
+        const auto &accessor = model.accessors[accessorIndex];
+        if (accessor.type != TINYGLTF_TYPE_MAT4 || accessor.componentType != TINYGLTF_COMPONENT_TYPE_FLOAT)
+            return result;
+        if (accessor.bufferView < 0 || accessor.bufferView >= static_cast<int>(model.bufferViews.size()))
+            return result;
+
+        const auto &bufferView = model.bufferViews[accessor.bufferView];
+        if (bufferView.buffer < 0 || bufferView.buffer >= static_cast<int>(model.buffers.size()))
+            return result;
+        const auto &buffer = model.buffers[bufferView.buffer];
+
+        const size_t packedSize = sizeof(float) * 16;
+        const size_t stride = bufferView.byteStride == 0 ? packedSize : bufferView.byteStride;
+
+        result.resize(accessor.count, glm::mat4(1.0f));
+        for (size_t i = 0; i < accessor.count; ++i)
+        {
+            size_t offset = bufferView.byteOffset + accessor.byteOffset + i * stride;
+            if (offset + packedSize > buffer.data.size())
+                break;
+
+            std::memcpy(&result[i], &buffer.data[offset], packedSize);
+        }
+
+        return result;
+    };
+
+    if (!model.skins.empty())
+    {
+        const auto &skin = model.skins[0];
+        for (int jointNode : skin.joints)
+        {
+            skinJointNodes.push_back(jointNode);
+        }
+
+        if (skin.inverseBindMatrices >= 0)
+        {
+            inverseBindMatrices = getMat4Data(skin.inverseBindMatrices);
+        }
+
+        if (inverseBindMatrices.size() < skinJointNodes.size())
+        {
+            inverseBindMatrices.resize(skinJointNodes.size(), glm::mat4(1.0f));
+        }
+    }
+
     // Loop through all meshes
     for (const auto &mesh : model.meshes)
     {
@@ -532,6 +709,21 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
                 vertexColors = getVec4Data(colorIt->second);
             }
 
+            // Get skinning data if available
+            std::vector<glm::uvec4> joints;
+            auto jointsIt = primitive.attributes.find("JOINTS_0");
+            if (jointsIt != primitive.attributes.end())
+            {
+                joints = getUVec4Data(jointsIt->second);
+            }
+
+            std::vector<glm::vec4> weights;
+            auto weightsIt = primitive.attributes.find("WEIGHTS_0");
+            if (weightsIt != primitive.attributes.end())
+            {
+                weights = getWeightVec4Data(weightsIt->second);
+            }
+
             // Create vertices from the data
             for (size_t i = 0; i < positions.size(); ++i)
             {
@@ -564,6 +756,15 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
                         static_cast<unsigned char>(materialColor.g * 255.0f),
                         static_cast<unsigned char>(materialColor.b * 255.0f),
                         static_cast<unsigned char>(materialColor.a * 255.0f));
+                }
+
+                if (i < joints.size())
+                {
+                    vertex.joints = joints[i];
+                }
+                if (i < weights.size())
+                {
+                    vertex.weights = weights[i];
                 }
                 vertices.push_back(vertex);
             }
@@ -652,8 +853,214 @@ our::Mesh *our::mesh_utils::loadGLB(const std::string &filename)
     {
         mesh->setGLTFBaseColorTexture(meshBaseColorTextureID);
     }
+    if (!skinJointNodes.empty())
+    {
+        mesh->setSkinData(skinJointNodes, inverseBindMatrices);
+    }
 
     return mesh;
+}
+
+our::Motion *our::mesh_utils::loadMotion(const std::string &filename)
+{
+    tinygltf::Model model;
+    tinygltf::TinyGLTF loader;
+    std::string err, warn;
+
+    bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, filename);
+    if (!warn.empty())
+    {
+        std::cout << "WARN while loading glb motion file \"" << filename << "\": " << warn << std::endl;
+    }
+    if (!ret)
+    {
+        std::cerr << "Failed to load glb motion file \"" << filename << "\" due to error: " << err << std::endl;
+        return nullptr;
+    }
+
+    auto *motion = new our::Motion();
+    motion->sourcePath = filename;
+
+    motion->nodes.resize(model.nodes.size());
+    for (size_t i = 0; i < model.nodes.size(); ++i)
+    {
+        const auto &node = model.nodes[i];
+        auto &dstNode = motion->nodes[i];
+
+        if (node.translation.size() >= 3)
+        {
+            dstNode.baseTranslation = glm::vec3(
+                static_cast<float>(node.translation[0]),
+                static_cast<float>(node.translation[1]),
+                static_cast<float>(node.translation[2]));
+        }
+        if (node.rotation.size() >= 4)
+        {
+            dstNode.baseRotation = glm::normalize(glm::quat(
+                static_cast<float>(node.rotation[3]),
+                static_cast<float>(node.rotation[0]),
+                static_cast<float>(node.rotation[1]),
+                static_cast<float>(node.rotation[2])));
+        }
+        if (node.scale.size() >= 3)
+        {
+            dstNode.baseScale = glm::vec3(
+                static_cast<float>(node.scale[0]),
+                static_cast<float>(node.scale[1]),
+                static_cast<float>(node.scale[2]));
+        }
+
+        for (int child : node.children)
+        {
+            if (child >= 0 && child < static_cast<int>(motion->nodes.size()))
+            {
+                motion->nodes[i].children.push_back(child);
+                motion->nodes[child].parent = static_cast<int>(i);
+            }
+        }
+    }
+
+    auto getFloatAccessorValues = [&model](int accessorIndex) -> std::vector<float>
+    {
+        std::vector<float> values;
+        if (accessorIndex < 0 || accessorIndex >= static_cast<int>(model.accessors.size()))
+            return values;
+
+        const auto &accessor = model.accessors[accessorIndex];
+        if (accessor.type != TINYGLTF_TYPE_SCALAR || accessor.count <= 0)
+            return values;
+        if (accessor.bufferView < 0 || accessor.bufferView >= static_cast<int>(model.bufferViews.size()))
+            return values;
+        if (accessor.componentType != TINYGLTF_COMPONENT_TYPE_FLOAT)
+            return values;
+
+        const auto &bufferView = model.bufferViews[accessor.bufferView];
+        if (bufferView.buffer < 0 || bufferView.buffer >= static_cast<int>(model.buffers.size()))
+            return values;
+        const auto &buffer = model.buffers[bufferView.buffer];
+
+        size_t byteStride = bufferView.byteStride == 0 ? sizeof(float) : bufferView.byteStride;
+        values.resize(accessor.count);
+        for (size_t i = 0; i < accessor.count; ++i)
+        {
+            size_t offset = bufferView.byteOffset + accessor.byteOffset + i * byteStride;
+            if (offset + sizeof(float) > buffer.data.size())
+                break;
+            std::memcpy(&values[i], &buffer.data[offset], sizeof(float));
+        }
+
+        return values;
+    };
+
+    auto getVec4AccessorValues = [&model](int accessorIndex) -> std::vector<glm::vec4>
+    {
+        std::vector<glm::vec4> values;
+        if (accessorIndex < 0 || accessorIndex >= static_cast<int>(model.accessors.size()))
+            return values;
+
+        const auto &accessor = model.accessors[accessorIndex];
+        if (accessor.bufferView < 0 || accessor.bufferView >= static_cast<int>(model.bufferViews.size()))
+            return values;
+        if (accessor.componentType != TINYGLTF_COMPONENT_TYPE_FLOAT)
+            return values;
+
+        const auto &bufferView = model.bufferViews[accessor.bufferView];
+        if (bufferView.buffer < 0 || bufferView.buffer >= static_cast<int>(model.buffers.size()))
+            return values;
+        const auto &buffer = model.buffers[bufferView.buffer];
+
+        int componentCount = 0;
+        if (accessor.type == TINYGLTF_TYPE_VEC3)
+            componentCount = 3;
+        else if (accessor.type == TINYGLTF_TYPE_VEC4)
+            componentCount = 4;
+        else
+            return values;
+
+        size_t packedBytes = static_cast<size_t>(componentCount) * sizeof(float);
+        size_t byteStride = bufferView.byteStride == 0 ? packedBytes : bufferView.byteStride;
+        values.resize(accessor.count, glm::vec4(0.0f));
+
+        for (size_t i = 0; i < accessor.count; ++i)
+        {
+            size_t offset = bufferView.byteOffset + accessor.byteOffset + i * byteStride;
+            if (offset + packedBytes > buffer.data.size())
+                break;
+
+            float temp[4] = {0, 0, 0, 1};
+            std::memcpy(temp, &buffer.data[offset], packedBytes);
+            values[i] = glm::vec4(temp[0], temp[1], temp[2], (componentCount == 4) ? temp[3] : 1.0f);
+        }
+
+        return values;
+    };
+
+    for (size_t i = 0; i < model.animations.size(); ++i)
+    {
+        const auto &animation = model.animations[i];
+        our::MotionClip clip;
+        clip.name = animation.name.empty() ? ("clip_" + std::to_string(i)) : animation.name;
+        clip.channelCount = static_cast<int>(animation.channels.size());
+
+        bool hasAnyTime = false;
+        float minTime = std::numeric_limits<float>::max();
+        float maxTime = std::numeric_limits<float>::lowest();
+
+        for (const auto &sampler : animation.samplers)
+        {
+            auto times = getFloatAccessorValues(sampler.input);
+            if (times.empty())
+                continue;
+
+            auto [itMin, itMax] = std::minmax_element(times.begin(), times.end());
+            minTime = std::min(minTime, *itMin);
+            maxTime = std::max(maxTime, *itMax);
+            hasAnyTime = true;
+        }
+
+        if (hasAnyTime)
+        {
+            clip.startTime = minTime;
+            clip.endTime = maxTime;
+            clip.duration = std::max(0.0f, maxTime - minTime);
+        }
+
+        clip.samplers.reserve(animation.samplers.size());
+        for (const auto &sampler : animation.samplers)
+        {
+            our::MotionSampler dstSampler;
+            dstSampler.times = getFloatAccessorValues(sampler.input);
+            dstSampler.values = getVec4AccessorValues(sampler.output);
+            clip.samplers.push_back(std::move(dstSampler));
+        }
+
+        clip.channels.reserve(animation.channels.size());
+        for (const auto &channel : animation.channels)
+        {
+            if (channel.sampler < 0 || channel.sampler >= static_cast<int>(clip.samplers.size()))
+                continue;
+
+            our::MotionChannel dstChannel;
+            dstChannel.targetNode = channel.target_node;
+            dstChannel.samplerIndex = channel.sampler;
+
+            if (channel.target_path == "translation")
+                dstChannel.path = our::MotionPath::Translation;
+            else if (channel.target_path == "rotation")
+                dstChannel.path = our::MotionPath::Rotation;
+            else if (channel.target_path == "scale")
+                dstChannel.path = our::MotionPath::Scale;
+            else
+                continue;
+
+            clip.samplers[dstChannel.samplerIndex].path = dstChannel.path;
+            clip.channels.push_back(dstChannel);
+        }
+
+        motion->clips.push_back(clip);
+    }
+
+    return motion;
 }
 
 // Create a sphere (the vertex order in the triangles are CCW from the outside)

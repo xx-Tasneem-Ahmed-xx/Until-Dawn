@@ -9,6 +9,9 @@
 #include "health.hpp"
 #include "zombie.hpp"
 #include "player.hpp"
+#include "collider.hpp"
+#include "environment.hpp"
+#include "light.hpp"
 
 namespace our
 {
@@ -59,6 +62,18 @@ namespace our
         else if (type == PlayerComponent::getID())
         {
             component = entity->addComponent<PlayerComponent>();
+        }
+        else if (type == ColliderComponent::getID())
+        {
+            component = entity->addComponent<ColliderComponent>();
+        }
+        else if (type == EnvironmentComponent::getID())
+        {
+            component = entity->addComponent<EnvironmentComponent>();
+        }
+        else if (type == LightComponent::getID())
+        {
+            component = entity->addComponent<LightComponent>();
         }
 
         if (component)
