@@ -45,7 +45,7 @@ class EndingState : public our::State
     const our::MotionClip *zombieCrawlClip = nullptr;
     const our::MotionClip *zombieAttackClip = nullptr;
     const our::MotionClip *playerLoseClip = nullptr;
-    const our::MotionClip *playerStandClip = nullptr;
+    const our::MotionClip *playerWinClip = nullptr;
 
     std::vector<our::Entity *> loseZombies;
     std::vector<glm::vec3> loseZombieFormationOffsets;
@@ -68,7 +68,11 @@ class EndingState : public our::State
     float loseSkyTurnDuration = 4.50f;
     glm::vec3 loseZombieCircleCenterOffset = glm::vec3(0.0f, 0.0f, -0.28f);
     float loseZombieGroundOffset = -0.42f;
-    float winPlayerGroundOffset = -0.30f;
+    float winPlayerGroundOffset = -0.58f;
+    float winCameraBlendInDuration = 2.2f;
+    glm::vec3 winCameraStartPosition = glm::vec3(0.0f);
+    float winCameraStartYaw = 0.0f;
+    float winCameraStartPitch = 0.0f;
 
     void loadEndingFonts()
     {
@@ -345,7 +349,15 @@ class EndingState : public our::State
             if (!playerLoseClip)
                 playerLoseClip = pickPlayerDeathClip();
 
-            playerStandClip = playerMotion->findClipByKeywords({"idle", "stand", "breathe", "relax"});
+            // For win ending: prefer a dance celebration from Olivia clips.
+            playerWinClip = playerMotion->findClip("dance");
+            if (!playerWinClip)
+                playerWinClip = playerMotion->findClip("Dance");
+            if (!playerWinClip)
+                playerWinClip = playerMotion->findClipByKeywords({"dance", "celebrate", "victory", "win"});
+            // Safe fallback if no dance-like clip exists in the GLB.
+            if (!playerWinClip)
+                playerWinClip = playerMotion->findClipByKeywords({"idle", "stand", "breathe", "relax"});
 
             // If fallback still resolved to idle for any reason, retry stricter death keywords only.
             if (playerLoseClip)
@@ -513,14 +525,29 @@ class EndingState : public our::State
 
         if (our::GameSession::endingOutcome == our::EndingOutcome::Win)
         {
-            const float radius = 7.5f;
-            const float height = 4.2f;
-            const float angularSpeed = 0.65f;
+            const float radius = 8.8f;
+            const float height = 3.8f;
+            const float angularSpeed = 0.16f;
+            const float targetPitch = glm::radians(-12.0f);
 
             float angle = elapsedTime * angularSpeed;
-            cameraEntity->localTransform.position = playerPos + glm::vec3(std::sin(angle) * radius, height, std::cos(angle) * radius);
-            lookAtOnGround(cameraEntity, playerPos);
-            cameraEntity->localTransform.rotation.x = glm::radians(-18.0f);
+            glm::vec3 orbitPosition = playerPos + glm::vec3(std::sin(angle) * radius, height, std::cos(angle) * radius);
+
+            float blendT = std::clamp(elapsedTime / std::max(0.01f, winCameraBlendInDuration), 0.0f, 1.0f);
+            float smoothBlendT = blendT * blendT * (3.0f - 2.0f * blendT);
+
+            cameraEntity->localTransform.position = glm::mix(winCameraStartPosition, orbitPosition, smoothBlendT);
+
+            glm::vec3 toTarget = playerPos - cameraEntity->localTransform.position;
+            toTarget.y = 0.0f;
+            if (glm::dot(toTarget, toTarget) > 0.0001f)
+            {
+                float desiredYaw = std::atan2(-toTarget.x, -toTarget.z);
+                cameraEntity->localTransform.rotation.y = glm::mix(winCameraStartYaw, desiredYaw, smoothBlendT);
+            }
+
+            cameraEntity->localTransform.rotation.x = glm::mix(winCameraStartPitch, targetPitch, smoothBlendT);
+            cameraEntity->localTransform.rotation.z = 0.0f;
         }
         else
         {
@@ -603,10 +630,10 @@ class EndingState : public our::State
                 playerVisualEntity->localTransform.position.y = endingGroundY + winPlayerGroundOffset;
             }
 
-            if (playerStandClip)
+            if (playerWinClip)
             {
-                float playerTime = positiveModulo(elapsedTime, std::max(0.01f, playerStandClip->duration));
-                applyClipToSkinnedEntity(playerVisualEntity, playerMesh, playerMotion, playerStandClip, playerTime);
+                float playerTime = positiveModulo(elapsedTime, std::max(0.01f, playerWinClip->duration));
+                applyClipToSkinnedEntity(playerVisualEntity, playerMesh, playerMotion, playerWinClip, playerTime);
             }
             else if (playerVisualEntity)
             {
@@ -648,6 +675,13 @@ public:
 
         elapsedTime = 0.0f;
         loseSequenceTime = 0.0f;
+
+        if (cameraEntity)
+        {
+            winCameraStartPosition = cameraEntity->localTransform.position;
+            winCameraStartYaw = cameraEntity->localTransform.rotation.y;
+            winCameraStartPitch = cameraEntity->localTransform.rotation.x;
+        }
 
         // Sequence requirement: Olivia dies first, then zombies perform their bite/circle action.
         if (our::GameSession::endingOutcome == our::EndingOutcome::Lose)
