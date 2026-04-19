@@ -148,77 +148,83 @@ class EndingState : public our::State
     our::World world;
     our::ForwardRenderer renderer;
 
-    our::Entity *cameraEntity = nullptr;
-    our::Entity *playerVisualEntity = nullptr;
-    our::Mesh *scenePlayerMesh = nullptr;
-    our::Mesh *playerMesh = nullptr;
-    our::Material *playerMaterial = nullptr;
-    our::Mesh *ownedEndingPlayerMesh = nullptr;
+    struct SceneAssets
+    {
+        our::Entity *cameraEntity = nullptr;
+        our::Entity *playerVisualEntity = nullptr;
 
-    our::Mesh *zombieMesh = nullptr;
-    our::Material *zombieMaterial = nullptr;
+        our::Mesh *scenePlayerMesh = nullptr;
+        our::Mesh *playerMesh = nullptr;
+        our::Material *playerMaterial = nullptr;
+        our::Mesh *ownedEndingPlayerMesh = nullptr;
 
-    our::Motion *zombieMotion = nullptr;
-    our::Motion *playerMotion = nullptr;
+        our::Mesh *zombieMesh = nullptr;
+        our::Material *zombieMaterial = nullptr;
 
-    const our::MotionClip *zombieCrawlClip = nullptr;
-    const our::MotionClip *zombieAttackClip = nullptr;
-    const our::MotionClip *playerLoseClip = nullptr;
-    const our::MotionClip *playerWinClip = nullptr;
+        our::Motion *zombieMotion = nullptr;
+        our::Motion *playerMotion = nullptr;
 
-    std::vector<our::Entity *> loseZombies;
-    std::vector<glm::vec3> loseZombieFormationOffsets;
-    float elapsedTime = 0.0f;
-    float loseSequenceTime = 0.0f;
-    float endingZombieScale = 0.42f;
-    float zombieModelYawOffset = glm::pi<float>();
-    float endingGroundY = -0.75f;
-    glm::vec3 endingStageCenter = glm::vec3(0.0f);
-    our::ui::ending::Assets endingUiAssets{};
+        const our::MotionClip *zombieCrawlClip = nullptr;
+        const our::MotionClip *zombieAttackClip = nullptr;
+        const our::MotionClip *playerLoseClip = nullptr;
+        const our::MotionClip *playerWinClip = nullptr;
+    } scene;
 
-    ending::WinRuntime winRuntime{};
-    ending::LoseRuntime loseRuntime{};
+    struct RuntimeState
+    {
+        std::vector<our::Entity *> loseZombies;
+        std::vector<glm::vec3> loseZombieFormationOffsets;
+        float elapsedTime = 0.0f;
+        float loseSequenceTime = 0.0f;
+        float endingZombieScale = 0.42f;
+        float zombieModelYawOffset = glm::pi<float>();
+        float endingGroundY = -0.75f;
+        glm::vec3 endingStageCenter = glm::vec3(0.0f);
+        our::ui::ending::Assets uiAssets{};
+        ending::WinRuntime winRuntime{};
+        ending::LoseRuntime loseRuntime{};
+    } runtime;
 
     void setupCamera()
     {
-        cameraEntity = ending::findFirstCameraEntity(world);
-        if (!cameraEntity)
+        scene.cameraEntity = ending::findFirstCameraEntity(world);
+        if (!scene.cameraEntity)
         {
-            cameraEntity = world.add();
-            cameraEntity->name = "EndingCamera";
-            cameraEntity->addComponent<our::CameraComponent>();
+            scene.cameraEntity = world.add();
+            scene.cameraEntity->name = "EndingCamera";
+            scene.cameraEntity->addComponent<our::CameraComponent>();
         }
     }
 
     void setupVisualAssets()
     {
-        scenePlayerMesh = our::AssetLoader<our::Mesh>::get("main-player");
-        playerMesh = scenePlayerMesh;
-        playerMaterial = our::AssetLoader<our::Material>::get("auto");
+        scene.scenePlayerMesh = our::AssetLoader<our::Mesh>::get("main-player");
+        scene.playerMesh = scene.scenePlayerMesh;
+        scene.playerMaterial = our::AssetLoader<our::Material>::get("auto");
 
-        zombieMesh = our::AssetLoader<our::Mesh>::get("zombie");
-        zombieMaterial = our::AssetLoader<our::Material>::get("zombie_theme");
-        if (!zombieMaterial)
-            zombieMaterial = our::AssetLoader<our::Material>::get("auto");
+        scene.zombieMesh = our::AssetLoader<our::Mesh>::get("zombie");
+        scene.zombieMaterial = our::AssetLoader<our::Material>::get("zombie_theme");
+        if (!scene.zombieMaterial)
+            scene.zombieMaterial = our::AssetLoader<our::Material>::get("auto");
 
-        zombieMotion = our::AssetLoader<our::Motion>::get("zombie-motion");
-        if (zombieMotion)
+        scene.zombieMotion = our::AssetLoader<our::Motion>::get("zombie-motion");
+        if (scene.zombieMotion)
         {
-            zombieAttackClip = zombieMotion->findClip("Armature|Bite_ground");
-            zombieCrawlClip = zombieMotion->findClip("Armature|Crawl");
-            if (!zombieAttackClip)
-                zombieAttackClip = zombieCrawlClip;
+            scene.zombieAttackClip = scene.zombieMotion->findClip("Armature|Bite_ground");
+            scene.zombieCrawlClip = scene.zombieMotion->findClip("Armature|Crawl");
+            if (!scene.zombieAttackClip)
+                scene.zombieAttackClip = scene.zombieCrawlClip;
         }
 
         const std::string endingOliviaPath = "assets/models/olivia.glb";
-        playerMotion = our::mesh_utils::loadMotion(endingOliviaPath);
+        scene.playerMotion = our::mesh_utils::loadMotion(endingOliviaPath);
 
         {
             our::Mesh *candidate = our::mesh_utils::loadGLB(endingOliviaPath);
             if (candidate && candidate->hasSkinning())
             {
-                playerMesh = candidate;
-                ownedEndingPlayerMesh = candidate;
+                scene.playerMesh = candidate;
+                scene.ownedEndingPlayerMesh = candidate;
             }
             else if (candidate)
             {
@@ -226,10 +232,10 @@ class EndingState : public our::State
             }
         }
 
-        if (playerMotion)
+        if (scene.playerMotion)
         {
-            playerLoseClip = playerMotion->findClip("Die");
-            playerWinClip = playerMotion->findClip("Dance");
+            scene.playerLoseClip = scene.playerMotion->findClip("Die");
+            scene.playerWinClip = scene.playerMotion->findClip("Dance");
         }
 
         auto &cfg = getApp()->getConfig();
@@ -237,114 +243,114 @@ class EndingState : public our::State
         {
             const auto &zCfg = cfg["scene"]["zombies"];
             float yawDeg = zCfg.value("modelYawOffsetDegrees", 180.0f);
-            zombieModelYawOffset = glm::radians(yawDeg);
-            endingZombieScale = std::max(0.2f, zCfg.value("modelScaleMultiplier", 0.42f) * 2.10f);
-            endingGroundY = -0.5f + zCfg.value("spawnHeightOffset", -0.25f);
+            runtime.zombieModelYawOffset = glm::radians(yawDeg);
+            runtime.endingZombieScale = std::max(0.2f, zCfg.value("modelScaleMultiplier", 0.42f) * 2.10f);
+            runtime.endingGroundY = -0.5f + zCfg.value("spawnHeightOffset", -0.25f);
         }
 
-        endingStageCenter = glm::vec3(0.0f, endingGroundY, 0.0f);
+        runtime.endingStageCenter = glm::vec3(0.0f, runtime.endingGroundY, 0.0f);
 
         ending::removeEntitiesByMesh(world, our::AssetLoader<our::Mesh>::get("pistol"));
     }
 
     void setupPlayerVisual()
     {
-        if (!playerMesh)
+        if (!scene.playerMesh)
             return;
 
         our::Transform referenceTransform{};
-        referenceTransform.position = endingStageCenter;
+        referenceTransform.position = runtime.endingStageCenter;
         referenceTransform.scale = glm::vec3(100.0f);
 
-        if (scenePlayerMesh)
+        if (scene.scenePlayerMesh)
         {
-            if (auto existing = ending::findEntityByMesh(world, scenePlayerMesh))
+            if (auto existing = ending::findEntityByMesh(world, scene.scenePlayerMesh))
             {
                 referenceTransform = existing->localTransform;
-                referenceTransform.position = endingStageCenter;
+                referenceTransform.position = runtime.endingStageCenter;
                 world.markForRemoval(existing);
             }
         }
 
-        playerVisualEntity = world.add();
-        playerVisualEntity->name = "EndingMainPlayer";
-        playerVisualEntity->localTransform = referenceTransform;
+        scene.playerVisualEntity = world.add();
+        scene.playerVisualEntity->name = "EndingMainPlayer";
+        scene.playerVisualEntity->localTransform = referenceTransform;
 
-        auto *rendererComp = playerVisualEntity->addComponent<our::MeshRendererComponent>();
-        rendererComp->mesh = playerMesh;
-        rendererComp->material = playerMaterial;
+        auto *rendererComp = scene.playerVisualEntity->addComponent<our::MeshRendererComponent>();
+        rendererComp->mesh = scene.playerMesh;
+        rendererComp->material = scene.playerMaterial;
 
-        auto *skinCarrier = playerVisualEntity->addComponent<our::ZombieComponent>();
+        auto *skinCarrier = scene.playerVisualEntity->addComponent<our::ZombieComponent>();
         skinCarrier->state = our::ZombieState::Walking;
-        if (playerMesh->hasSkinning())
+        if (scene.playerMesh->hasSkinning())
         {
-            skinCarrier->skinMatrices.assign(playerMesh->getSkinJointNodes().size(), glm::mat4(1.0f));
+            skinCarrier->skinMatrices.assign(scene.playerMesh->getSkinJointNodes().size(), glm::mat4(1.0f));
         }
 
         if (our::GameSession::endingOutcome == our::EndingOutcome::Lose)
         {
-            ending::applyLosePose(playerVisualEntity, endingGroundY, playerLoseClip);
+            ending::applyLosePose(scene.playerVisualEntity, runtime.endingGroundY, scene.playerLoseClip);
         }
         else if (our::GameSession::endingOutcome == our::EndingOutcome::Win)
         {
-            ending::applyWinPose(playerVisualEntity, endingGroundY, winRuntime);
+            ending::applyWinPose(scene.playerVisualEntity, runtime.endingGroundY, runtime.winRuntime);
         }
     }
 
     void setupOutcomeActors()
     {
-        loseZombies.clear();
-        loseZombieFormationOffsets.clear();
+        runtime.loseZombies.clear();
+        runtime.loseZombieFormationOffsets.clear();
 
         if (our::GameSession::endingOutcome == our::EndingOutcome::Lose)
         {
             ending::setupLoseSceneActors(
                 world,
-                loseZombies,
-                loseZombieFormationOffsets,
-                playerVisualEntity,
-                zombieMesh,
-                zombieMaterial,
-                endingGroundY,
-                endingZombieScale,
-                zombieModelYawOffset,
-                loseRuntime);
+                runtime.loseZombies,
+                runtime.loseZombieFormationOffsets,
+                scene.playerVisualEntity,
+                scene.zombieMesh,
+                scene.zombieMaterial,
+                runtime.endingGroundY,
+                runtime.endingZombieScale,
+                runtime.zombieModelYawOffset,
+                runtime.loseRuntime);
         }
     }
 
     void updateOutcomeActors(float deltaTime)
     {
-        elapsedTime += deltaTime;
+        runtime.elapsedTime += deltaTime;
 
         if (our::GameSession::endingOutcome == our::EndingOutcome::Lose)
         {
-            loseSequenceTime += deltaTime;
+            runtime.loseSequenceTime += deltaTime;
             ending::updateLoseActors(
-                playerVisualEntity,
-                playerMesh,
-                playerMotion,
-                playerLoseClip,
-                loseZombies,
-                loseZombieFormationOffsets,
-                zombieMesh,
-                zombieMotion,
-                zombieAttackClip,
-                zombieCrawlClip,
-                loseSequenceTime,
-                endingGroundY,
-                zombieModelYawOffset,
-                loseRuntime);
+                scene.playerVisualEntity,
+                scene.playerMesh,
+                scene.playerMotion,
+                scene.playerLoseClip,
+                runtime.loseZombies,
+                runtime.loseZombieFormationOffsets,
+                scene.zombieMesh,
+                scene.zombieMotion,
+                scene.zombieAttackClip,
+                scene.zombieCrawlClip,
+                runtime.loseSequenceTime,
+                runtime.endingGroundY,
+                runtime.zombieModelYawOffset,
+                runtime.loseRuntime);
         }
         else if (our::GameSession::endingOutcome == our::EndingOutcome::Win)
         {
             ending::updateWinActors(
-                playerVisualEntity,
-                playerMesh,
-                playerMotion,
-                playerWinClip,
-                elapsedTime,
-                endingGroundY,
-                winRuntime);
+                scene.playerVisualEntity,
+                scene.playerMesh,
+                scene.playerMotion,
+                scene.playerWinClip,
+                runtime.elapsedTime,
+                runtime.endingGroundY,
+                runtime.winRuntime);
         }
     }
 
@@ -353,17 +359,17 @@ class EndingState : public our::State
         if (our::GameSession::endingOutcome == our::EndingOutcome::Lose)
         {
             ending::updateLoseCamera(
-                cameraEntity,
-                playerVisualEntity,
-                playerLoseClip,
-                zombieAttackClip,
-                zombieCrawlClip,
-                loseSequenceTime,
-                loseRuntime);
+                scene.cameraEntity,
+                scene.playerVisualEntity,
+                scene.playerLoseClip,
+                scene.zombieAttackClip,
+                scene.zombieCrawlClip,
+                runtime.loseSequenceTime,
+                runtime.loseRuntime);
         }
         else if (our::GameSession::endingOutcome == our::EndingOutcome::Win)
         {
-            ending::updateWinCamera(cameraEntity, playerVisualEntity, elapsedTime, winRuntime);
+            ending::updateWinCamera(scene.cameraEntity, scene.playerVisualEntity, runtime.elapsedTime, runtime.winRuntime);
         }
     }
 
@@ -384,8 +390,8 @@ public:
 
         setupCamera();
         setupVisualAssets();
-        ending::clearLocalOccludersAroundStage(world, endingStageCenter, playerMesh, scenePlayerMesh, zombieMesh);
-        endingUiAssets.loadDefaultThemeResources();
+        ending::clearLocalOccludersAroundStage(world, runtime.endingStageCenter, scene.playerMesh, scene.scenePlayerMesh, scene.zombieMesh);
+        runtime.uiAssets.loadDefaultThemeResources();
         setupPlayerVisual();
         setupOutcomeActors();
 
@@ -398,14 +404,14 @@ public:
         renderer.setMuzzleFlashStrength(0.0f);
         renderer.setHealth(100.0f, 100.0f, 0.0f);
 
-        elapsedTime = 0.0f;
-        loseSequenceTime = 0.0f;
+        runtime.elapsedTime = 0.0f;
+        runtime.loseSequenceTime = 0.0f;
 
-        ending::cacheStartCameraPose(winRuntime, cameraEntity);
+        ending::cacheStartCameraPose(runtime.winRuntime, scene.cameraEntity);
 
         if (our::GameSession::endingOutcome == our::EndingOutcome::Lose)
         {
-            loseRuntime.zombieBiteStart = ending::computeZombieBiteStart(loseRuntime, playerLoseClip);
+            runtime.loseRuntime.zombieBiteStart = ending::computeZombieBiteStart(runtime.loseRuntime, scene.playerLoseClip);
         }
     }
 
@@ -421,7 +427,7 @@ public:
         updateOutcomeActors(static_cast<float>(deltaTime));
         updateOutcomeCamera();
 
-        renderer.setTime(elapsedTime);
+        renderer.setTime(runtime.elapsedTime);
         renderer.setSceneExposure(our::GameSession::finalExposure);
         renderer.setMuzzleFlashStrength(0.0f);
         renderer.render(&world);
@@ -430,7 +436,7 @@ public:
     void onImmediateGui() override
     {
         const bool isWin = our::GameSession::endingOutcome == our::EndingOutcome::Win;
-        if (our::ui::ending::drawOverlay(isWin, endingUiAssets))
+        if (our::ui::ending::drawOverlay(isWin, runtime.uiAssets))
             getApp()->changeState("menu");
     }
 
@@ -440,19 +446,19 @@ public:
         world.clear();
         our::clearAllAssets();
 
-        delete playerMotion;
-        playerMotion = nullptr;
+        delete scene.playerMotion;
+        scene.playerMotion = nullptr;
 
-        if (ownedEndingPlayerMesh)
+        if (scene.ownedEndingPlayerMesh)
         {
-            delete ownedEndingPlayerMesh;
-            ownedEndingPlayerMesh = nullptr;
+            delete scene.ownedEndingPlayerMesh;
+            scene.ownedEndingPlayerMesh = nullptr;
         }
 
-        endingUiAssets.destroy();
+        runtime.uiAssets.destroy();
 
-        loseZombies.clear();
-        cameraEntity = nullptr;
-        playerVisualEntity = nullptr;
+        runtime.loseZombies.clear();
+        scene.cameraEntity = nullptr;
+        scene.playerVisualEntity = nullptr;
     }
 };
