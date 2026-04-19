@@ -219,4 +219,98 @@ namespace our::ui
             return clicked;
         }
     }
+
+    namespace ending
+    {
+        struct Assets
+        {
+            ImFont *titleFont = nullptr;
+            ImFont *uiFont = nullptr;
+
+            void loadDefaultThemeResources()
+            {
+                loadPreferredSerifFonts(titleFont, uiFont, 46.0f, 28.0f);
+            }
+
+            void destroy()
+            {
+                titleFont = nullptr;
+                uiFont = nullptr;
+            }
+        };
+
+        inline bool drawOverlay(bool isWin, const Assets &assets)
+        {
+            const char *loseText = "You've lost to the darkness of night";
+
+            ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+            float windowWidth = std::min(980.0f, displaySize.x * 0.82f);
+
+            ImGui::SetNextWindowBgAlpha(0.20f);
+            ImGui::SetNextWindowPos(ImVec2(displaySize.x * 0.5f, displaySize.y * 0.07f), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+            ImGui::SetNextWindowSize(ImVec2(windowWidth, 0.0f), ImGuiCond_Always);
+
+            ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
+                                     ImGuiWindowFlags_NoMove |
+                                     ImGuiWindowFlags_AlwaysAutoResize;
+
+            bool returnToMenu = false;
+            if (ImGui::Begin("EndingOverlay", nullptr, flags))
+            {
+                if (assets.titleFont)
+                    ImGui::PushFont(assets.titleFont);
+
+                ImGui::PushStyleColor(ImGuiCol_Text, isWin ? ImVec4(1.0f, 0.96f, 0.80f, 1.0f) : ImVec4(1.0f, 0.64f, 0.64f, 1.0f));
+                if (isWin)
+                {
+                    const char *winLine1 = "Congratulations, you have survived";
+                    const char *winLine2 = "until dawn";
+
+                    centerCurrentWindowText(winLine1);
+                    ImGui::TextUnformatted(winLine1);
+
+                    centerCurrentWindowText(winLine2);
+                    ImGui::TextUnformatted(winLine2);
+                }
+                else
+                {
+                    float wrapWidth = std::min(860.0f, ImGui::GetWindowWidth() - 36.0f);
+                    ImVec2 textSize = ImGui::CalcTextSize(loseText, nullptr, false, wrapWidth);
+                    float centeredTextX = std::max(8.0f, (ImGui::GetWindowWidth() - textSize.x) * 0.5f);
+                    ImGui::SetCursorPosX(centeredTextX);
+                    ImGui::PushTextWrapPos(centeredTextX + wrapWidth);
+                    ImGui::TextWrapped("%s", loseText);
+                    ImGui::PopTextWrapPos();
+                }
+                ImGui::PopStyleColor();
+
+                if (assets.titleFont)
+                    ImGui::PopFont();
+
+                ImGui::Spacing();
+
+                if (assets.uiFont)
+                    ImGui::PushFont(assets.uiFont);
+
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.10f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.20f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 1.0f, 1.0f, 0.28f));
+
+                float buttonWidth = 340.0f;
+                ImGui::SetCursorPosX(std::max(8.0f, (ImGui::GetWindowWidth() - buttonWidth) * 0.5f));
+                if (ImGui::Button("Return to Main Menu", ImVec2(buttonWidth, 42.0f)))
+                {
+                    returnToMenu = true;
+                }
+
+                ImGui::PopStyleColor(3);
+
+                if (assets.uiFont)
+                    ImGui::PopFont();
+            }
+            ImGui::End();
+
+            return returnToMenu;
+        }
+    }
 }

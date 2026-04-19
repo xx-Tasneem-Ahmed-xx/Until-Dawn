@@ -13,7 +13,6 @@
 #include <mesh/mesh-utils.hpp>
 #include <game-session.hpp>
 #include <ui/ui-theme.hpp>
-#include <imgui_impl/imgui_impl_opengl3.h>
 
 #include "ending/ending-win.hpp"
 #include "ending/ending-lose.hpp"
@@ -142,79 +141,6 @@ namespace ending
         }
     }
 
-    inline bool drawEndingOverlay(bool isWin, ImFont *endingTitleFont, ImFont *endingUiFont)
-    {
-        const char *loseText = "You've lost to the darkness of night";
-
-        ImVec2 displaySize = ImGui::GetIO().DisplaySize;
-        float windowWidth = std::min(980.0f, displaySize.x * 0.82f);
-
-        ImGui::SetNextWindowBgAlpha(0.20f);
-        ImGui::SetNextWindowPos(ImVec2(displaySize.x * 0.5f, displaySize.y * 0.07f), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
-        ImGui::SetNextWindowSize(ImVec2(windowWidth, 0.0f), ImGuiCond_Always);
-
-        ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
-                                 ImGuiWindowFlags_NoMove |
-                                 ImGuiWindowFlags_AlwaysAutoResize;
-
-        bool returnToMenu = false;
-        if (ImGui::Begin("EndingOverlay", nullptr, flags))
-        {
-            if (endingTitleFont)
-                ImGui::PushFont(endingTitleFont);
-
-            ImGui::PushStyleColor(ImGuiCol_Text, isWin ? ImVec4(1.0f, 0.96f, 0.80f, 1.0f) : ImVec4(1.0f, 0.64f, 0.64f, 1.0f));
-            if (isWin)
-            {
-                const char *winLine1 = "Congratulations, you have survived";
-                const char *winLine2 = "until dawn";
-
-                our::ui::centerCurrentWindowText(winLine1);
-                ImGui::TextUnformatted(winLine1);
-
-                our::ui::centerCurrentWindowText(winLine2);
-                ImGui::TextUnformatted(winLine2);
-            }
-            else
-            {
-                float wrapWidth = std::min(860.0f, ImGui::GetWindowWidth() - 36.0f);
-                ImVec2 textSize = ImGui::CalcTextSize(loseText, nullptr, false, wrapWidth);
-                float centeredTextX = std::max(8.0f, (ImGui::GetWindowWidth() - textSize.x) * 0.5f);
-                ImGui::SetCursorPosX(centeredTextX);
-                ImGui::PushTextWrapPos(centeredTextX + wrapWidth);
-                ImGui::TextWrapped("%s", loseText);
-                ImGui::PopTextWrapPos();
-            }
-            ImGui::PopStyleColor();
-
-            if (endingTitleFont)
-                ImGui::PopFont();
-
-            ImGui::Spacing();
-
-            if (endingUiFont)
-                ImGui::PushFont(endingUiFont);
-
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.10f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.20f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 1.0f, 1.0f, 0.28f));
-
-            float buttonWidth = 340.0f;
-            ImGui::SetCursorPosX(std::max(8.0f, (ImGui::GetWindowWidth() - buttonWidth) * 0.5f));
-            if (ImGui::Button("Return to Main Menu", ImVec2(buttonWidth, 42.0f)))
-            {
-                returnToMenu = true;
-            }
-
-            ImGui::PopStyleColor(3);
-
-            if (endingUiFont)
-                ImGui::PopFont();
-        }
-        ImGui::End();
-
-        return returnToMenu;
-    }
 }
 
 class EndingState : public our::State
@@ -248,8 +174,7 @@ class EndingState : public our::State
     float zombieModelYawOffset = glm::pi<float>();
     float endingGroundY = -0.75f;
     glm::vec3 endingStageCenter = glm::vec3(0.0f);
-    ImFont *endingTitleFont = nullptr;
-    ImFont *endingUiFont = nullptr;
+    our::ui::ending::Assets endingUiAssets{};
 
     ending::WinRuntime winRuntime{};
     ending::LoseRuntime loseRuntime{};
@@ -460,7 +385,7 @@ public:
         setupCamera();
         setupVisualAssets();
         ending::clearLocalOccludersAroundStage(world, endingStageCenter, playerMesh, scenePlayerMesh, zombieMesh);
-        our::ui::loadPreferredSerifFonts(endingTitleFont, endingUiFont, 46.0f, 28.0f);
+        endingUiAssets.loadDefaultThemeResources();
         setupPlayerVisual();
         setupOutcomeActors();
 
@@ -505,7 +430,7 @@ public:
     void onImmediateGui() override
     {
         const bool isWin = our::GameSession::endingOutcome == our::EndingOutcome::Win;
-        if (ending::drawEndingOverlay(isWin, endingTitleFont, endingUiFont))
+        if (our::ui::ending::drawOverlay(isWin, endingUiAssets))
             getApp()->changeState("menu");
     }
 
@@ -523,6 +448,8 @@ public:
             delete ownedEndingPlayerMesh;
             ownedEndingPlayerMesh = nullptr;
         }
+
+        endingUiAssets.destroy();
 
         loseZombies.clear();
         cameraEntity = nullptr;
