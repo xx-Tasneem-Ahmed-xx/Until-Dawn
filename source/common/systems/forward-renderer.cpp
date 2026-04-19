@@ -1,6 +1,8 @@
 #include "forward-renderer.hpp"
+#include "../asset-loader.hpp"
 #include "../mesh/mesh-utils.hpp"
 #include "../texture/texture-utils.hpp"
+#include "../components/player.hpp"
 #include "../components/zombie.hpp"
 #include <glm/gtx/euler_angles.hpp>
 
@@ -157,8 +159,20 @@ namespace our
     {
         // First of all, we search for a camera and for all the mesh renderers
         CameraComponent *camera = nullptr;
+        PlayerComponent *mainPlayerComponent = nullptr;
+        Mesh *mainPlayerMesh = AssetLoader<Mesh>::get("main-player");
         opaqueCommands.clear();
         transparentCommands.clear();
+
+        for (auto entity : world->getEntities())
+        {
+            if (auto *player = entity->getComponent<PlayerComponent>(); player && player->isMainPlayer)
+            {
+                mainPlayerComponent = player;
+                break;
+            }
+        }
+
         for (auto entity : world->getEntities())
         {
             // If we hadn't found a camera yet, we look for a camera in this entity
@@ -177,10 +191,32 @@ namespace our
                 command.mesh = meshRenderer->mesh;
                 command.material = meshRenderer->material;
 
-                if (auto zombie = entity->getComponent<ZombieComponent>())
+                auto findPlayerComponentInHierarchy = [](Entity *start) -> PlayerComponent *
+                {
+                    Entity *current = start;
+                    while (current)
+                    {
+                        if (auto player = current->getComponent<PlayerComponent>())
+                            return player;
+                        current = current->parent;
+                    }
+                    return nullptr;
+                };
+
+                if (auto player = findPlayerComponentInHierarchy(entity))
+                {
+                    command.skinMatrices = &player->skinMatrices;
+                    command.skinJointCount = static_cast<int>(player->skinMatrices.size());
+                }
+                else if (auto zombie = entity->getComponent<ZombieComponent>())
                 {
                     command.skinMatrices = &zombie->skinMatrices;
                     command.skinJointCount = static_cast<int>(zombie->skinMatrices.size());
+                }
+                else if (mainPlayerComponent && mainPlayerMesh && command.mesh == mainPlayerMesh)
+                {
+                    command.skinMatrices = &mainPlayerComponent->skinMatrices;
+                    command.skinJointCount = static_cast<int>(mainPlayerComponent->skinMatrices.size());
                 }
 
                 // if it is transparent, we add it to the transparent commands list
