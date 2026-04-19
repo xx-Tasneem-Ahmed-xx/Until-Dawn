@@ -557,6 +557,71 @@
         ]
       },
       {
+        "name": "pickup_health_0",
+        "position": [12, -7.5, 12],
+        "rotation": [0, 0, 0],
+        "scale": [20, 20, 20],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "pickup-health",
+            "material": "auto"
+          }
+        ]
+      },
+      {
+        "name": "pickup_health_1",
+        "position": [-12, -7.5, 12],
+        "rotation": [0, 0, 0],
+        "scale": [30, 30, 30],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "pickup-health",
+            "material": "auto"
+          }
+        ]
+      },
+      {
+        "name": "pickup_health_2",
+        "position": [12, -7.5, -12],
+        "rotation": [0, 0, 0],
+        "scale": [30, 30, 30],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "pickup-health",
+            "material": "auto"
+          }
+        ]
+      },
+      {
+        "name": "pickup_health_3",
+        "position": [-12, -7.5, -12],
+        "rotation": [0, 0, 0],
+        "scale": [30, 30, 30],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "pickup-health",
+            "material": "auto"
+          }
+        ]
+      },
+      {
+        "name": "pickup_health_4",
+        "position": [0, -7.5, 24],
+        "rotation": [0, 0, 0],
+        "scale": [30, 30, 30],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "pickup-health",
+            "material": "auto"
+          }
+        ]
+      },
+      {
         "name": "crate_0",
         "position": [
           4.979103736571029,
