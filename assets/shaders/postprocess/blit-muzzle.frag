@@ -4,6 +4,8 @@
 uniform sampler2D tex;
 // Flash intensity controlled by gameplay code in range [0, 1]
 uniform float flash;
+// Global scene exposure, where 1.0 is neutral.
+uniform float exposure;
 // Screen-space location of the muzzle in UV coordinates
 uniform vec2 flashCenter;
 
@@ -24,6 +26,6 @@ void main(){
     vec3 flashColor = vec3(1.0, 0.78, 0.45);
     float strength = clamp(flash, 0.0, 1.0) * burst;
 
-    vec3 color = scene.rgb + flashColor * strength;
+    vec3 color = scene.rgb * clamp(exposure, 0.0, 2.0) + flashColor * strength;
     frag_color = vec4(clamp(color, 0.0, 1.0), scene.a);
 }

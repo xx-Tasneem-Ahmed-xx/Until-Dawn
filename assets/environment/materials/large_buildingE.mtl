@@ -1,16 +1,17 @@
 # Created by Kenney (www.kenney.nl)
 
 newmtl _defaultMat
-	Kd 0.55 0.55 0.55
+  Kd 0.55 0.55 0.55
 
 newmtl border
-	Kd 0.28 0.29 0.33
+  Kd 0.28 0.29 0.33
 
 newmtl window
-	Kd 0.51 0.77 1.00
+  Kd 0.51 0.77 1.00
 
 newmtl door
-	Kd 0.12 0.13 0.17
+  Kd 0.12 0.13 0.17
 
 newmtl roof
-	Kd 0.09 0.51 0.33
+  Kd 0.09 0.51 0.33
+

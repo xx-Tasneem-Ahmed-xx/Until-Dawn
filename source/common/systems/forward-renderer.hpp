@@ -52,6 +52,8 @@ namespace our
         glm::vec2 muzzleFlashCenter = glm::vec2(0.5f, 0.5f);
         // Elapsed time in seconds — fed to animated postprocess shaders (e.g. film grain)
         float elapsedTime = 0.0f;
+        // Global scene exposure factor for postprocessing (dark-to-bright transitions).
+        float sceneExposure = 1.0f;
     public:
         // Initialize the renderer including the sky and the Postprocessing objects.
         // windowSize is the width & height of the window (in pixels).
@@ -62,6 +64,9 @@ namespace our
         void render(World *world);
         // Update elapsed time so animated postprocess shaders receive a time uniform
         void setTime(float t) { elapsedTime = t; }
+        // Sets global scene exposure used by postprocessing shader.
+        // Expected range is [0, 2] where 1 is neutral.
+        void setSceneExposure(float value) { sceneExposure = glm::clamp(value, 0.0f, 2.0f); }
 
         // Sets the screen flash intensity used by postprocessing shaders.
         // Expected range is [0, 1].

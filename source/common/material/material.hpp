@@ -5,6 +5,7 @@
 #include "../texture/sampler.hpp"
 #include "../shader/shader.hpp"
 
+#include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 #include <json/json.hpp>
 
@@ -48,6 +49,7 @@ namespace our {
         Texture2D* texture = nullptr;
         Sampler* sampler = nullptr;
         float alphaThreshold;
+        glm::vec2 uvScale = glm::vec2(1.0f, 1.0f);
 
         void setup() const override;
         void deserialize(const nlohmann::json& data) override;

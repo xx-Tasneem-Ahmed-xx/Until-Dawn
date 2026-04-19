@@ -58,8 +58,11 @@ namespace our
 
         glActiveTexture(GL_TEXTURE0);
         if (texture) texture->bind();
+        else glBindTexture(GL_TEXTURE_2D, 0);
         if (sampler) sampler->bind(0);
         shader->set("tex", 0);
+        shader->set("has_albedo_map", texture ? 1 : 0);
+        shader->set("uv_scale", uvScale);
     }
 
     // This function read the material data from a json object
@@ -71,6 +74,7 @@ namespace our
         alphaThreshold = data.value("alphaThreshold", 0.0f);
         texture = AssetLoader<Texture2D>::get(data.value("texture", ""));
         sampler = AssetLoader<Sampler>::get(data.value("sampler", ""));
+        uvScale = data.value("uv_scale", uvScale);
     }
 
     void LitMaterial::setup() const {
@@ -81,21 +85,25 @@ namespace our
         if (specular) specular->bind();
         if (sampler) sampler->bind(1);
         shader->set("tex_specular", 1);
+        shader->set("has_specular_map", specular ? 1 : 0);
 
         glActiveTexture(GL_TEXTURE2);
         if (roughness) roughness->bind();
         if (sampler) sampler->bind(2);
         shader->set("tex_roughness", 2);
+        shader->set("has_roughness_map", roughness ? 1 : 0);
 
         glActiveTexture(GL_TEXTURE3);
         if (ambient_occlusion) ambient_occlusion->bind();
         if (sampler) sampler->bind(3);
         shader->set("tex_ambient_occlusion", 3);
+        shader->set("has_ambient_occlusion_map", ambient_occlusion ? 1 : 0);
 
         glActiveTexture(GL_TEXTURE4);
         if (emission) emission->bind();
         if (sampler) sampler->bind(4);
         shader->set("tex_emission", 4);
+        shader->set("has_emission_map", emission ? 1 : 0);
         
         glActiveTexture(GL_TEXTURE0); // restore default
     }
