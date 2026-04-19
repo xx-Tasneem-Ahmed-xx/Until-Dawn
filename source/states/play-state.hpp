@@ -9,6 +9,7 @@
 #include <systems/shooting-system.hpp>
 #include <systems/collision-system.hpp>
 #include <systems/scene-manager.hpp>
+#include <systems/hud-system.hpp>
 #include <components/camera.hpp>
 #include <components/environment.hpp>
 #include <components/free-camera-controller.hpp>
@@ -42,6 +43,7 @@ class Playstate : public our::State
 
     our::World world;
     our::ForwardRenderer renderer;
+    our::HUDSystem hudSystem;
     our::FreeCameraControllerSystem cameraController;
     our::MovementSystem movementSystem;
     our::ShootingSystem shootingSystem;
@@ -1341,6 +1343,7 @@ class Playstate : public our::State
         // Then we initialize the renderer
         auto size = getApp()->getFrameBufferSize();
         renderer.initialize(size, config["renderer"]);
+        hudSystem.initialize();
         our::SceneManager::validateWorld(&world);
         totalTime = 0.0f;
     }
@@ -1457,6 +1460,9 @@ class Playstate : public our::State
         // And finally we use the renderer system to draw the scene
         renderer.render(&world);
 
+        // Draw ammo HUD over the final frame
+        hudSystem.renderAmmoHUD(getApp()->getFrameBufferSize(), mainPlayerWeapon);
+
         // Handle reload key (R)
         if (keyboard.justPressed(GLFW_KEY_R))
         {
@@ -1530,6 +1536,7 @@ class Playstate : public our::State
 
         // Don't forget to destroy the renderer
         renderer.destroy();
+        hudSystem.destroy();
         // On exit, we call exit for the camera controller system to make sure that the mouse is unlocked
         cameraController.exit();
         // Clear the world
