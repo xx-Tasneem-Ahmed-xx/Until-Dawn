@@ -22,9 +22,13 @@
 #include <asset-loader.hpp>
 #include <deserialize-utils.hpp>
 #include <game-session.hpp>
+#include <texture/texture2d.hpp>
+#include <texture/texture-utils.hpp>
 #include <GLFW/glfw3.h>
+#include <imgui.h>
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cmath>
 #include <iostream>
 #include <glm/gtc/constants.hpp>
@@ -142,6 +146,191 @@ class Playstate : public our::State
     };
 
     std::vector<BloodSplashFx> activeBloodSplashes;
+    bool isPaused = false;
+    bool musicEnabled = true;
+    bool effectsEnabled = true;
+    float pauseTintAlpha = 0.45f;
+    our::Texture2D *pauseMusicIcon = nullptr;
+    our::Texture2D *pauseVolumeIcon = nullptr;
+    our::Texture2D *pauseMenuIcon = nullptr;
+    our::Texture2D *pauseContinueIcon = nullptr;
+    our::Texture2D *pauseNothingIcon = nullptr;
+
+    our::Texture2D *loadPauseIcon(const std::string &path)
+    {
+        our::Texture2D *texture = our::texture_utils::loadImage(path, false);
+        if (!texture)
+        {
+            std::cout << "[PauseUI] Failed to load icon: " << path << "\n";
+        }
+        return texture;
+    }
+
+    void applyAudioPreferences()
+    {
+        auto &audio = our::AudioManager::getInstance();
+        if (!audio.isInitialized())
+            return;
+
+        audio.setMusicEnabled(musicEnabled);
+        audio.setEffectsEnabled(effectsEnabled);
+
+        if (musicEnabled)
+        {
+            audio.playLoopingSound(worldAmbientTrack, worldAmbientGain);
+        }
+        else
+        {
+            audio.stopLoopingSound(worldAmbientTrack);
+        }
+    }
+
+    bool drawPauseIconButton(const char *id, our::Texture2D *iconTexture, const char *label, bool enabledState, bool flipIconVertically = false)
+    {
+        ImGui::PushID(id);
+        const ImVec2 buttonSize(106.0f, 106.0f);
+        const ImVec2 iconPadding(16.0f, 16.0f);
+        const ImVec2 topLeft = ImGui::GetCursorScreenPos();
+
+        ImGui::InvisibleButton("IconButton", buttonSize);
+
+        const bool hovered = ImGui::IsItemHovered();
+        const bool clicked = ImGui::IsItemClicked();
+
+        ImDrawList *drawList = ImGui::GetWindowDrawList();
+        const ImVec2 bottomRight(topLeft.x + buttonSize.x, topLeft.y + buttonSize.y);
+        const ImU32 bgColor = hovered ? IM_COL32(245, 245, 245, 255) : IM_COL32(230, 230, 230, 255);
+        drawList->AddRectFilled(topLeft, bottomRight, bgColor, 10.0f);
+        drawList->AddRect(topLeft, bottomRight, IM_COL32(28, 28, 28, 255), 10.0f, 0, 1.8f);
+
+        if (iconTexture)
+        {
+            const ImVec2 iconMin(topLeft.x + iconPadding.x, topLeft.y + iconPadding.y);
+            const ImVec2 iconMax(bottomRight.x - iconPadding.x, bottomRight.y - iconPadding.y);
+            if (flipIconVertically)
+            {
+                drawList->AddImage((ImTextureID)(intptr_t)iconTexture->getOpenGLName(), iconMin, iconMax, ImVec2(0, 1), ImVec2(1, 0));
+            }
+            else
+            {
+                drawList->AddImage((ImTextureID)(intptr_t)iconTexture->getOpenGLName(), iconMin, iconMax);
+            }
+        }
+
+        if (!enabledState && pauseNothingIcon)
+        {
+            const ImVec2 offMin(topLeft.x + iconPadding.x * 0.65f, topLeft.y + iconPadding.y * 0.65f);
+            const ImVec2 offMax(bottomRight.x - iconPadding.x * 0.65f, bottomRight.y - iconPadding.y * 0.65f);
+            drawList->AddImage((ImTextureID)(intptr_t)pauseNothingIcon->getOpenGLName(), offMin, offMax, ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 50, 50, 235));
+        }
+
+        ImVec2 labelSize = ImGui::CalcTextSize(label);
+        drawList->AddText(ImVec2(topLeft.x + (buttonSize.x - labelSize.x) * 0.5f, topLeft.y + buttonSize.y + 9.0f), IM_COL32(240, 240, 240, 255), label);
+
+        ImGui::Dummy(ImVec2(buttonSize.x, 30.0f));
+        ImGui::PopID();
+        return clicked;
+    }
+
+    void setPauseMode(bool paused)
+    {
+        if (isPaused == paused)
+            return;
+
+        isPaused = paused;
+        if (isPaused)
+        {
+            our::Mouse::unlockMouse(getApp()->getWindow());
+        }
+        else
+        {
+            our::Mouse::lockMouse(getApp()->getWindow());
+        }
+    }
+
+    void renderPauseOverlay()
+    {
+        if (!isPaused)
+            return;
+
+        const ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+        ImDrawList *foreground = ImGui::GetForegroundDrawList();
+        foreground->AddRectFilled(ImVec2(0.0f, 0.0f), displaySize, IM_COL32(0, 0, 0, static_cast<int>(pauseTintAlpha * 255.0f)));
+
+        const float panelWidth = std::min(700.0f, displaySize.x * 0.86f);
+        ImGui::SetNextWindowPos(ImVec2(displaySize.x * 0.5f, displaySize.y * 0.53f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(panelWidth, 0.0f), ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.75f);
+
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
+                                 ImGuiWindowFlags_NoResize |
+                                 ImGuiWindowFlags_NoMove |
+                                 ImGuiWindowFlags_AlwaysAutoResize;
+
+        if (ImGui::Begin("PauseOverlay", nullptr, flags))
+        {
+            const char *title = "Settings";
+            ImGui::SetWindowFontScale(1.95f);
+            ImVec2 titleSize = ImGui::CalcTextSize(title);
+            ImGui::SetCursorPosX(std::max(12.0f, (ImGui::GetWindowWidth() - titleSize.x) * 0.5f));
+            ImGui::TextUnformatted(title);
+            ImGui::SetWindowFontScale(1.0f);
+
+            ImGui::Spacing();
+            const char *subtitle = "Paused";
+            ImGui::SetWindowFontScale(1.20f);
+            ImVec2 subtitleSize = ImGui::CalcTextSize(subtitle);
+            ImGui::SetCursorPosX(std::max(12.0f, (ImGui::GetWindowWidth() - subtitleSize.x) * 0.5f));
+            ImGui::TextUnformatted(subtitle);
+            ImGui::SetWindowFontScale(1.0f);
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            ImGui::Columns(2, "PauseGrid", false);
+
+            auto centerButtonInColumn = [&]()
+            {
+                constexpr float pauseButtonWidth = 106.0f;
+                const float currentX = ImGui::GetCursorPosX();
+                const float columnWidth = ImGui::GetColumnWidth();
+                const float centeredX = currentX + std::max(0.0f, (columnWidth - pauseButtonWidth) * 0.5f);
+                ImGui::SetCursorPosX(centeredX);
+            };
+
+            centerButtonInColumn();
+            if (drawPauseIconButton("pause_music", pauseMusicIcon, "Music", musicEnabled, true))
+            {
+                musicEnabled = !musicEnabled;
+                applyAudioPreferences();
+            }
+
+            ImGui::NextColumn();
+            centerButtonInColumn();
+            if (drawPauseIconButton("pause_volume", pauseVolumeIcon, "Volume", effectsEnabled))
+            {
+                effectsEnabled = !effectsEnabled;
+                applyAudioPreferences();
+            }
+
+            ImGui::NextColumn();
+            centerButtonInColumn();
+            if (drawPauseIconButton("pause_menu", pauseMenuIcon, "Menu", true))
+            {
+                getApp()->changeState("menu");
+            }
+
+            ImGui::NextColumn();
+            centerButtonInColumn();
+            if (drawPauseIconButton("pause_continue", pauseContinueIcon, "Continue", true))
+            {
+                setPauseMode(false);
+            }
+
+            ImGui::Columns(1);
+        }
+        ImGui::End();
+    }
 
     our::Entity *findMainPlayerEntity()
     {
@@ -1332,10 +1521,20 @@ class Playstate : public our::State
         zombiesKilledCount = 0;
         waitingForNextWave = true;
         betweenWaveTimer = initialWaveDelaySeconds;
+        isPaused = false;
+        musicEnabled = true;
+        effectsEnabled = true;
+
+        pauseMusicIcon = loadPauseIcon("assets/icons/music-player.png");
+        pauseVolumeIcon = loadPauseIcon("assets/icons/volume.png");
+        pauseMenuIcon = loadPauseIcon("assets/icons/menu.png");
+        pauseContinueIcon = loadPauseIcon("assets/icons/continue.png");
+        pauseNothingIcon = loadPauseIcon("assets/icons/nothing.png");
 
         if (our::AudioManager::getInstance().isInitialized())
         {
             our::AudioManager::getInstance().playLoopingSound(worldAmbientTrack, worldAmbientGain);
+            applyAudioPreferences();
         }
 
         // We initialize the camera controller system since it needs a pointer to the app
@@ -1351,7 +1550,16 @@ class Playstate : public our::State
 
     void onDraw(double deltaTime) override
     {
-        totalTime += (float)deltaTime;
+        auto &keyboard = getApp()->getKeyboard();
+        if (keyboard.justPressed(GLFW_KEY_P))
+        {
+            setPauseMode(!isPaused);
+        }
+
+        if (!isPaused)
+        {
+            totalTime += (float)deltaTime;
+        }
         renderer.setTime(totalTime);
 
         glm::vec2 muzzleFlashCenter = glm::vec2(0.66f, 0.28f);
@@ -1415,8 +1623,14 @@ class Playstate : public our::State
         float muzzleFlashStrength = muzzleFlashDuration > 0.0f ? (muzzleFlashTimeLeft / muzzleFlashDuration) : 0.0f;
         renderer.setMuzzleFlashStrength(muzzleFlashStrength);
 
-        // Get a reference to the keyboard object
-        auto &keyboard = getApp()->getKeyboard();
+        if (isPaused)
+        {
+            renderer.setSceneExposure(computeCurrentExposure());
+            renderer.setMuzzleFlashStrength(0.0f);
+            renderer.render(&world);
+            our::AudioManager::getInstance().cleanupFinishedSources();
+            return;
+        }
 
         // Debug: decrease main player health on K press
         if (keyboard.justPressed(GLFW_KEY_K))
@@ -1501,6 +1715,9 @@ class Playstate : public our::State
 
     void onMouseButtonEvent(int button, int action, int mods) override
     {
+        if (isPaused)
+            return;
+
         // Handle mouse button clicks for shooting
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
         {
@@ -1547,12 +1764,34 @@ class Playstate : public our::State
         }
     }
 
+    void onImmediateGui() override
+    {
+        renderPauseOverlay();
+    }
+
     void onDestroy() override
     {
+        setPauseMode(false);
+
+        auto &audio = our::AudioManager::getInstance();
+        audio.setEffectsEnabled(true);
+        audio.setMusicEnabled(true);
+
         if (our::AudioManager::getInstance().isInitialized())
         {
             our::AudioManager::getInstance().stopLoopingSound(worldAmbientTrack);
         }
+
+        delete pauseMusicIcon;
+        delete pauseVolumeIcon;
+        delete pauseMenuIcon;
+        delete pauseContinueIcon;
+        delete pauseNothingIcon;
+        pauseMusicIcon = nullptr;
+        pauseVolumeIcon = nullptr;
+        pauseMenuIcon = nullptr;
+        pauseContinueIcon = nullptr;
+        pauseNothingIcon = nullptr;
 
         // Don't forget to destroy the renderer
         renderer.destroy();
