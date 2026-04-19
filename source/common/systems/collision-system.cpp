@@ -1,5 +1,6 @@
 #include "collision-system.hpp"
 #include "../components/collider.hpp"
+#include "../components/environment.hpp"
 #include "../ecs/entity.hpp"
 #include <glm/glm.hpp>
 #include <algorithm>
@@ -27,8 +28,28 @@ namespace our {
                 
                 if (!colliderB) continue;
 
+                auto envA = entityA->getComponent<EnvironmentComponent>();
+                auto envB = entityB->getComponent<EnvironmentComponent>();
+
+                const bool wallLikeA = envA && (envA->environmentType == "wall" || envA->environmentType == "prop");
+                const bool wallLikeB = envB && (envB->environmentType == "wall" || envB->environmentType == "prop");
+
+                bool collided = false;
+
+                // For walls/props, use XZ overlap so different Y anchors don't disable collisions.
+                if (wallLikeA || wallLikeB) {
+                    glm::vec3 minA, maxA, minB, maxB;
+                    colliderA->getWorldBounds(minA, maxA);
+                    colliderB->getWorldBounds(minB, maxB);
+
+                    collided = (minA.x <= maxB.x && maxA.x >= minB.x) &&
+                               (minA.z <= maxB.z && maxA.z >= minB.z);
+                } else {
+                    collided = colliderA->intersects(colliderB);
+                }
+
                 // Check for collision
-                if (colliderA->intersects(colliderB)) {
+                if (collided) {
                     CollisionInfo info = {entityA, entityB, colliderA, colliderB};
                     currentCollisions.push_back(info);
                 }
