@@ -20,6 +20,7 @@ namespace our
         ALCcontext *context = nullptr;
         std::map<std::string, ALuint> buffers;
         std::map<std::string, ALuint> sources;
+        std::map<std::string, ALuint> loopingSources;
 
         // Helper method to ensure context is current before any AL operation
         void ensureContextCurrent() const
@@ -154,6 +155,12 @@ namespace our
 
             // Clean up sources
             for (auto &pair : sources)
+            {
+                alDeleteSources(1, &pair.second);
+            }
+
+            // Clean up looping sources
+            for (auto &pair : loopingSources)
             {
                 alDeleteSources(1, &pair.second);
             }
@@ -458,6 +465,109 @@ namespace our
 
             std::cout << "[AudioManager] Playing sound: " << filename << std::endl;
             return true;
+        }
+
+        // Play (or keep playing) a looping sound track, identified by filename.
+        bool playLoopingSound(const std::string &filename, float gain = 1.0f)
+        {
+            if (!isInitialized())
+            {
+                std::cerr << "[AudioManager] Not initialized. Cannot play looping sound: " << filename << std::endl;
+                return false;
+            }
+
+            ensureContextCurrent();
+            alGetError(); // flush any pre-existing error state
+
+            if (buffers.find(filename) == buffers.end())
+            {
+                if (!loadWAV(filename))
+                {
+                    std::cerr << "[AudioManager] Failed to load WAV file: " << filename << std::endl;
+                    return false;
+                }
+            }
+
+            auto existing = loopingSources.find(filename);
+            if (existing != loopingSources.end())
+            {
+                ALint state = AL_STOPPED;
+                alGetSourcei(existing->second, AL_SOURCE_STATE, &state);
+                alSourcef(existing->second, AL_GAIN, gain);
+                if (state != AL_PLAYING)
+                {
+                    alSourcePlay(existing->second);
+                }
+                return alGetError() == AL_NO_ERROR;
+            }
+
+            ALuint source = 0;
+            alGenSources(1, &source);
+
+            ALenum error = alGetError();
+            if (error != AL_NO_ERROR || source == 0)
+            {
+                std::cerr << "[AudioManager] Error generating looping source: " << error << std::endl;
+                return false;
+            }
+
+            alSourcei(source, AL_BUFFER, buffers[filename]);
+            alSourcei(source, AL_LOOPING, AL_TRUE);
+            alSourcef(source, AL_PITCH, 1.0f);
+            alSourcef(source, AL_GAIN, gain);
+            alSource3f(source, AL_POSITION, 0.0f, 0.0f, 0.0f);
+
+            error = alGetError();
+            if (error != AL_NO_ERROR)
+            {
+                std::cerr << "[AudioManager] Error configuring looping source: " << error << std::endl;
+                alDeleteSources(1, &source);
+                return false;
+            }
+
+            alSourcePlay(source);
+            error = alGetError();
+            if (error != AL_NO_ERROR)
+            {
+                std::cerr << "[AudioManager] Error playing looping source: " << error << std::endl;
+                alDeleteSources(1, &source);
+                return false;
+            }
+
+            loopingSources[filename] = source;
+            std::cout << "[AudioManager] Playing looping sound: " << filename << std::endl;
+            return true;
+        }
+
+        // Stop a looping sound track if it is currently active.
+        void stopLoopingSound(const std::string &filename)
+        {
+            if (!isInitialized())
+                return;
+
+            ensureContextCurrent();
+            auto it = loopingSources.find(filename);
+            if (it == loopingSources.end())
+                return;
+
+            alSourceStop(it->second);
+            alDeleteSources(1, &it->second);
+            loopingSources.erase(it);
+        }
+
+        // Stop all active looping tracks.
+        void stopAllLoopingSounds()
+        {
+            if (!isInitialized())
+                return;
+
+            ensureContextCurrent();
+            for (auto &pair : loopingSources)
+            {
+                alSourceStop(pair.second);
+                alDeleteSources(1, &pair.second);
+            }
+            loopingSources.clear();
         }
     };
 }
