@@ -21,6 +21,7 @@
 #include <audio-manager.hpp>
 #include <asset-loader.hpp>
 #include <deserialize-utils.hpp>
+#include <game-session.hpp>
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cctype>
@@ -51,6 +52,7 @@ class Playstate : public our::State
     float muzzleFlashTimeLeft = 0.0f;
     const float muzzleFlashDuration = 0.06f;
     float totalTime = 0.0f;
+    bool endingQueued = false;
     our::Entity *mainCameraEntity = nullptr;
     our::Entity *mainPlayerEntity = nullptr;
 
@@ -1343,6 +1345,8 @@ class Playstate : public our::State
         renderer.initialize(size, config["renderer"]);
         our::SceneManager::validateWorld(&world);
         totalTime = 0.0f;
+        endingQueued = false;
+        our::GameSession::clear();
     }
 
     void onDraw(double deltaTime) override
@@ -1450,6 +1454,28 @@ class Playstate : public our::State
             maxHealth = health->maxHealth;
         }
         renderer.setHealth(currentHealth, maxHealth, (float)deltaTime);
+
+        if (!endingQueued)
+        {
+            bool playerDefeated = false;
+            if (auto *health = getMainPlayerHealth(); health)
+            {
+                playerDefeated = (!health->isAlive) || (health->currentHealth <= 0.0f);
+            }
+
+            if (playerDefeated)
+            {
+                endingQueued = true;
+                our::GameSession::setEndingResult(our::EndingOutcome::Lose, computeCurrentExposure());
+                getApp()->changeState("ending");
+            }
+            else if (allWavesCompleted && getAliveZombieCount() == 0)
+            {
+                endingQueued = true;
+                our::GameSession::setEndingResult(our::EndingOutcome::Win, computeCurrentExposure());
+                getApp()->changeState("ending");
+            }
+        }
 
         // Clean up finished audio sources
         our::AudioManager::getInstance().cleanupFinishedSources();
