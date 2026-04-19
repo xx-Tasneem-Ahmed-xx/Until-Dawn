@@ -21,6 +21,8 @@ namespace our
         std::map<std::string, ALuint> buffers;
         std::map<std::string, ALuint> sources;
         std::map<std::string, ALuint> loopingSources;
+        bool musicEnabled = true;
+        bool effectsEnabled = true;
 
         // Helper method to ensure context is current before any AL operation
         void ensureContextCurrent() const
@@ -191,6 +193,33 @@ namespace our
         bool isInitialized() const
         {
             return device != nullptr && context != nullptr;
+        }
+
+        void setMusicEnabled(bool enabled)
+        {
+            musicEnabled = enabled;
+            if (!isInitialized())
+                return;
+
+            if (!musicEnabled)
+            {
+                stopAllLoopingSounds();
+            }
+        }
+
+        void setEffectsEnabled(bool enabled)
+        {
+            effectsEnabled = enabled;
+        }
+
+        bool isMusicEnabled() const
+        {
+            return musicEnabled;
+        }
+
+        bool isEffectsEnabled() const
+        {
+            return effectsEnabled;
         }
 
         // Load a WAV file and store it in a buffer
@@ -400,6 +429,11 @@ namespace our
                 return false;
             }
 
+            if (!effectsEnabled)
+            {
+                return false;
+            }
+
             ensureContextCurrent();
             alGetError(); // flush any pre-existing error state
 
@@ -473,6 +507,12 @@ namespace our
             if (!isInitialized())
             {
                 std::cerr << "[AudioManager] Not initialized. Cannot play looping sound: " << filename << std::endl;
+                return false;
+            }
+
+            if (!musicEnabled)
+            {
+                stopLoopingSound(filename);
                 return false;
             }
 

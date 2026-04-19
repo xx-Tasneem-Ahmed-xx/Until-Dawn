@@ -68,6 +68,7 @@ class EndingState : public our::State
     float loseSkyTurnDuration = 4.50f;
     glm::vec3 loseZombieCircleCenterOffset = glm::vec3(0.0f, 0.0f, -0.28f);
     float loseZombieGroundOffset = -0.42f;
+    float winPlayerGroundOffset = -0.30f;
 
     void loadEndingFonts()
     {
@@ -419,6 +420,11 @@ class EndingState : public our::State
             if (!playerLoseClip)
                 playerVisualEntity->localTransform.rotation.x = glm::radians(-88.0f);
         }
+        else if (our::GameSession::endingOutcome == our::EndingOutcome::Win)
+        {
+            // Keep Olivia grounded in the winning shot.
+            playerVisualEntity->localTransform.position.y = endingGroundY + winPlayerGroundOffset;
+        }
     }
 
     our::Entity *spawnZombieActor(const glm::vec3 &position, float yaw)
@@ -592,6 +598,11 @@ class EndingState : public our::State
         }
         else if (our::GameSession::endingOutcome == our::EndingOutcome::Win)
         {
+            if (playerVisualEntity)
+            {
+                playerVisualEntity->localTransform.position.y = endingGroundY + winPlayerGroundOffset;
+            }
+
             if (playerStandClip)
             {
                 float playerTime = positiveModulo(elapsedTime, std::max(0.01f, playerStandClip->duration));
@@ -675,9 +686,7 @@ public:
     void onImmediateGui() override
     {
         const bool isWin = our::GameSession::endingOutcome == our::EndingOutcome::Win;
-        const char *endingText = isWin
-                                     ? "Congratulations, you have survived until dawn"
-                                     : "You've lost to the darkness of night";
+        const char *loseText = "You've lost to the darkness of night";
 
         ImVec2 displaySize = ImGui::GetIO().DisplaySize;
         float windowWidth = std::min(980.0f, displaySize.x * 0.82f);
@@ -696,13 +705,30 @@ public:
                 ImGui::PushFont(endingTitleFont);
 
             ImGui::PushStyleColor(ImGuiCol_Text, isWin ? ImVec4(1.0f, 0.96f, 0.80f, 1.0f) : ImVec4(1.0f, 0.64f, 0.64f, 1.0f));
-            float wrapWidth = std::min(860.0f, ImGui::GetWindowWidth() - 36.0f);
-            ImVec2 textSize = ImGui::CalcTextSize(endingText, nullptr, false, wrapWidth);
-            float centeredTextX = std::max(8.0f, (ImGui::GetWindowWidth() - textSize.x) * 0.5f);
-            ImGui::SetCursorPosX(centeredTextX);
-            ImGui::PushTextWrapPos(centeredTextX + wrapWidth);
-            ImGui::TextWrapped("%s", endingText);
-            ImGui::PopTextWrapPos();
+            if (isWin)
+            {
+                const char *winLine1 = "Congratulations, you have survived";
+                const char *winLine2 = "until dawn";
+
+                ImVec2 line1Size = ImGui::CalcTextSize(winLine1);
+                ImVec2 line2Size = ImGui::CalcTextSize(winLine2);
+
+                ImGui::SetCursorPosX(std::max(8.0f, (ImGui::GetWindowWidth() - line1Size.x) * 0.5f));
+                ImGui::TextUnformatted(winLine1);
+
+                ImGui::SetCursorPosX(std::max(8.0f, (ImGui::GetWindowWidth() - line2Size.x) * 0.5f));
+                ImGui::TextUnformatted(winLine2);
+            }
+            else
+            {
+                float wrapWidth = std::min(860.0f, ImGui::GetWindowWidth() - 36.0f);
+                ImVec2 textSize = ImGui::CalcTextSize(loseText, nullptr, false, wrapWidth);
+                float centeredTextX = std::max(8.0f, (ImGui::GetWindowWidth() - textSize.x) * 0.5f);
+                ImGui::SetCursorPosX(centeredTextX);
+                ImGui::PushTextWrapPos(centeredTextX + wrapWidth);
+                ImGui::TextWrapped("%s", loseText);
+                ImGui::PopTextWrapPos();
+            }
             ImGui::PopStyleColor();
 
             if (endingTitleFont)
