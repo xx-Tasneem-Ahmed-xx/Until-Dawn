@@ -1569,6 +1569,23 @@ class Playstate : public our::State
 
     void onInitialize() override
     {
+        // Reset all per-run runtime state because this state instance is reused across scene changes.
+        currentWaveIndex = 0;
+        zombiesSpawnedThisWave = 0;
+        zombieSpawnTimer = 0.0f;
+        waitingForNextWave = true;
+        betweenWaveTimer = initialWaveDelaySeconds;
+        allWavesCompleted = false;
+        zombiesKilledCount = 0;
+        endingQueued = false;
+        totalTime = 0.0f;
+        collisionSfxCooldownLeft = 0.0f;
+        pendingOuchSfxTimeLeft = -1.0f;
+        muzzleFlashTimeLeft = 0.0f;
+        mainPlayerAnchorInitialized = false;
+        lastMainPlayerAnchorPosition = glm::vec3(0.0f);
+        activeBloodSplashes.clear();
+
         // First of all, we get the scene configuration from the app config
         auto &config = getApp()->getConfig()["scene"];
         // If we have assets in the scene config, we deserialize them
@@ -1624,8 +1641,6 @@ class Playstate : public our::State
         cacheZombiePrototypeAndSpawnPoints();
         cacheBloodSplashAssets();
         recalculateSunriseTargets();
-        zombiesKilledCount = 0;
-        waitingForNextWave = true;
         betweenWaveTimer = initialWaveDelaySeconds;
         isPaused = false;
         musicEnabled = true;
@@ -1649,8 +1664,6 @@ class Playstate : public our::State
         auto size = getApp()->getFrameBufferSize();
         renderer.initialize(size, config["renderer"]);
         our::SceneManager::validateWorld(&world);
-        totalTime = 0.0f;
-        endingQueued = false;
         our::GameSession::clear();
     }
 
