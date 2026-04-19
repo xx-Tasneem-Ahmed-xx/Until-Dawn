@@ -9,6 +9,12 @@ namespace our
             return;
 
         isMainPlayer = data.value("isMainPlayer", isMainPlayer);
+        animationState = PlayerAnimationState::Idle;
+        activeMotionClip.clear();
+        motionClipTime = 0.0f;
+        shootClipTime = 0.0f;
+        shootRequested = false;
+        skinMatrices.clear();
     }
 
 }
