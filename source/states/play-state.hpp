@@ -20,6 +20,7 @@
 #include <animation/motion.hpp>
 #include <audio-manager.hpp>
 #include <asset-loader.hpp>
+#include <deserialize-utils.hpp>
 #include <game-session.hpp>
 #include <GLFW/glfw3.h>
 #include <algorithm>
@@ -46,6 +47,8 @@ class Playstate : public our::State
     our::MovementSystem movementSystem;
     our::ShootingSystem shootingSystem;
     our::CollisionSystem collisionSystem;
+    std::string worldAmbientTrack = "assets/audio/world.wav";
+    float worldAmbientGain = 0.45f;
     float muzzleFlashTimeLeft = 0.0f;
     const float muzzleFlashDuration = 0.06f;
     float totalTime = 0.0f;
@@ -63,6 +66,22 @@ class Playstate : public our::State
     const our::MotionClip *crawlClip = nullptr;
     const our::MotionClip *dieClip = nullptr;
     const our::MotionClip *crawlDieClip = nullptr;
+    our::Mesh *mainPlayerMesh = nullptr;
+    our::Motion *mainPlayerMotion = nullptr;
+    const our::MotionClip *mainPlayerIdleClip = nullptr;
+    const our::MotionClip *mainPlayerRunClip = nullptr;
+    const our::MotionClip *mainPlayerShootClip = nullptr;
+    our::Entity *mainPlayerVisualEntity = nullptr;
+    our::Transform mainPlayerVisualPrototypeTransform{};
+    float mainPlayerModelYawOffset = 0.0f;
+    float mainPlayerHeightOffset = -1.5f;
+    our::Entity *mainPlayerPistolEntity = nullptr;
+    our::Transform mainPlayerPistolPrototypeTransform{};
+    glm::vec3 mainPlayerPistolHandOffset = glm::vec3(0.20f, 0.95f, -0.06f);
+    glm::vec3 mainPlayerPistolRotationOffset = glm::vec3(0.0f, glm::pi<float>(), 0.0f);
+    float mainPlayerPistolScaleMultiplier = 0.03f;
+    glm::vec3 lastMainPlayerAnchorPosition = glm::vec3(0.0f);
+    bool mainPlayerAnchorInitialized = false;
     our::Transform zombiePrototypeTransform{};
     float zombieModelYawOffset = 0.0f;
     float zombieGroundY = -0.5f;
@@ -191,6 +210,288 @@ class Playstate : public our::State
         if (!playerEntity)
             return nullptr;
         return playerEntity->getComponent<our::WeaponComponent>();
+    }
+
+    our::Entity *findMainPlayerVisualEntity()
+    {
+        if (!mainPlayerMesh)
+            mainPlayerMesh = our::AssetLoader<our::Mesh>::get("main-player");
+        if (!mainPlayerMesh)
+            return nullptr;
+
+        if (mainPlayerEntity)
+        {
+            for (auto entity : world.getEntities())
+            {
+                if (entity->parent != mainPlayerEntity)
+                    continue;
+                auto *renderer = entity->getComponent<our::MeshRendererComponent>();
+                if (renderer && renderer->mesh == mainPlayerMesh)
+                    return entity;
+            }
+        }
+
+        for (auto entity : world.getEntities())
+        {
+            auto *renderer = entity->getComponent<our::MeshRendererComponent>();
+            if (renderer && renderer->mesh == mainPlayerMesh)
+                return entity;
+        }
+
+        return nullptr;
+    }
+
+    our::Entity *findPistolEntity()
+    {
+        our::Mesh *pistolMesh = our::AssetLoader<our::Mesh>::get("pistol");
+        if (!pistolMesh)
+            return nullptr;
+
+        for (auto entity : world.getEntities())
+        {
+            auto *renderer = entity->getComponent<our::MeshRendererComponent>();
+            if (renderer && renderer->mesh == pistolMesh)
+                return entity;
+        }
+
+        return nullptr;
+    }
+
+    void updateMainPlayerPistolAttachment()
+    {
+        if (!mainPlayerPistolEntity)
+            mainPlayerPistolEntity = findPistolEntity();
+        if (!(mainPlayerPistolEntity && mainPlayerVisualEntity))
+            return;
+
+        glm::vec3 playerWorldPosition = glm::vec3(mainPlayerVisualEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+        glm::quat playerWorldRotation = glm::quat(mainPlayerVisualEntity->localTransform.rotation);
+        glm::vec3 handWorld = playerWorldPosition + (playerWorldRotation * mainPlayerPistolHandOffset);
+
+        mainPlayerPistolEntity->parent = nullptr;
+        mainPlayerPistolEntity->localTransform.position = handWorld;
+        mainPlayerPistolEntity->localTransform.rotation = mainPlayerVisualEntity->localTransform.rotation + mainPlayerPistolRotationOffset;
+        mainPlayerPistolEntity->localTransform.scale = mainPlayerPistolPrototypeTransform.scale * mainPlayerPistolScaleMultiplier;
+    }
+
+    void bindMainPlayerMotionClips()
+    {
+        mainPlayerMotion = our::AssetLoader<our::Motion>::get("main-player-motion");
+
+        if (!mainPlayerMotion)
+        {
+            std::cout << "[Motion] main-player-motion asset not found.\n";
+            return;
+        }
+
+        // std::cout << "[Motion] Olivia clips found (" << mainPlayerMotion->clips.size() << "): ";
+        // for (size_t i = 0; i < mainPlayerMotion->clips.size(); ++i)
+        // {
+        //     std::cout << "[" << i << "] " << mainPlayerMotion->clips[i].name;
+        //     if (i + 1 < mainPlayerMotion->clips.size())
+        //         std::cout << ", ";
+        // }
+        // std::cout << "\n";
+
+        auto toLower = [](std::string s)
+        {
+            std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c)
+                           { return static_cast<char>(std::tolower(c)); });
+            return s;
+        };
+
+        auto findClipCaseInsensitive = [&](const std::string &exactName) -> const our::MotionClip *
+        {
+            if (exactName.empty())
+                return nullptr;
+
+            if (const our::MotionClip *exact = mainPlayerMotion->findClip(exactName))
+                return exact;
+
+            std::string loweredNeedle = toLower(exactName);
+            for (const auto &clip : mainPlayerMotion->clips)
+            {
+                if (toLower(clip.name) == loweredNeedle)
+                    return &clip;
+            }
+            return nullptr;
+        };
+
+        mainPlayerRunClip = findClipCaseInsensitive("Run");
+        mainPlayerShootClip = findClipCaseInsensitive("Pistol Shoot");
+        mainPlayerIdleClip = findClipCaseInsensitive("Pistol Idle");
+    }
+
+    const our::MotionClip *getMainPlayerClipForState(our::PlayerAnimationState state) const
+    {
+        if (state == our::PlayerAnimationState::Shooting)
+            return mainPlayerShootClip ? mainPlayerShootClip : mainPlayerRunClip;
+        if (state == our::PlayerAnimationState::Running)
+            return mainPlayerRunClip ? mainPlayerRunClip : mainPlayerIdleClip;
+        return mainPlayerIdleClip;
+    }
+
+    void updateMainPlayerAnimation(float deltaTime)
+    {
+        if (!mainPlayerEntity)
+            mainPlayerEntity = findMainPlayerEntity();
+        if (!mainCameraEntity)
+            mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
+        if (!mainPlayerVisualEntity)
+            mainPlayerVisualEntity = findMainPlayerVisualEntity();
+
+        if (!(mainPlayerEntity && mainPlayerVisualEntity))
+            return;
+
+        auto *player = mainPlayerEntity->getComponent<our::PlayerComponent>();
+        auto *renderer = mainPlayerVisualEntity->getComponent<our::MeshRendererComponent>();
+        if (!(player && renderer && renderer->mesh))
+            return;
+
+        auto &keyboard = getApp()->getKeyboard();
+        bool movementKeysPressed = keyboard.isPressed(GLFW_KEY_W) || keyboard.isPressed(GLFW_KEY_A) || keyboard.isPressed(GLFW_KEY_S) || keyboard.isPressed(GLFW_KEY_D);
+
+        bool startedShootingThisFrame = false;
+        if (player->shootRequested && player->animationState != our::PlayerAnimationState::Shooting)
+        {
+            player->animationState = our::PlayerAnimationState::Shooting;
+            player->activeMotionClip.clear();
+            player->motionClipTime = 0.0f;
+            player->shootClipTime = 0.0f;
+            startedShootingThisFrame = true;
+        }
+        player->shootRequested = false;
+
+        glm::vec3 cameraWorldPos = glm::vec3(0.0f);
+        if (mainCameraEntity)
+            cameraWorldPos = glm::vec3(mainCameraEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+
+        glm::vec3 playerWorldPos = glm::vec3(mainPlayerEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+        bool thirdPersonActive = glm::distance(cameraWorldPos, playerWorldPos) > 1.2f;
+        glm::vec3 cameraForward = getCameraForwardOnGround();
+        glm::vec3 anchorPosition = cameraWorldPos;
+        if (thirdPersonActive)
+        {
+            anchorPosition += cameraForward * 2.1f;
+        }
+
+        lastMainPlayerAnchorPosition = playerWorldPos;
+        mainPlayerAnchorInitialized = true;
+
+        bool isMoving = movementKeysPressed;
+
+        if (!startedShootingThisFrame && player->animationState != our::PlayerAnimationState::Shooting)
+        {
+            player->animationState = isMoving ? our::PlayerAnimationState::Running : our::PlayerAnimationState::Idle;
+        }
+
+        const our::MotionClip *clip = getMainPlayerClipForState(player->animationState);
+        if (!clip)
+            return;
+
+        if (player->animationState == our::PlayerAnimationState::Shooting)
+        {
+            player->shootClipTime += deltaTime;
+        }
+
+        if (player->activeMotionClip != clip->name)
+        {
+            player->activeMotionClip = clip->name;
+            player->motionClipTime = 0.0f;
+            if (player->animationState == our::PlayerAnimationState::Shooting)
+                player->shootClipTime = 0.0f;
+        }
+        else
+        {
+            player->motionClipTime += deltaTime;
+        }
+
+        if (player->animationState == our::PlayerAnimationState::Shooting)
+        {
+            if (clip->duration > 0.0001f)
+                player->motionClipTime = std::min(player->motionClipTime, clip->duration);
+
+            bool shootingFinished = (clip->duration <= 0.0001f) || (player->shootClipTime >= clip->duration);
+            if (shootingFinished)
+            {
+                player->animationState = isMoving ? our::PlayerAnimationState::Running : our::PlayerAnimationState::Idle;
+                const our::MotionClip *nextClip = getMainPlayerClipForState(player->animationState);
+                if (nextClip)
+                {
+                    player->activeMotionClip = nextClip->name;
+                    player->motionClipTime = 0.0f;
+                }
+                clip = nextClip;
+            }
+        }
+        else if (clip->duration > 0.0001f)
+        {
+            player->motionClipTime = std::fmod(player->motionClipTime, clip->duration);
+        }
+
+        if (!mainPlayerVisualEntity->parent)
+        {
+            mainPlayerVisualEntity->localTransform.position = anchorPosition;
+        }
+        mainPlayerVisualEntity->localTransform.position.y = mainPlayerHeightOffset;
+        mainPlayerVisualEntity->localTransform.scale = mainPlayerVisualPrototypeTransform.scale;
+
+        glm::vec3 cameraRight = glm::normalize(glm::vec3(-cameraForward.z, 0.0f, cameraForward.x));
+        bool forwardPressed = keyboard.isPressed(GLFW_KEY_W);
+        bool backwardPressed = keyboard.isPressed(GLFW_KEY_S);
+        bool rightPressed = keyboard.isPressed(GLFW_KEY_D);
+        bool leftPressed = keyboard.isPressed(GLFW_KEY_A);
+
+        glm::vec3 moveDirection(0.0f);
+        if (forwardPressed)
+            moveDirection += cameraForward;
+        if (backwardPressed)
+            moveDirection -= cameraForward;
+        if (rightPressed)
+            moveDirection += cameraRight;
+        if (leftPressed)
+            moveDirection -= cameraRight;
+
+        glm::vec3 facingDirection(0.0f);
+        if (forwardPressed)
+            facingDirection += cameraForward;
+        if (backwardPressed)
+        {
+            if (!forwardPressed && !leftPressed && !rightPressed)
+                facingDirection += cameraForward;
+            else
+                facingDirection -= cameraForward;
+        }
+        if (rightPressed)
+            facingDirection += cameraRight;
+        if (leftPressed)
+            facingDirection -= cameraRight;
+
+        if (glm::dot(facingDirection, facingDirection) > 0.0001f)
+        {
+            facingDirection = glm::normalize(facingDirection);
+            float yaw = std::atan2(facingDirection.x, facingDirection.z);
+            mainPlayerVisualEntity->localTransform.rotation.y = yaw + mainPlayerModelYawOffset;
+        }
+
+        updateMainPlayerPistolAttachment();
+
+        bool canSkin = renderer->mesh->hasSkinning() && mainPlayerMotion && clip;
+        if (!canSkin)
+        {
+            player->skinMatrices.clear();
+            return;
+        }
+
+        if (!mainPlayerMotion->computeSkinMatrices(
+                clip,
+                player->motionClipTime,
+                renderer->mesh->getSkinJointNodes(),
+                renderer->mesh->getInverseBindMatrices(),
+                player->skinMatrices))
+        {
+            player->skinMatrices.clear();
+        }
     }
 
     glm::vec3 getPlayerTargetPosition()
@@ -987,10 +1288,43 @@ class Playstate : public our::State
         }
 
         loadZombieGameplayConfig(config);
+        if (config.contains("mainPlayer") && config["mainPlayer"].is_object())
+        {
+            mainPlayerHeightOffset = config["mainPlayer"].value("heightOffset", mainPlayerHeightOffset);
+
+            const auto &mainPlayerConfig = config["mainPlayer"];
+            if (mainPlayerConfig.contains("pistolHandOffset") && mainPlayerConfig["pistolHandOffset"].is_array())
+                mainPlayerPistolHandOffset = mainPlayerConfig["pistolHandOffset"].get<glm::vec3>();
+            if (mainPlayerConfig.contains("pistolRotationOffset") && mainPlayerConfig["pistolRotationOffset"].is_array())
+                mainPlayerPistolRotationOffset = glm::radians(mainPlayerConfig["pistolRotationOffset"].get<glm::vec3>());
+            mainPlayerPistolScaleMultiplier = mainPlayerConfig.value("pistolScaleMultiplier", mainPlayerPistolScaleMultiplier);
+        }
         bindZombieMotionClips();
+        bindMainPlayerMotionClips();
 
         mainPlayerEntity = findMainPlayerEntity();
         mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
+        mainPlayerMesh = our::AssetLoader<our::Mesh>::get("main-player");
+        mainPlayerVisualEntity = findMainPlayerVisualEntity();
+        mainPlayerPistolEntity = findPistolEntity();
+        if (mainPlayerVisualEntity)
+        {
+            mainPlayerVisualPrototypeTransform = mainPlayerVisualEntity->localTransform;
+            mainPlayerModelYawOffset = mainPlayerVisualPrototypeTransform.rotation.y;
+
+            if (auto *player = mainPlayerEntity ? mainPlayerEntity->getComponent<our::PlayerComponent>() : nullptr)
+            {
+                if (auto *renderer = mainPlayerVisualEntity->getComponent<our::MeshRendererComponent>(); renderer && renderer->mesh && renderer->mesh->hasSkinning())
+                {
+                    player->skinMatrices.assign(renderer->mesh->getSkinJointNodes().size(), glm::mat4(1.0f));
+                }
+            }
+        }
+        if (mainPlayerPistolEntity)
+        {
+            mainPlayerPistolPrototypeTransform = mainPlayerPistolEntity->localTransform;
+            updateMainPlayerPistolAttachment();
+        }
         lockCameraAndPlayerVerticalToZero();
         cacheZombiePrototypeAndSpawnPoints();
         cacheBloodSplashAssets();
@@ -998,6 +1332,11 @@ class Playstate : public our::State
         zombiesKilledCount = 0;
         waitingForNextWave = true;
         betweenWaveTimer = initialWaveDelaySeconds;
+
+        if (our::AudioManager::getInstance().isInitialized())
+        {
+            our::AudioManager::getInstance().playLoopingSound(worldAmbientTrack, worldAmbientGain);
+        }
 
         // We initialize the camera controller system since it needs a pointer to the app
         cameraController.enter(getApp());
@@ -1091,6 +1430,7 @@ class Playstate : public our::State
         // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
+        updateMainPlayerAnimation((float)deltaTime);
 
         // Update main player weapon (handles cooldown and reload)
         if (mainPlayerWeapon)
@@ -1179,11 +1519,14 @@ class Playstate : public our::State
 
             if (camera && weapon)
             {
-                // Attempt to shoot
                 if (weapon->shoot())
                 {
+                    if (auto *player = mainPlayerEntity ? mainPlayerEntity->getComponent<our::PlayerComponent>() : nullptr)
+                    {
+                        player->shootRequested = true;
+                    }
+
                     muzzleFlashTimeLeft = muzzleFlashDuration;
-                    // If shot was successful, build a ray and fire it
                     our::Ray ray = shootingSystem.buildRayFromCamera(&world);
                     our::FireResult fireResult = shootingSystem.fireRay(ray, &world, weapon);
 
@@ -1206,6 +1549,11 @@ class Playstate : public our::State
 
     void onDestroy() override
     {
+        if (our::AudioManager::getInstance().isInitialized())
+        {
+            our::AudioManager::getInstance().stopLoopingSound(worldAmbientTrack);
+        }
+
         // Don't forget to destroy the renderer
         renderer.destroy();
         // On exit, we call exit for the camera controller system to make sure that the mouse is unlocked
