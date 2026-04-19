@@ -52,7 +52,13 @@ class Playstate : public our::State
     our::ShootingSystem shootingSystem;
     our::CollisionSystem collisionSystem;
     std::string worldAmbientTrack = "assets/audio/world.wav";
+    std::string collisionSfxTrack = "assets/audio/collision.wav";
+    std::string ouchSfxTrack = "assets/audio/female-ouch.wav";
     float worldAmbientGain = 0.45f;
+    float collisionSfxCooldownSeconds = 0.12f;
+    float collisionSfxCooldownLeft = 0.0f;
+    float ouchSfxDelaySeconds = 0.08f;
+    float pendingOuchSfxTimeLeft = -1.0f;
     float muzzleFlashTimeLeft = 0.0f;
     const float muzzleFlashDuration = 0.06f;
     float totalTime = 0.0f;
@@ -135,6 +141,7 @@ class Playstate : public our::State
     float zombieCrawlHeightDrop = 0.22f;
     float zombieDeathFallDegrees = 82.0f;
     float zombieDeathSink = 0.30f;
+    float playerWallCollisionRetreatDistance = 0.12f;
     float bloodSplashLifetimeSeconds = 1.1f;
     float bloodSplashScaleMultiplier = 8.0f;
     float bloodSplashHeightOffset = 0.9f;
@@ -556,13 +563,8 @@ class Playstate : public our::State
             cameraWorldPos = glm::vec3(mainCameraEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
 
         glm::vec3 playerWorldPos = glm::vec3(mainPlayerEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
-        bool thirdPersonActive = glm::distance(cameraWorldPos, playerWorldPos) > 1.2f;
         glm::vec3 cameraForward = getCameraForwardOnGround();
         glm::vec3 anchorPosition = cameraWorldPos;
-        if (thirdPersonActive)
-        {
-            anchorPosition += cameraForward * 2.1f;
-        }
 
         lastMainPlayerAnchorPosition = playerWorldPos;
         mainPlayerAnchorInitialized = true;
@@ -1407,57 +1409,161 @@ class Playstate : public our::State
 
     void handleCollisions()
     {
-        auto &allCollisions = collisionSystem.getCurrentCollisions();
+        if (!mainPlayerEntity)
+            mainPlayerEntity = findMainPlayerEntity();
+        if (!mainCameraEntity)
+            mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
 
-        for (const auto &collision : allCollisions)
+        const int MAX_PASSES = 4;
+        for (int pass = 0; pass < MAX_PASSES; ++pass)
         {
-            our::Entity *entityA = collision.entityA;
-            our::Entity *entityB = collision.entityB;
+            collisionSystem.update(&world);
+            auto &allCollisions = collisionSystem.getCurrentCollisions();
+            bool anyResolved = false;
 
-            auto envA = entityA->getComponent<our::EnvironmentComponent>();
-            auto envB = entityB->getComponent<our::EnvironmentComponent>();
-
-            bool isStaticA = envA && (envA->environmentType == "wall" || envA->environmentType == "floor");
-            bool isStaticB = envB && (envB->environmentType == "wall" || envB->environmentType == "floor");
-            bool isFloorA = envA && envA->environmentType == "floor";
-            bool isFloorB = envB && envB->environmentType == "floor";
-
-            if (isStaticA && isStaticB)
-                continue;
-            if (!isStaticA && !isStaticB)
-                continue;
-
-            our::Entity *dynamicEntity = isStaticA ? entityB : entityA;
-            bool collidingWithFloor = isStaticA ? isFloorA : isFloorB;
-
-            our::CollisionInfo oriented;
-            if (isStaticB)
+            for (const auto &collision : allCollisions)
             {
-                oriented = collision;
-            }
-            else
-            {
-                oriented.entityA = entityB;
-                oriented.entityB = entityA;
-                oriented.colliderA = collision.colliderB;
-                oriented.colliderB = collision.colliderA;
+                our::Entity *entityA = collision.entityA;
+                our::Entity *entityB = collision.entityB;
+
+                auto envA = entityA->getComponent<our::EnvironmentComponent>();
+                auto envB = entityB->getComponent<our::EnvironmentComponent>();
+
+                bool isStaticA = envA && (envA->environmentType == "wall" ||
+                                          envA->environmentType == "floor" ||
+                                          envA->environmentType == "prop");
+                bool isStaticB = envB && (envB->environmentType == "wall" ||
+                                          envB->environmentType == "floor" ||
+                                          envB->environmentType == "prop");
+
+                if (isStaticA && isStaticB)
+                    continue;
+                if (!isStaticA && !isStaticB)
+                    continue;
+
+                bool isFloorA = envA && envA->environmentType == "floor";
+                bool isFloorB = envB && envB->environmentType == "floor";
+                bool isWallLikeA = envA && (envA->environmentType == "wall" || envA->environmentType == "prop");
+                bool isWallLikeB = envB && (envB->environmentType == "wall" || envB->environmentType == "prop");
+
+                our::CollisionInfo oriented;
+                our::Entity *rawDynamic;
+                bool collidingWithFloor;
+                bool collidingWithWallLike;
+
+                if (isStaticB)
+                {
+                    oriented = collision;
+                    rawDynamic = entityA;
+                    collidingWithFloor = isFloorB;
+                    collidingWithWallLike = isWallLikeB;
+                }
+                else
+                {
+                    oriented.entityA = entityB;
+                    oriented.entityB = entityA;
+                    oriented.colliderA = collision.colliderB;
+                    oriented.colliderB = collision.colliderA;
+                    rawDynamic = entityB;
+                    collidingWithFloor = isFloorA;
+                    collidingWithWallLike = isWallLikeA;
+                }
+
+                // If dynamic belongs to player family, push the camera (actual moving body).
+                our::Entity *dynamicEntity = rawDynamic;
+                if (mainCameraEntity)
+                {
+                    our::Entity *cursor = rawDynamic;
+                    while (cursor)
+                    {
+                        if (cursor == mainPlayerEntity)
+                        {
+                            dynamicEntity = mainCameraEntity;
+                            break;
+                        }
+                        cursor = cursor->parent;
+                    }
+                }
+
+                glm::vec3 pushBack(0.0f);
+
+                if (collidingWithFloor)
+                {
+                    pushBack = collisionSystem.resolveAABB(oriented);
+                    pushBack.x = 0.0f;
+                    pushBack.z = 0.0f;
+                    if (pushBack.y < 0.0f)
+                        pushBack.y = 0.0f;
+                }
+                else if (collidingWithWallLike)
+                {
+                    // Use the moving camera collider for overlap computation.
+                    our::ColliderComponent *cameraCollider =
+                        mainCameraEntity ? mainCameraEntity->getComponent<our::ColliderComponent>() : nullptr;
+                    our::ColliderComponent *dynamicCollider = cameraCollider ? cameraCollider : oriented.colliderA;
+                    our::ColliderComponent *wallCollider = oriented.colliderB;
+
+                    glm::vec3 minA, maxA, minB, maxB;
+                    dynamicCollider->getWorldBounds(minA, maxA);
+                    wallCollider->getWorldBounds(minB, maxB);
+
+                    bool xOverlap = (minA.x <= maxB.x && maxA.x >= minB.x);
+                    bool zOverlap = (minA.z <= maxB.z && maxA.z >= minB.z);
+                    if (!xOverlap || !zOverlap)
+                        continue;
+
+                    float overlapX_pos = maxB.x - minA.x;
+                    float overlapX_neg = maxA.x - minB.x;
+                    float overlapZ_pos = maxB.z - minA.z;
+                    float overlapZ_neg = maxA.z - minB.z;
+
+                    float px = (overlapX_pos < overlapX_neg) ? overlapX_pos : -overlapX_neg;
+                    float pz = (overlapZ_pos < overlapZ_neg) ? overlapZ_pos : -overlapZ_neg;
+
+                    if (glm::abs(px) <= glm::abs(pz))
+                        pushBack = glm::vec3(px, 0.0f, 0.0f);
+                    else
+                        pushBack = glm::vec3(0.0f, 0.0f, pz);
+                }
+
+                const float epsilon = 0.0005f;
+                if (glm::length(pushBack) > epsilon)
+                {
+                    bool shouldPlayCollisionSfx = false;
+
+                    // Add an intentional extra retreat for the main player when
+                    // colliding with wall-like geometry so the collision response
+                    // is clearly noticeable and prevents sticky penetration feel.
+                    if (collidingWithWallLike && dynamicEntity == mainCameraEntity)
+                    {
+                        glm::vec3 horizontalPush(pushBack.x, 0.0f, pushBack.z);
+                        float pushLen = glm::length(horizontalPush);
+                        if (pushLen > epsilon)
+                        {
+                            glm::vec3 retreatDir = horizontalPush / pushLen;
+                            pushBack += retreatDir * std::max(0.0f, playerWallCollisionRetreatDistance);
+                            shouldPlayCollisionSfx = true;
+                        }
+                    }
+
+                    dynamicEntity->localTransform.position += pushBack;
+
+                    if (shouldPlayCollisionSfx && collisionSfxCooldownLeft <= 0.0f)
+                    {
+                        if (our::AudioManager::getInstance().isInitialized() && !collisionSfxTrack.empty())
+                        {
+                            our::AudioManager::getInstance().playSound(collisionSfxTrack);
+                        }
+                        collisionSfxCooldownLeft = collisionSfxCooldownSeconds;
+                        pendingOuchSfxTimeLeft = std::max(0.0f, ouchSfxDelaySeconds);
+                    }
+
+                    anyResolved = true;
+                }
             }
 
-            glm::vec3 pushBack = collisionSystem.resolveAABB(oriented);
-
-            if (collidingWithFloor)
-            {
-                pushBack.x = 0.0f;
-                pushBack.z = 0.0f;
-                if (pushBack.y < 0.0f)
-                    pushBack.y = 0.0f;
-            }
-
-            const float epsilon = 0.001f;
-            if (glm::length(pushBack) > epsilon)
-            {
-                dynamicEntity->localTransform.position += pushBack;
-            }
+            if (!anyResolved)
+                break;
         }
     }
 
@@ -1561,6 +1667,20 @@ class Playstate : public our::State
             totalTime += (float)deltaTime;
         }
         renderer.setTime(totalTime);
+        collisionSfxCooldownLeft = std::max(0.0f, collisionSfxCooldownLeft - static_cast<float>(deltaTime));
+
+        if (pendingOuchSfxTimeLeft >= 0.0f)
+        {
+            pendingOuchSfxTimeLeft -= static_cast<float>(deltaTime);
+            if (pendingOuchSfxTimeLeft <= 0.0f)
+            {
+                if (our::AudioManager::getInstance().isInitialized() && !ouchSfxTrack.empty())
+                {
+                    our::AudioManager::getInstance().playSound(ouchSfxTrack);
+                }
+                pendingOuchSfxTimeLeft = -1.0f;
+            }
+        }
 
         glm::vec2 muzzleFlashCenter = glm::vec2(0.66f, 0.28f);
         our::Entity *cameraEntity = mainCameraEntity;

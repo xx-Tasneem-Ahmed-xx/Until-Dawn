@@ -34,17 +34,18 @@ namespace our {
             isTrigger = data["isTrigger"].get<bool>();
     }
 
-    void ColliderComponent::getWorldBounds(glm::vec3& min, glm::vec3& max) const {
-        Entity* entity = getOwner();
-        glm::vec3 worldPos = entity->getLocalToWorldMatrix() * glm::vec4(center, 1.0f);
-        
-        // Scale the half size by entity scale
-        glm::vec3 scale = entity->localTransform.scale;
-        glm::vec3 scaledHalfSize = halfSize * scale;
+ void ColliderComponent::getWorldBounds(glm::vec3& min, glm::vec3& max) const {
+    Entity* entity = getOwner();
+    
+    // World position of the collider center — uses full parent chain correctly
+    glm::vec3 worldPos = glm::vec3(entity->getLocalToWorldMatrix() * glm::vec4(center, 1.0f));
 
-        min = worldPos - scaledHalfSize;
-        max = worldPos + scaledHalfSize;
-    }
+    // halfSize is authored in world-space units directly in the JSON.
+    // Do NOT multiply by entity scale — the sizes like [8,20,8] are already
+    // the intended world-space extents.
+    min = worldPos - halfSize;
+    max = worldPos + halfSize;
+}
 
     bool ColliderComponent::intersects(const ColliderComponent* other) const {
         glm::vec3 thisMin, thisMax;
