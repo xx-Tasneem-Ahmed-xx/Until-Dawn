@@ -167,12 +167,7 @@
               "enabled": true
             }
           },
-          "tint": [
-            0.6,
-            0.6,
-            0.7,
-            1
-          ],
+          "tint": [0.6, 0.6, 0.7, 1],
           "texture": "wood",
           "sampler": "default"
         },
@@ -187,12 +182,7 @@
               "enabled": true
             }
           },
-          "tint": [
-            0.3,
-            0.3,
-            0.35,
-            1
-          ],
+          "tint": [0.3, 0.3, 0.35, 1],
           "texture": "wood",
           "sampler": "default"
         },
@@ -207,12 +197,7 @@
               "enabled": true
             }
           },
-          "tint": [
-            0.8,
-            0.35,
-            0.25,
-            1
-          ],
+          "tint": [0.8, 0.35, 0.25, 1],
           "texture": "brick",
           "sampler": "default"
         },
@@ -227,12 +212,7 @@
               "enabled": true
             }
           },
-          "tint": [
-            0.5,
-            0.5,
-            0.5,
-            1
-          ],
+          "tint": [0.5, 0.5, 0.5, 1],
           "texture": "wood",
           "sampler": "default"
         },
@@ -340,12 +320,7 @@
             }
           },
           "transparent": true,
-          "tint": [
-            0.9,
-            0.08,
-            0.08,
-            0.85
-          ]
+          "tint": [0.9, 0.08, 0.08, 0.85]
         },
         "tower_theme": {
           "type": "tinted",

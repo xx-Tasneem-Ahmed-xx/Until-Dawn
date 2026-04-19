@@ -136,6 +136,8 @@ source/common/components/collider.hpp
         source/common/systems/collision-system.cpp
         source/common/systems/scene-manager.hpp
         source/common/systems/scene-manager.cpp
+        source/common/systems/hud-system.hpp
+        source/common/systems/hud-system.cpp
 )
 
 # Define the directories in which to search for the included headers
