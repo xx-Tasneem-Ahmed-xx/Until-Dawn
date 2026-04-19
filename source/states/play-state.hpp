@@ -479,7 +479,9 @@ class Playstate : public our::State
     void cacheZombiePrototypeAndSpawnPoints()
     {
         zombieMesh = our::AssetLoader<our::Mesh>::get("zombie");
-        zombieMaterial = our::AssetLoader<our::Material>::get("auto");
+        zombieMaterial = our::AssetLoader<our::Material>::get("zombie_theme");
+        if (!zombieMaterial)
+            zombieMaterial = our::AssetLoader<our::Material>::get("auto");
         zombiePrototypeTransform = our::Transform{};
         zombiePrototypeTransform.position = glm::vec3(0.0f, -0.5f, 0.0f);
 
@@ -512,6 +514,10 @@ class Playstate : public our::State
             zombieSpawnPoints.push_back(glm::vec3(-5.0f, -0.5f, 4.0f));
             zombieSpawnPoints.push_back(glm::vec3(0.0f, -0.5f, -2.0f));
         }
+
+        std::cout << "[Zombies] mesh=" << (zombieMesh ? "loaded" : "missing")
+                  << ", gltfBaseColorTexture=" << ((zombieMesh && zombieMesh->hasGLTFBaseColorTexture()) ? "yes" : "no")
+                  << ", material=" << (zombieMaterial ? "loaded" : "missing") << "\n";
     }
 
     void cacheBloodSplashAssets()

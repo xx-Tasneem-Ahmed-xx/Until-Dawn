@@ -32,7 +32,9 @@ our::Mesh *our::mesh_utils::loadOBJ(const std::string &filename)
     std::vector<tinyobj::material_t> materials;
     std::string warn, err;
 
-    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename.c_str()))
+    const std::filesystem::path objPath(filename);
+    const std::string mtlBaseDir = objPath.parent_path().string();
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename.c_str(), mtlBaseDir.c_str()))
     {
         std::cerr << "Failed to load obj file \"" << filename << "\" due to error: " << err << std::endl;
         return nullptr;
@@ -42,51 +44,97 @@ our::Mesh *our::mesh_utils::loadOBJ(const std::string &filename)
         std::cout << "WARN while loading obj file \"" << filename << "\": " << warn << std::endl;
     }
 
-    // An obj file can have multiple shapes where each shape can have its own material
-    // Ideally, we would load each shape into a separate mesh or store the start and end of it in the element buffer to be able to draw each shape separately
-    // But we ignored this fact since we don't plan to use multiple materials in the examples
+    // An obj file can have multiple shapes where each shape can have its own material.
+    // We apply the material diffuse color (Kd) per face when vertex colors are not present,
+    // which helps preserve the original PolyPizza look for low-poly OBJ assets.
     for (const auto &shape : shapes)
     {
-        for (const auto &index : shape.mesh.indices)
+        size_t indexOffset = 0;
+        for (size_t face = 0; face < shape.mesh.num_face_vertices.size(); ++face)
         {
-            Vertex vertex = {};
+            int fv = shape.mesh.num_face_vertices[face];
+            int materialID = (face < shape.mesh.material_ids.size()) ? shape.mesh.material_ids[face] : -1;
+            bool hasFaceMaterial = materialID >= 0 && materialID < static_cast<int>(materials.size());
 
-            // Read the data for a vertex from the "attrib" object
-            vertex.position = {
-                attrib.vertices[3 * index.vertex_index + 0],
-                attrib.vertices[3 * index.vertex_index + 1],
-                attrib.vertices[3 * index.vertex_index + 2]};
-
-            vertex.normal = {
-                attrib.normals[3 * index.normal_index + 0],
-                attrib.normals[3 * index.normal_index + 1],
-                attrib.normals[3 * index.normal_index + 2]};
-
-            vertex.tex_coord = {
-                attrib.texcoords[2 * index.texcoord_index + 0],
-                attrib.texcoords[2 * index.texcoord_index + 1]};
-
-            vertex.color = {
-                attrib.colors[3 * index.vertex_index + 0] * 255,
-                attrib.colors[3 * index.vertex_index + 1] * 255,
-                attrib.colors[3 * index.vertex_index + 2] * 255,
-                255};
-
-            // See if we already stored a similar vertex
-            auto it = vertex_map.find(vertex);
-            if (it == vertex_map.end())
+            glm::u8vec4 faceColor = glm::u8vec4(255, 255, 255, 255);
+            if (hasFaceMaterial)
             {
-                // if no, add it to the vertices and record its index
-                auto new_vertex_index = static_cast<GLuint>(vertices.size());
-                vertex_map[vertex] = new_vertex_index;
-                elements.push_back(new_vertex_index);
-                vertices.push_back(vertex);
+                const auto &mat = materials[materialID];
+                faceColor = glm::u8vec4(
+                    static_cast<uint8_t>(std::clamp(mat.diffuse[0], 0.0f, 1.0f) * 255.0f),
+                    static_cast<uint8_t>(std::clamp(mat.diffuse[1], 0.0f, 1.0f) * 255.0f),
+                    static_cast<uint8_t>(std::clamp(mat.diffuse[2], 0.0f, 1.0f) * 255.0f),
+                    static_cast<uint8_t>(std::clamp(mat.dissolve, 0.0f, 1.0f) * 255.0f));
             }
-            else
+
+            for (int v = 0; v < fv; ++v)
             {
-                // if yes, just add its index in the elements vector
-                elements.push_back(it->second);
+                const auto &index = shape.mesh.indices[indexOffset + v];
+                Vertex vertex = {};
+
+                // Read the data for a vertex from the "attrib" object
+                if (index.vertex_index >= 0)
+                {
+                    vertex.position = {
+                        attrib.vertices[3 * index.vertex_index + 0],
+                        attrib.vertices[3 * index.vertex_index + 1],
+                        attrib.vertices[3 * index.vertex_index + 2]};
+                }
+
+                if (index.normal_index >= 0)
+                {
+                    vertex.normal = {
+                        attrib.normals[3 * index.normal_index + 0],
+                        attrib.normals[3 * index.normal_index + 1],
+                        attrib.normals[3 * index.normal_index + 2]};
+                }
+
+                if (index.texcoord_index >= 0)
+                {
+                    vertex.tex_coord = {
+                        attrib.texcoords[2 * index.texcoord_index + 0],
+                        attrib.texcoords[2 * index.texcoord_index + 1]};
+                }
+
+                bool hasVertexColor = (index.vertex_index >= 0) &&
+                                      (3 * index.vertex_index + 2 < static_cast<int>(attrib.colors.size()));
+                if (hasFaceMaterial)
+                {
+                    // Prefer explicit MTL Kd when available. Some OBJ exporters include default
+                    // white vertex colors which would otherwise wash out the intended palette.
+                    vertex.color = faceColor;
+                }
+                else if (hasVertexColor)
+                {
+                    vertex.color = {
+                        static_cast<uint8_t>(std::clamp(attrib.colors[3 * index.vertex_index + 0], 0.0f, 1.0f) * 255.0f),
+                        static_cast<uint8_t>(std::clamp(attrib.colors[3 * index.vertex_index + 1], 0.0f, 1.0f) * 255.0f),
+                        static_cast<uint8_t>(std::clamp(attrib.colors[3 * index.vertex_index + 2], 0.0f, 1.0f) * 255.0f),
+                        255};
+                }
+                else
+                {
+                    vertex.color = faceColor;
+                }
+
+                // See if we already stored a similar vertex
+                auto it = vertex_map.find(vertex);
+                if (it == vertex_map.end())
+                {
+                    // if no, add it to the vertices and record its index
+                    auto new_vertex_index = static_cast<GLuint>(vertices.size());
+                    vertex_map[vertex] = new_vertex_index;
+                    elements.push_back(new_vertex_index);
+                    vertices.push_back(vertex);
+                }
+                else
+                {
+                    // if yes, just add its index in the elements vector
+                    elements.push_back(it->second);
+                }
             }
+
+            indexOffset += fv;
         }
     }
 
