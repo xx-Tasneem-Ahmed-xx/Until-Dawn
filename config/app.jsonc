@@ -1,6 +1,6 @@
 
 {
-  "start-scene": "play",
+  "start-scene": "menu",
   "window": {
     "title": "Until Dawn",
     "size": {
