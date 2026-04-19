@@ -27,6 +27,11 @@ namespace our
         void enter(Application *app)
         {
             this->app = app;
+            if (!mouse_locked)
+            {
+                app->getMouse().lockMouse(app->getWindow());
+                mouse_locked = true;
+            }
         }
 
         // This should be called every frame to update all entities containing a FreeCameraControllerComponent
@@ -49,31 +54,14 @@ namespace our
             // Get the entity that we found via getOwner of camera (we could use controller->getOwner())
             Entity *entity = camera->getOwner();
 
-            // If the left mouse button is pressed, we lock and hide the mouse. This common in First Person Games.
-            if (app->getMouse().isPressed(GLFW_MOUSE_BUTTON_1) && !mouse_locked)
-            {
-                app->getMouse().lockMouse(app->getWindow());
-                mouse_locked = true;
-                // If the left mouse button is released, we unlock and unhide the mouse.
-            }
-            else if (!app->getMouse().isPressed(GLFW_MOUSE_BUTTON_1) && mouse_locked)
-            {
-                app->getMouse().unlockMouse(app->getWindow());
-                mouse_locked = false;
-            }
-
             // We get a reference to the entity's position and rotation
             glm::vec3 &position = entity->localTransform.position;
             glm::vec3 &rotation = entity->localTransform.rotation;
 
-            // If the left mouse button is pressed, we get the change in the mouse location
-            // and use it to update the camera rotation
-            if (app->getMouse().isPressed(GLFW_MOUSE_BUTTON_1))
-            {
-                glm::vec2 delta = app->getMouse().getMouseDelta();
-                rotation.x -= delta.y * controller->rotationSensitivity; // The y-axis controls the pitch
-                rotation.y -= delta.x * controller->rotationSensitivity; // The x-axis controls the yaw
-            }
+            // Mouse movement always controls camera rotation while this system is active.
+            glm::vec2 delta = app->getMouse().getMouseDelta();
+            rotation.x -= delta.y * controller->rotationSensitivity; // The y-axis controls the pitch
+            rotation.y -= delta.x * controller->rotationSensitivity; // The x-axis controls the yaw
 
             // We prevent the pitch from exceeding a certain angle from the XZ plane to prevent gimbal locks
             if (rotation.x < -glm::half_pi<float>() * 0.99f)
