@@ -403,6 +403,7 @@ namespace our
             this->postprocessMaterial->shader->set("time", elapsedTime);
             this->postprocessMaterial->shader->set("flashCenter", muzzleFlashCenter);
             this->postprocessMaterial->shader->set("flash", muzzleFlashStrength);
+            this->postprocessMaterial->shader->set("exposure", sceneExposure);
             glBindVertexArray(postProcessVertexArray);
             glDrawArrays(GL_TRIANGLES, 0, 3);
         }

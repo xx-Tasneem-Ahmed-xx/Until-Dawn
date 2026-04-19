@@ -74,6 +74,11 @@ class Playstate : public our::State
     bool waitingForNextWave = true;
     float betweenWaveTimer = ZOMBIE_INITIAL_WAVE_DELAY_SECONDS;
     bool allWavesCompleted = false;
+    int totalZombiesAcrossAllWaves = 0;
+    int zombiesKilledCount = 0;
+    float sunriseStartExposure = 0.10f;
+    float sunriseEndExposure = 1.00f;
+    float sunriseEasePower = 1.20f;
 
     float initialWaveDelaySeconds = ZOMBIE_INITIAL_WAVE_DELAY_SECONDS;
     float betweenWavesDelaySeconds = ZOMBIE_BETWEEN_WAVES_DELAY_SECONDS;
@@ -474,6 +479,36 @@ class Playstate : public our::State
         bloodSplashLifetimeSeconds = std::max(0.05f, zombiesConfig.value("bloodSplashLifetimeSeconds", bloodSplashLifetimeSeconds));
         bloodSplashScaleMultiplier = std::max(0.05f, zombiesConfig.value("bloodSplashScaleMultiplier", bloodSplashScaleMultiplier));
         bloodSplashHeightOffset = zombiesConfig.value("bloodSplashHeightOffset", bloodSplashHeightOffset);
+
+        sunriseStartExposure = std::clamp(zombiesConfig.value("sunriseStartExposure", sunriseStartExposure), 0.0f, 2.0f);
+        sunriseEndExposure = std::clamp(zombiesConfig.value("sunriseEndExposure", sunriseEndExposure), 0.0f, 2.0f);
+        sunriseEasePower = std::max(0.05f, zombiesConfig.value("sunriseEasePower", sunriseEasePower));
+    }
+
+    void recalculateSunriseTargets()
+    {
+        totalZombiesAcrossAllWaves = 0;
+        for (int waveCount : waveZombieCounts)
+        {
+            if (waveCount > 0)
+                totalZombiesAcrossAllWaves += waveCount;
+        }
+    }
+
+    float computeSunriseProgress() const
+    {
+        if (totalZombiesAcrossAllWaves <= 0)
+            return 1.0f;
+
+        float t = static_cast<float>(zombiesKilledCount) / static_cast<float>(totalZombiesAcrossAllWaves);
+        return std::clamp(t, 0.0f, 1.0f);
+    }
+
+    float computeCurrentExposure() const
+    {
+        float progress = computeSunriseProgress();
+        float easedProgress = std::pow(progress, sunriseEasePower);
+        return glm::mix(sunriseStartExposure, sunriseEndExposure, easedProgress);
     }
 
     void cacheZombiePrototypeAndSpawnPoints()
@@ -957,6 +992,8 @@ class Playstate : public our::State
         lockCameraAndPlayerVerticalToZero();
         cacheZombiePrototypeAndSpawnPoints();
         cacheBloodSplashAssets();
+        recalculateSunriseTargets();
+        zombiesKilledCount = 0;
         waitingForNextWave = true;
         betweenWaveTimer = initialWaveDelaySeconds;
 
@@ -997,6 +1034,8 @@ class Playstate : public our::State
         }
 
         auto mainPlayerWeapon = getMainPlayerWeapon();
+
+        renderer.setSceneExposure(computeCurrentExposure());
 
         for (auto entity : world.getEntities())
         {
@@ -1125,6 +1164,7 @@ class Playstate : public our::State
                     // Spawn blood instantly on second-shot kill and remove zombie before render.
                     if (fireResult.killedZombie && fireResult.hitEntity)
                     {
+                        zombiesKilledCount++;
                         glm::vec3 worldPos = glm::vec3(fireResult.hitEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
                         float maxAxisScale = std::max({std::abs(fireResult.hitEntity->localTransform.scale.x),
                                                        std::abs(fireResult.hitEntity->localTransform.scale.y),
