@@ -22,9 +22,14 @@
 #include <audio-manager.hpp>
 #include <asset-loader.hpp>
 #include <deserialize-utils.hpp>
+#include <game-session.hpp>
+#include <texture/texture2d.hpp>
+#include <texture/texture-utils.hpp>
 #include <GLFW/glfw3.h>
+#include <imgui.h>
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cmath>
 #include <iostream>
 #include <glm/gtc/constants.hpp>
@@ -49,10 +54,17 @@ class Playstate : public our::State
     our::ShootingSystem shootingSystem;
     our::CollisionSystem collisionSystem;
     std::string worldAmbientTrack = "assets/audio/world.wav";
+    std::string collisionSfxTrack = "assets/audio/collision.wav";
+    std::string ouchSfxTrack = "assets/audio/female-ouch.wav";
     float worldAmbientGain = 0.45f;
+    float collisionSfxCooldownSeconds = 0.12f;
+    float collisionSfxCooldownLeft = 0.0f;
+    float ouchSfxDelaySeconds = 0.08f;
+    float pendingOuchSfxTimeLeft = -1.0f;
     float muzzleFlashTimeLeft = 0.0f;
     const float muzzleFlashDuration = 0.06f;
     float totalTime = 0.0f;
+    bool endingQueued = false;
     our::Entity *mainCameraEntity = nullptr;
     our::Entity *mainPlayerEntity = nullptr;
 
@@ -131,6 +143,7 @@ class Playstate : public our::State
     float zombieCrawlHeightDrop = 0.22f;
     float zombieDeathFallDegrees = 82.0f;
     float zombieDeathSink = 0.30f;
+    float playerWallCollisionRetreatDistance = 0.12f;
     float bloodSplashLifetimeSeconds = 1.1f;
     float bloodSplashScaleMultiplier = 8.0f;
     float bloodSplashHeightOffset = 0.9f;
@@ -142,6 +155,191 @@ class Playstate : public our::State
     };
 
     std::vector<BloodSplashFx> activeBloodSplashes;
+    bool isPaused = false;
+    bool musicEnabled = true;
+    bool effectsEnabled = true;
+    float pauseTintAlpha = 0.45f;
+    our::Texture2D *pauseMusicIcon = nullptr;
+    our::Texture2D *pauseVolumeIcon = nullptr;
+    our::Texture2D *pauseMenuIcon = nullptr;
+    our::Texture2D *pauseContinueIcon = nullptr;
+    our::Texture2D *pauseNothingIcon = nullptr;
+
+    our::Texture2D *loadPauseIcon(const std::string &path)
+    {
+        our::Texture2D *texture = our::texture_utils::loadImage(path, false);
+        if (!texture)
+        {
+            std::cout << "[PauseUI] Failed to load icon: " << path << "\n";
+        }
+        return texture;
+    }
+
+    void applyAudioPreferences()
+    {
+        auto &audio = our::AudioManager::getInstance();
+        if (!audio.isInitialized())
+            return;
+
+        audio.setMusicEnabled(musicEnabled);
+        audio.setEffectsEnabled(effectsEnabled);
+
+        if (musicEnabled)
+        {
+            audio.playLoopingSound(worldAmbientTrack, worldAmbientGain);
+        }
+        else
+        {
+            audio.stopLoopingSound(worldAmbientTrack);
+        }
+    }
+
+    bool drawPauseIconButton(const char *id, our::Texture2D *iconTexture, const char *label, bool enabledState, bool flipIconVertically = false)
+    {
+        ImGui::PushID(id);
+        const ImVec2 buttonSize(106.0f, 106.0f);
+        const ImVec2 iconPadding(16.0f, 16.0f);
+        const ImVec2 topLeft = ImGui::GetCursorScreenPos();
+
+        ImGui::InvisibleButton("IconButton", buttonSize);
+
+        const bool hovered = ImGui::IsItemHovered();
+        const bool clicked = ImGui::IsItemClicked();
+
+        ImDrawList *drawList = ImGui::GetWindowDrawList();
+        const ImVec2 bottomRight(topLeft.x + buttonSize.x, topLeft.y + buttonSize.y);
+        const ImU32 bgColor = hovered ? IM_COL32(245, 245, 245, 255) : IM_COL32(230, 230, 230, 255);
+        drawList->AddRectFilled(topLeft, bottomRight, bgColor, 10.0f);
+        drawList->AddRect(topLeft, bottomRight, IM_COL32(28, 28, 28, 255), 10.0f, 0, 1.8f);
+
+        if (iconTexture)
+        {
+            const ImVec2 iconMin(topLeft.x + iconPadding.x, topLeft.y + iconPadding.y);
+            const ImVec2 iconMax(bottomRight.x - iconPadding.x, bottomRight.y - iconPadding.y);
+            if (flipIconVertically)
+            {
+                drawList->AddImage((ImTextureID)(intptr_t)iconTexture->getOpenGLName(), iconMin, iconMax, ImVec2(0, 1), ImVec2(1, 0));
+            }
+            else
+            {
+                drawList->AddImage((ImTextureID)(intptr_t)iconTexture->getOpenGLName(), iconMin, iconMax);
+            }
+        }
+
+        if (!enabledState && pauseNothingIcon)
+        {
+            const ImVec2 offMin(topLeft.x + iconPadding.x * 0.65f, topLeft.y + iconPadding.y * 0.65f);
+            const ImVec2 offMax(bottomRight.x - iconPadding.x * 0.65f, bottomRight.y - iconPadding.y * 0.65f);
+            drawList->AddImage((ImTextureID)(intptr_t)pauseNothingIcon->getOpenGLName(), offMin, offMax, ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 50, 50, 235));
+        }
+
+        ImVec2 labelSize = ImGui::CalcTextSize(label);
+        drawList->AddText(ImVec2(topLeft.x + (buttonSize.x - labelSize.x) * 0.5f, topLeft.y + buttonSize.y + 9.0f), IM_COL32(240, 240, 240, 255), label);
+
+        ImGui::Dummy(ImVec2(buttonSize.x, 30.0f));
+        ImGui::PopID();
+        return clicked;
+    }
+
+    void setPauseMode(bool paused)
+    {
+        if (isPaused == paused)
+            return;
+
+        isPaused = paused;
+        if (isPaused)
+        {
+            our::Mouse::unlockMouse(getApp()->getWindow());
+        }
+        else
+        {
+            our::Mouse::lockMouse(getApp()->getWindow());
+        }
+    }
+
+    void renderPauseOverlay()
+    {
+        if (!isPaused)
+            return;
+
+        const ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+        ImDrawList *foreground = ImGui::GetForegroundDrawList();
+        foreground->AddRectFilled(ImVec2(0.0f, 0.0f), displaySize, IM_COL32(0, 0, 0, static_cast<int>(pauseTintAlpha * 255.0f)));
+
+        const float panelWidth = std::min(700.0f, displaySize.x * 0.86f);
+        ImGui::SetNextWindowPos(ImVec2(displaySize.x * 0.5f, displaySize.y * 0.53f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(panelWidth, 0.0f), ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.75f);
+
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
+                                 ImGuiWindowFlags_NoResize |
+                                 ImGuiWindowFlags_NoMove |
+                                 ImGuiWindowFlags_AlwaysAutoResize;
+
+        if (ImGui::Begin("PauseOverlay", nullptr, flags))
+        {
+            const char *title = "Settings";
+            ImGui::SetWindowFontScale(1.95f);
+            ImVec2 titleSize = ImGui::CalcTextSize(title);
+            ImGui::SetCursorPosX(std::max(12.0f, (ImGui::GetWindowWidth() - titleSize.x) * 0.5f));
+            ImGui::TextUnformatted(title);
+            ImGui::SetWindowFontScale(1.0f);
+
+            ImGui::Spacing();
+            const char *subtitle = "Paused";
+            ImGui::SetWindowFontScale(1.20f);
+            ImVec2 subtitleSize = ImGui::CalcTextSize(subtitle);
+            ImGui::SetCursorPosX(std::max(12.0f, (ImGui::GetWindowWidth() - subtitleSize.x) * 0.5f));
+            ImGui::TextUnformatted(subtitle);
+            ImGui::SetWindowFontScale(1.0f);
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            ImGui::Columns(2, "PauseGrid", false);
+
+            auto centerButtonInColumn = [&]()
+            {
+                constexpr float pauseButtonWidth = 106.0f;
+                const float currentX = ImGui::GetCursorPosX();
+                const float columnWidth = ImGui::GetColumnWidth();
+                const float centeredX = currentX + std::max(0.0f, (columnWidth - pauseButtonWidth) * 0.5f);
+                ImGui::SetCursorPosX(centeredX);
+            };
+
+            centerButtonInColumn();
+            if (drawPauseIconButton("pause_music", pauseMusicIcon, "Music", musicEnabled, true))
+            {
+                musicEnabled = !musicEnabled;
+                applyAudioPreferences();
+            }
+
+            ImGui::NextColumn();
+            centerButtonInColumn();
+            if (drawPauseIconButton("pause_volume", pauseVolumeIcon, "Volume", effectsEnabled))
+            {
+                effectsEnabled = !effectsEnabled;
+                applyAudioPreferences();
+            }
+
+            ImGui::NextColumn();
+            centerButtonInColumn();
+            if (drawPauseIconButton("pause_menu", pauseMenuIcon, "Menu", true))
+            {
+                getApp()->changeState("menu");
+            }
+
+            ImGui::NextColumn();
+            centerButtonInColumn();
+            if (drawPauseIconButton("pause_continue", pauseContinueIcon, "Continue", true))
+            {
+                setPauseMode(false);
+            }
+
+            ImGui::Columns(1);
+        }
+        ImGui::End();
+    }
 
     our::Entity *findMainPlayerEntity()
     {
@@ -367,13 +565,8 @@ class Playstate : public our::State
             cameraWorldPos = glm::vec3(mainCameraEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
 
         glm::vec3 playerWorldPos = glm::vec3(mainPlayerEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
-        bool thirdPersonActive = glm::distance(cameraWorldPos, playerWorldPos) > 1.2f;
         glm::vec3 cameraForward = getCameraForwardOnGround();
         glm::vec3 anchorPosition = cameraWorldPos;
-        if (thirdPersonActive)
-        {
-            anchorPosition += cameraForward * 2.1f;
-        }
 
         lastMainPlayerAnchorPosition = playerWorldPos;
         mainPlayerAnchorInitialized = true;
@@ -1218,62 +1411,183 @@ class Playstate : public our::State
 
     void handleCollisions()
     {
-        auto &allCollisions = collisionSystem.getCurrentCollisions();
+        if (!mainPlayerEntity)
+            mainPlayerEntity = findMainPlayerEntity();
+        if (!mainCameraEntity)
+            mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
 
-        for (const auto &collision : allCollisions)
+        const int MAX_PASSES = 4;
+        for (int pass = 0; pass < MAX_PASSES; ++pass)
         {
-            our::Entity *entityA = collision.entityA;
-            our::Entity *entityB = collision.entityB;
+            collisionSystem.update(&world);
+            auto &allCollisions = collisionSystem.getCurrentCollisions();
+            bool anyResolved = false;
 
-            auto envA = entityA->getComponent<our::EnvironmentComponent>();
-            auto envB = entityB->getComponent<our::EnvironmentComponent>();
-
-            bool isStaticA = envA && (envA->environmentType == "wall" || envA->environmentType == "floor");
-            bool isStaticB = envB && (envB->environmentType == "wall" || envB->environmentType == "floor");
-            bool isFloorA = envA && envA->environmentType == "floor";
-            bool isFloorB = envB && envB->environmentType == "floor";
-
-            if (isStaticA && isStaticB)
-                continue;
-            if (!isStaticA && !isStaticB)
-                continue;
-
-            our::Entity *dynamicEntity = isStaticA ? entityB : entityA;
-            bool collidingWithFloor = isStaticA ? isFloorA : isFloorB;
-
-            our::CollisionInfo oriented;
-            if (isStaticB)
+            for (const auto &collision : allCollisions)
             {
-                oriented = collision;
-            }
-            else
-            {
-                oriented.entityA = entityB;
-                oriented.entityB = entityA;
-                oriented.colliderA = collision.colliderB;
-                oriented.colliderB = collision.colliderA;
+                our::Entity *entityA = collision.entityA;
+                our::Entity *entityB = collision.entityB;
+
+                auto envA = entityA->getComponent<our::EnvironmentComponent>();
+                auto envB = entityB->getComponent<our::EnvironmentComponent>();
+
+                bool isStaticA = envA && (envA->environmentType == "wall" ||
+                                          envA->environmentType == "floor" ||
+                                          envA->environmentType == "prop");
+                bool isStaticB = envB && (envB->environmentType == "wall" ||
+                                          envB->environmentType == "floor" ||
+                                          envB->environmentType == "prop");
+
+                if (isStaticA && isStaticB)
+                    continue;
+                if (!isStaticA && !isStaticB)
+                    continue;
+
+                bool isFloorA = envA && envA->environmentType == "floor";
+                bool isFloorB = envB && envB->environmentType == "floor";
+                bool isWallLikeA = envA && (envA->environmentType == "wall" || envA->environmentType == "prop");
+                bool isWallLikeB = envB && (envB->environmentType == "wall" || envB->environmentType == "prop");
+
+                our::CollisionInfo oriented;
+                our::Entity *rawDynamic;
+                bool collidingWithFloor;
+                bool collidingWithWallLike;
+
+                if (isStaticB)
+                {
+                    oriented = collision;
+                    rawDynamic = entityA;
+                    collidingWithFloor = isFloorB;
+                    collidingWithWallLike = isWallLikeB;
+                }
+                else
+                {
+                    oriented.entityA = entityB;
+                    oriented.entityB = entityA;
+                    oriented.colliderA = collision.colliderB;
+                    oriented.colliderB = collision.colliderA;
+                    rawDynamic = entityB;
+                    collidingWithFloor = isFloorA;
+                    collidingWithWallLike = isWallLikeA;
+                }
+
+                // If dynamic belongs to player family, push the camera (actual moving body).
+                our::Entity *dynamicEntity = rawDynamic;
+                if (mainCameraEntity)
+                {
+                    our::Entity *cursor = rawDynamic;
+                    while (cursor)
+                    {
+                        if (cursor == mainPlayerEntity)
+                        {
+                            dynamicEntity = mainCameraEntity;
+                            break;
+                        }
+                        cursor = cursor->parent;
+                    }
+                }
+
+                glm::vec3 pushBack(0.0f);
+
+                if (collidingWithFloor)
+                {
+                    pushBack = collisionSystem.resolveAABB(oriented);
+                    pushBack.x = 0.0f;
+                    pushBack.z = 0.0f;
+                    if (pushBack.y < 0.0f)
+                        pushBack.y = 0.0f;
+                }
+                else if (collidingWithWallLike)
+                {
+                    // Use the moving camera collider for overlap computation.
+                    our::ColliderComponent *cameraCollider =
+                        mainCameraEntity ? mainCameraEntity->getComponent<our::ColliderComponent>() : nullptr;
+                    our::ColliderComponent *dynamicCollider = cameraCollider ? cameraCollider : oriented.colliderA;
+                    our::ColliderComponent *wallCollider = oriented.colliderB;
+
+                    glm::vec3 minA, maxA, minB, maxB;
+                    dynamicCollider->getWorldBounds(minA, maxA);
+                    wallCollider->getWorldBounds(minB, maxB);
+
+                    bool xOverlap = (minA.x <= maxB.x && maxA.x >= minB.x);
+                    bool zOverlap = (minA.z <= maxB.z && maxA.z >= minB.z);
+                    if (!xOverlap || !zOverlap)
+                        continue;
+
+                    float overlapX_pos = maxB.x - minA.x;
+                    float overlapX_neg = maxA.x - minB.x;
+                    float overlapZ_pos = maxB.z - minA.z;
+                    float overlapZ_neg = maxA.z - minB.z;
+
+                    float px = (overlapX_pos < overlapX_neg) ? overlapX_pos : -overlapX_neg;
+                    float pz = (overlapZ_pos < overlapZ_neg) ? overlapZ_pos : -overlapZ_neg;
+
+                    if (glm::abs(px) <= glm::abs(pz))
+                        pushBack = glm::vec3(px, 0.0f, 0.0f);
+                    else
+                        pushBack = glm::vec3(0.0f, 0.0f, pz);
+                }
+
+                const float epsilon = 0.0005f;
+                if (glm::length(pushBack) > epsilon)
+                {
+                    bool shouldPlayCollisionSfx = false;
+
+                    // Add an intentional extra retreat for the main player when
+                    // colliding with wall-like geometry so the collision response
+                    // is clearly noticeable and prevents sticky penetration feel.
+                    if (collidingWithWallLike && dynamicEntity == mainCameraEntity)
+                    {
+                        glm::vec3 horizontalPush(pushBack.x, 0.0f, pushBack.z);
+                        float pushLen = glm::length(horizontalPush);
+                        if (pushLen > epsilon)
+                        {
+                            glm::vec3 retreatDir = horizontalPush / pushLen;
+                            pushBack += retreatDir * std::max(0.0f, playerWallCollisionRetreatDistance);
+                            shouldPlayCollisionSfx = true;
+                        }
+                    }
+
+                    dynamicEntity->localTransform.position += pushBack;
+
+                    if (shouldPlayCollisionSfx && collisionSfxCooldownLeft <= 0.0f)
+                    {
+                        if (our::AudioManager::getInstance().isInitialized() && !collisionSfxTrack.empty())
+                        {
+                            our::AudioManager::getInstance().playSound(collisionSfxTrack);
+                        }
+                        collisionSfxCooldownLeft = collisionSfxCooldownSeconds;
+                        pendingOuchSfxTimeLeft = std::max(0.0f, ouchSfxDelaySeconds);
+                    }
+
+                    anyResolved = true;
+                }
             }
 
-            glm::vec3 pushBack = collisionSystem.resolveAABB(oriented);
-
-            if (collidingWithFloor)
-            {
-                pushBack.x = 0.0f;
-                pushBack.z = 0.0f;
-                if (pushBack.y < 0.0f)
-                    pushBack.y = 0.0f;
-            }
-
-            const float epsilon = 0.001f;
-            if (glm::length(pushBack) > epsilon)
-            {
-                dynamicEntity->localTransform.position += pushBack;
-            }
+            if (!anyResolved)
+                break;
         }
     }
 
     void onInitialize() override
     {
+        // Reset all per-run runtime state because this state instance is reused across scene changes.
+        currentWaveIndex = 0;
+        zombiesSpawnedThisWave = 0;
+        zombieSpawnTimer = 0.0f;
+        waitingForNextWave = true;
+        betweenWaveTimer = initialWaveDelaySeconds;
+        allWavesCompleted = false;
+        zombiesKilledCount = 0;
+        endingQueued = false;
+        totalTime = 0.0f;
+        collisionSfxCooldownLeft = 0.0f;
+        pendingOuchSfxTimeLeft = -1.0f;
+        muzzleFlashTimeLeft = 0.0f;
+        mainPlayerAnchorInitialized = false;
+        lastMainPlayerAnchorPosition = glm::vec3(0.0f);
+        activeBloodSplashes.clear();
+
         // First of all, we get the scene configuration from the app config
         auto &config = getApp()->getConfig()["scene"];
         // If we have assets in the scene config, we deserialize them
@@ -1329,13 +1643,21 @@ class Playstate : public our::State
         cacheZombiePrototypeAndSpawnPoints();
         cacheBloodSplashAssets();
         recalculateSunriseTargets();
-        zombiesKilledCount = 0;
-        waitingForNextWave = true;
         betweenWaveTimer = initialWaveDelaySeconds;
+        isPaused = false;
+        musicEnabled = true;
+        effectsEnabled = true;
+
+        pauseMusicIcon = loadPauseIcon("assets/icons/music-player.png");
+        pauseVolumeIcon = loadPauseIcon("assets/icons/volume.png");
+        pauseMenuIcon = loadPauseIcon("assets/icons/menu.png");
+        pauseContinueIcon = loadPauseIcon("assets/icons/continue.png");
+        pauseNothingIcon = loadPauseIcon("assets/icons/nothing.png");
 
         if (our::AudioManager::getInstance().isInitialized())
         {
             our::AudioManager::getInstance().playLoopingSound(worldAmbientTrack, worldAmbientGain);
+            applyAudioPreferences();
         }
 
         // We initialize the camera controller system since it needs a pointer to the app
@@ -1345,13 +1667,36 @@ class Playstate : public our::State
         renderer.initialize(size, config["renderer"]);
         hudSystem.initialize();
         our::SceneManager::validateWorld(&world);
-        totalTime = 0.0f;
+        our::GameSession::clear();
     }
 
     void onDraw(double deltaTime) override
     {
-        totalTime += (float)deltaTime;
+        auto &keyboard = getApp()->getKeyboard();
+        if (keyboard.justPressed(GLFW_KEY_P))
+        {
+            setPauseMode(!isPaused);
+        }
+
+        if (!isPaused)
+        {
+            totalTime += (float)deltaTime;
+        }
         renderer.setTime(totalTime);
+        collisionSfxCooldownLeft = std::max(0.0f, collisionSfxCooldownLeft - static_cast<float>(deltaTime));
+
+        if (pendingOuchSfxTimeLeft >= 0.0f)
+        {
+            pendingOuchSfxTimeLeft -= static_cast<float>(deltaTime);
+            if (pendingOuchSfxTimeLeft <= 0.0f)
+            {
+                if (our::AudioManager::getInstance().isInitialized() && !ouchSfxTrack.empty())
+                {
+                    our::AudioManager::getInstance().playSound(ouchSfxTrack);
+                }
+                pendingOuchSfxTimeLeft = -1.0f;
+            }
+        }
 
         glm::vec2 muzzleFlashCenter = glm::vec2(0.66f, 0.28f);
         our::Entity *cameraEntity = mainCameraEntity;
@@ -1414,8 +1759,14 @@ class Playstate : public our::State
         float muzzleFlashStrength = muzzleFlashDuration > 0.0f ? (muzzleFlashTimeLeft / muzzleFlashDuration) : 0.0f;
         renderer.setMuzzleFlashStrength(muzzleFlashStrength);
 
-        // Get a reference to the keyboard object
-        auto &keyboard = getApp()->getKeyboard();
+        if (isPaused)
+        {
+            renderer.setSceneExposure(computeCurrentExposure());
+            renderer.setMuzzleFlashStrength(0.0f);
+            renderer.render(&world);
+            our::AudioManager::getInstance().cleanupFinishedSources();
+            return;
+        }
 
         // Debug: decrease main player health on K press
         if (keyboard.justPressed(GLFW_KEY_K))
@@ -1454,6 +1805,28 @@ class Playstate : public our::State
         }
         renderer.setHealth(currentHealth, maxHealth, (float)deltaTime);
 
+        if (!endingQueued)
+        {
+            bool playerDefeated = false;
+            if (auto *health = getMainPlayerHealth(); health)
+            {
+                playerDefeated = (!health->isAlive) || (health->currentHealth <= 0.0f);
+            }
+
+            if (playerDefeated)
+            {
+                endingQueued = true;
+                our::GameSession::setEndingResult(our::EndingOutcome::Lose, computeCurrentExposure());
+                getApp()->changeState("ending");
+            }
+            else if (allWavesCompleted && getAliveZombieCount() == 0)
+            {
+                endingQueued = true;
+                our::GameSession::setEndingResult(our::EndingOutcome::Win, computeCurrentExposure());
+                getApp()->changeState("ending");
+            }
+        }
+
         // Clean up finished audio sources
         our::AudioManager::getInstance().cleanupFinishedSources();
 
@@ -1481,6 +1854,9 @@ class Playstate : public our::State
 
     void onMouseButtonEvent(int button, int action, int mods) override
     {
+        if (isPaused)
+            return;
+
         // Handle mouse button clicks for shooting
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
         {
@@ -1527,12 +1903,34 @@ class Playstate : public our::State
         }
     }
 
+    void onImmediateGui() override
+    {
+        renderPauseOverlay();
+    }
+
     void onDestroy() override
     {
+        setPauseMode(false);
+
+        auto &audio = our::AudioManager::getInstance();
+        audio.setEffectsEnabled(true);
+        audio.setMusicEnabled(true);
+
         if (our::AudioManager::getInstance().isInitialized())
         {
             our::AudioManager::getInstance().stopLoopingSound(worldAmbientTrack);
         }
+
+        delete pauseMusicIcon;
+        delete pauseVolumeIcon;
+        delete pauseMenuIcon;
+        delete pauseContinueIcon;
+        delete pauseNothingIcon;
+        pauseMusicIcon = nullptr;
+        pauseVolumeIcon = nullptr;
+        pauseMenuIcon = nullptr;
+        pauseContinueIcon = nullptr;
+        pauseNothingIcon = nullptr;
 
         // Don't forget to destroy the renderer
         renderer.destroy();
