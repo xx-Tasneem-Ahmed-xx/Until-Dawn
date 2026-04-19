@@ -45,6 +45,8 @@ class Playstate : public our::State
     our::MovementSystem movementSystem;
     our::ShootingSystem shootingSystem;
     our::CollisionSystem collisionSystem;
+    std::string worldAmbientTrack = "assets/audio/world.wav";
+    float worldAmbientGain = 0.45f;
     float muzzleFlashTimeLeft = 0.0f;
     const float muzzleFlashDuration = 0.06f;
     float totalTime = 0.0f;
@@ -997,6 +999,11 @@ class Playstate : public our::State
         waitingForNextWave = true;
         betweenWaveTimer = initialWaveDelaySeconds;
 
+        if (our::AudioManager::getInstance().isInitialized())
+        {
+            our::AudioManager::getInstance().playLoopingSound(worldAmbientTrack, worldAmbientGain);
+        }
+
         // We initialize the camera controller system since it needs a pointer to the app
         cameraController.enter(getApp());
         // Then we initialize the renderer
@@ -1180,6 +1187,11 @@ class Playstate : public our::State
 
     void onDestroy() override
     {
+        if (our::AudioManager::getInstance().isInitialized())
+        {
+            our::AudioManager::getInstance().stopLoopingSound(worldAmbientTrack);
+        }
+
         // Don't forget to destroy the renderer
         renderer.destroy();
         // On exit, we call exit for the camera controller system to make sure that the mouse is unlocked
