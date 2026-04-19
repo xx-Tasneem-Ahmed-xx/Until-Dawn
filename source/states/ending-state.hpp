@@ -12,6 +12,7 @@
 #include <asset-loader.hpp>
 #include <mesh/mesh-utils.hpp>
 #include <game-session.hpp>
+#include <ui/ui-theme.hpp>
 #include <imgui_impl/imgui_impl_opengl3.h>
 
 #include "ending/ending-win.hpp"
@@ -20,9 +21,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/gtc/constants.hpp>
 #include <algorithm>
-#include <array>
 #include <cctype>
-#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -57,45 +56,6 @@ namespace ending
             mesh->getSkinJointNodes(),
             mesh->getInverseBindMatrices(),
             skinCarrier->skinMatrices);
-    }
-
-    inline void loadEndingFonts(ImFont *&endingTitleFont, ImFont *&endingUiFont)
-    {
-        if (endingTitleFont && endingUiFont)
-            return;
-
-        ImGuiIO &io = ImGui::GetIO();
-        bool addedCustomFont = false;
-
-        const std::array<const char *, 5> serifCandidates = {
-            "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation2/LiberationSerif-Bold.ttf",
-            "/usr/share/fonts/truetype/noto/NotoSerif-Bold.ttf",
-            "/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf",
-            "assets/fonts/Cinzel-Bold.ttf"};
-
-        for (const char *path : serifCandidates)
-        {
-            if (std::filesystem::exists(path))
-            {
-                endingTitleFont = io.Fonts->AddFontFromFileTTF(path, 46.0f);
-                endingUiFont = io.Fonts->AddFontFromFileTTF(path, 28.0f);
-                addedCustomFont = (endingTitleFont != nullptr) && (endingUiFont != nullptr);
-                break;
-            }
-        }
-
-        if (addedCustomFont)
-        {
-            io.Fonts->Build();
-            ImGui_ImplOpenGL3_DestroyFontsTexture();
-            ImGui_ImplOpenGL3_CreateFontsTexture();
-        }
-
-        if (!endingTitleFont)
-            endingTitleFont = io.FontDefault;
-        if (!endingUiFont)
-            endingUiFont = io.FontDefault;
     }
 
     inline our::Entity *findFirstCameraEntity(our::World &world)
@@ -209,13 +169,10 @@ namespace ending
                 const char *winLine1 = "Congratulations, you have survived";
                 const char *winLine2 = "until dawn";
 
-                ImVec2 line1Size = ImGui::CalcTextSize(winLine1);
-                ImVec2 line2Size = ImGui::CalcTextSize(winLine2);
-
-                ImGui::SetCursorPosX(std::max(8.0f, (ImGui::GetWindowWidth() - line1Size.x) * 0.5f));
+                our::ui::centerCurrentWindowText(winLine1);
                 ImGui::TextUnformatted(winLine1);
 
-                ImGui::SetCursorPosX(std::max(8.0f, (ImGui::GetWindowWidth() - line2Size.x) * 0.5f));
+                our::ui::centerCurrentWindowText(winLine2);
                 ImGui::TextUnformatted(winLine2);
             }
             else
@@ -503,7 +460,7 @@ public:
         setupCamera();
         setupVisualAssets();
         ending::clearLocalOccludersAroundStage(world, endingStageCenter, playerMesh, scenePlayerMesh, zombieMesh);
-        ending::loadEndingFonts(endingTitleFont, endingUiFont);
+        our::ui::loadPreferredSerifFonts(endingTitleFont, endingUiFont, 46.0f, 28.0f);
         setupPlayerVisual();
         setupOutcomeActors();
 
