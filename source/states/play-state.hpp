@@ -92,6 +92,7 @@ class Playstate : public our::State
     glm::vec3 mainPlayerPistolHandOffset = glm::vec3(0.20f, 0.95f, -0.06f);
     glm::vec3 mainPlayerPistolRotationOffset = glm::vec3(0.0f, glm::pi<float>(), 0.0f);
     float mainPlayerPistolScaleMultiplier = 0.03f;
+    float mainPlayerFollowDistance = 2.5f;
     glm::vec3 lastMainPlayerAnchorPosition = glm::vec3(0.0f);
     bool mainPlayerAnchorInitialized = false;
     our::Transform zombiePrototypeTransform{};
@@ -566,7 +567,7 @@ class Playstate : public our::State
 
         glm::vec3 playerWorldPos = glm::vec3(mainPlayerEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
         glm::vec3 cameraForward = getCameraForwardOnGround();
-        glm::vec3 anchorPosition = cameraWorldPos;
+        glm::vec3 anchorPosition = cameraWorldPos + (cameraForward * mainPlayerFollowDistance);
 
         lastMainPlayerAnchorPosition = playerWorldPos;
         mainPlayerAnchorInitialized = true;
@@ -1607,6 +1608,7 @@ class Playstate : public our::State
             mainPlayerHeightOffset = config["mainPlayer"].value("heightOffset", mainPlayerHeightOffset);
 
             const auto &mainPlayerConfig = config["mainPlayer"];
+            mainPlayerFollowDistance = mainPlayerConfig.value("followDistance", mainPlayerFollowDistance);
             if (mainPlayerConfig.contains("pistolHandOffset") && mainPlayerConfig["pistolHandOffset"].is_array())
                 mainPlayerPistolHandOffset = mainPlayerConfig["pistolHandOffset"].get<glm::vec3>();
             if (mainPlayerConfig.contains("pistolRotationOffset") && mainPlayerConfig["pistolRotationOffset"].is_array())
