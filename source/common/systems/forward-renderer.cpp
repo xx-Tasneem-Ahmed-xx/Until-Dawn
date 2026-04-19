@@ -444,28 +444,31 @@ namespace our
             glDrawArrays(GL_TRIANGLES, 0, 3);
         }
 
-        // Draw a centered crosshair (+) overlay on top of everything
-        healthBar.render(windowSize);
-
-        if (crosshairShader)
+        // Draw HUD overlays (health bar + crosshair) only when enabled.
+        if (overlaysVisible)
         {
-            PipelineState crosshairPipelineState{};
-            crosshairPipelineState.depthTesting.enabled = false;
-            crosshairPipelineState.depthMask = false;
-            crosshairPipelineState.blending.enabled = true;
-            crosshairPipelineState.blending.equation = GL_FUNC_ADD;
-            crosshairPipelineState.blending.sourceFactor = GL_SRC_ALPHA;
-            crosshairPipelineState.blending.destinationFactor = GL_ONE_MINUS_SRC_ALPHA;
-            crosshairPipelineState.setup();
+            healthBar.render(windowSize);
 
-            crosshairShader->use();
-            crosshairShader->set("center", glm::vec2(0.5f, 0.5f));
-            crosshairShader->set("halfLength", 0.014f);
-            crosshairShader->set("halfThickness", 0.0018f);
-            crosshairShader->set("color", glm::vec4(1.0f, 1.0f, 1.0f, 0.95f));
+            if (crosshairShader)
+            {
+                PipelineState crosshairPipelineState{};
+                crosshairPipelineState.depthTesting.enabled = false;
+                crosshairPipelineState.depthMask = false;
+                crosshairPipelineState.blending.enabled = true;
+                crosshairPipelineState.blending.equation = GL_FUNC_ADD;
+                crosshairPipelineState.blending.sourceFactor = GL_SRC_ALPHA;
+                crosshairPipelineState.blending.destinationFactor = GL_ONE_MINUS_SRC_ALPHA;
+                crosshairPipelineState.setup();
 
-            glBindVertexArray(postProcessVertexArray);
-            glDrawArrays(GL_TRIANGLES, 0, 3);
+                crosshairShader->use();
+                crosshairShader->set("center", glm::vec2(0.5f, 0.5f));
+                crosshairShader->set("halfLength", 0.014f);
+                crosshairShader->set("halfThickness", 0.0018f);
+                crosshairShader->set("color", glm::vec4(1.0f, 1.0f, 1.0f, 0.95f));
+
+                glBindVertexArray(postProcessVertexArray);
+                glDrawArrays(GL_TRIANGLES, 0, 3);
+            }
         }
     }
 

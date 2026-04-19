@@ -54,6 +54,8 @@ namespace our
         float elapsedTime = 0.0f;
         // Global scene exposure factor for postprocessing (dark-to-bright transitions).
         float sceneExposure = 1.0f;
+        bool overlaysVisible = true;
+
     public:
         // Initialize the renderer including the sky and the Postprocessing objects.
         // windowSize is the width & height of the window (in pixels).
@@ -76,6 +78,9 @@ namespace our
 
         // Updates health bar input values. maxHealth values <= 0 are handled safely.
         void setHealth(float currentHealth, float maxHealth, float deltaTime = 0.0f) { healthBar.setHealth(currentHealth, maxHealth, deltaTime); }
+
+        // Shows/hides HUD overlays drawn by renderer (health bar + crosshair).
+        void setOverlaysVisible(bool value) { overlaysVisible = value; }
     };
 
 }
