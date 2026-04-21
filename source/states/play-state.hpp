@@ -23,8 +23,7 @@
 #include <asset-loader.hpp>
 #include <deserialize-utils.hpp>
 #include <game-session.hpp>
-#include <texture/texture2d.hpp>
-#include <texture/texture-utils.hpp>
+#include <ui/ui-theme.hpp>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <algorithm>
@@ -176,22 +175,7 @@ class Playstate : public our::State
     bool isPaused = false;
     bool musicEnabled = true;
     bool effectsEnabled = true;
-    float pauseTintAlpha = 0.45f;
-    our::Texture2D *pauseMusicIcon = nullptr;
-    our::Texture2D *pauseVolumeIcon = nullptr;
-    our::Texture2D *pauseMenuIcon = nullptr;
-    our::Texture2D *pauseContinueIcon = nullptr;
-    our::Texture2D *pauseNothingIcon = nullptr;
-
-    our::Texture2D *loadPauseIcon(const std::string &path)
-    {
-        our::Texture2D *texture = our::texture_utils::loadImage(path, false);
-        if (!texture)
-        {
-            std::cout << "[PauseUI] Failed to load icon: " << path << "\n";
-        }
-        return texture;
-    }
+    our::ui::pause::Assets pauseAssets{};
 
     void applyAudioPreferences()
     {
@@ -210,53 +194,6 @@ class Playstate : public our::State
         {
             audio.stopLoopingSound(worldAmbientTrack);
         }
-    }
-
-    bool drawPauseIconButton(const char *id, our::Texture2D *iconTexture, const char *label, bool enabledState, bool flipIconVertically = false)
-    {
-        ImGui::PushID(id);
-        const ImVec2 buttonSize(106.0f, 106.0f);
-        const ImVec2 iconPadding(16.0f, 16.0f);
-        const ImVec2 topLeft = ImGui::GetCursorScreenPos();
-
-        ImGui::InvisibleButton("IconButton", buttonSize);
-
-        const bool hovered = ImGui::IsItemHovered();
-        const bool clicked = ImGui::IsItemClicked();
-
-        ImDrawList *drawList = ImGui::GetWindowDrawList();
-        const ImVec2 bottomRight(topLeft.x + buttonSize.x, topLeft.y + buttonSize.y);
-        const ImU32 bgColor = hovered ? IM_COL32(245, 245, 245, 255) : IM_COL32(230, 230, 230, 255);
-        drawList->AddRectFilled(topLeft, bottomRight, bgColor, 10.0f);
-        drawList->AddRect(topLeft, bottomRight, IM_COL32(28, 28, 28, 255), 10.0f, 0, 1.8f);
-
-        if (iconTexture)
-        {
-            const ImVec2 iconMin(topLeft.x + iconPadding.x, topLeft.y + iconPadding.y);
-            const ImVec2 iconMax(bottomRight.x - iconPadding.x, bottomRight.y - iconPadding.y);
-            if (flipIconVertically)
-            {
-                drawList->AddImage((ImTextureID)(intptr_t)iconTexture->getOpenGLName(), iconMin, iconMax, ImVec2(0, 1), ImVec2(1, 0));
-            }
-            else
-            {
-                drawList->AddImage((ImTextureID)(intptr_t)iconTexture->getOpenGLName(), iconMin, iconMax);
-            }
-        }
-
-        if (!enabledState && pauseNothingIcon)
-        {
-            const ImVec2 offMin(topLeft.x + iconPadding.x * 0.65f, topLeft.y + iconPadding.y * 0.65f);
-            const ImVec2 offMax(bottomRight.x - iconPadding.x * 0.65f, bottomRight.y - iconPadding.y * 0.65f);
-            drawList->AddImage((ImTextureID)(intptr_t)pauseNothingIcon->getOpenGLName(), offMin, offMax, ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 50, 50, 235));
-        }
-
-        ImVec2 labelSize = ImGui::CalcTextSize(label);
-        drawList->AddText(ImVec2(topLeft.x + (buttonSize.x - labelSize.x) * 0.5f, topLeft.y + buttonSize.y + 9.0f), IM_COL32(240, 240, 240, 255), label);
-
-        ImGui::Dummy(ImVec2(buttonSize.x, 30.0f));
-        ImGui::PopID();
-        return clicked;
     }
 
     void setPauseMode(bool paused)
@@ -280,76 +217,79 @@ class Playstate : public our::State
         if (!isPaused)
             return;
 
-        const ImVec2 displaySize = ImGui::GetIO().DisplaySize;
-        ImDrawList *foreground = ImGui::GetForegroundDrawList();
-        foreground->AddRectFilled(ImVec2(0.0f, 0.0f), displaySize, IM_COL32(0, 0, 0, static_cast<int>(pauseTintAlpha * 255.0f)));
+        our::ui::pause::drawBackdrop();
+        our::ui::pause::setupPanelWindow();
 
-        const float panelWidth = std::min(700.0f, displaySize.x * 0.86f);
-        ImGui::SetNextWindowPos(ImVec2(displaySize.x * 0.5f, displaySize.y * 0.53f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSize(ImVec2(panelWidth, 0.0f), ImGuiCond_Always);
-        ImGui::SetNextWindowBgAlpha(0.75f);
-
-        ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
-                                 ImGuiWindowFlags_NoResize |
-                                 ImGuiWindowFlags_NoMove |
-                                 ImGuiWindowFlags_AlwaysAutoResize;
-
-        if (ImGui::Begin("PauseOverlay", nullptr, flags))
+        if (ImGui::Begin("PauseOverlay", nullptr, our::ui::pause::panelWindowFlags()))
         {
             const char *title = "Settings";
-            ImGui::SetWindowFontScale(1.95f);
-            ImVec2 titleSize = ImGui::CalcTextSize(title);
-            ImGui::SetCursorPosX(std::max(12.0f, (ImGui::GetWindowWidth() - titleSize.x) * 0.5f));
+            if (pauseAssets.titleFont)
+                ImGui::PushFont(pauseAssets.titleFont);
+            our::ui::centerCurrentWindowText(title, 12.0f);
             ImGui::TextUnformatted(title);
-            ImGui::SetWindowFontScale(1.0f);
+            if (pauseAssets.titleFont)
+                ImGui::PopFont();
 
             ImGui::Spacing();
             const char *subtitle = "Paused";
-            ImGui::SetWindowFontScale(1.20f);
-            ImVec2 subtitleSize = ImGui::CalcTextSize(subtitle);
-            ImGui::SetCursorPosX(std::max(12.0f, (ImGui::GetWindowWidth() - subtitleSize.x) * 0.5f));
+            if (pauseAssets.uiFont)
+                ImGui::PushFont(pauseAssets.uiFont);
+            our::ui::centerCurrentWindowText(subtitle, 12.0f);
             ImGui::TextUnformatted(subtitle);
-            ImGui::SetWindowFontScale(1.0f);
+            if (pauseAssets.uiFont)
+                ImGui::PopFont();
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
 
             ImGui::Columns(2, "PauseGrid", false);
 
-            auto centerButtonInColumn = [&]()
-            {
-                constexpr float pauseButtonWidth = 106.0f;
-                const float currentX = ImGui::GetCursorPosX();
-                const float columnWidth = ImGui::GetColumnWidth();
-                const float centeredX = currentX + std::max(0.0f, (columnWidth - pauseButtonWidth) * 0.5f);
-                ImGui::SetCursorPosX(centeredX);
-            };
-
-            centerButtonInColumn();
-            if (drawPauseIconButton("pause_music", pauseMusicIcon, "Music", musicEnabled, true))
+            our::ui::pause::centerButtonInCurrentColumn();
+            if (our::ui::pause::drawIconTileButton(
+                    "pause_music",
+                    our::ui::pause::Assets::asTextureId(pauseAssets.musicIcon),
+                    "Music",
+                    musicEnabled,
+                    our::ui::pause::Assets::asTextureId(pauseAssets.disabledOverlayIcon),
+                    true))
             {
                 musicEnabled = !musicEnabled;
                 applyAudioPreferences();
             }
 
             ImGui::NextColumn();
-            centerButtonInColumn();
-            if (drawPauseIconButton("pause_volume", pauseVolumeIcon, "Volume", effectsEnabled))
+            our::ui::pause::centerButtonInCurrentColumn();
+            if (our::ui::pause::drawIconTileButton(
+                    "pause_volume",
+                    our::ui::pause::Assets::asTextureId(pauseAssets.volumeIcon),
+                    "Volume",
+                    effectsEnabled,
+                    our::ui::pause::Assets::asTextureId(pauseAssets.disabledOverlayIcon)))
             {
                 effectsEnabled = !effectsEnabled;
                 applyAudioPreferences();
             }
 
             ImGui::NextColumn();
-            centerButtonInColumn();
-            if (drawPauseIconButton("pause_menu", pauseMenuIcon, "Menu", true))
+            our::ui::pause::centerButtonInCurrentColumn();
+            if (our::ui::pause::drawIconTileButton(
+                    "pause_menu",
+                    our::ui::pause::Assets::asTextureId(pauseAssets.menuIcon),
+                    "Menu",
+                    true,
+                    our::ui::pause::Assets::asTextureId(pauseAssets.disabledOverlayIcon)))
             {
                 getApp()->changeState("menu");
             }
 
             ImGui::NextColumn();
-            centerButtonInColumn();
-            if (drawPauseIconButton("pause_continue", pauseContinueIcon, "Continue", true))
+            our::ui::pause::centerButtonInCurrentColumn();
+            if (our::ui::pause::drawIconTileButton(
+                    "pause_continue",
+                    our::ui::pause::Assets::asTextureId(pauseAssets.continueIcon),
+                    "Continue",
+                    true,
+                    our::ui::pause::Assets::asTextureId(pauseAssets.disabledOverlayIcon)))
             {
                 setPauseMode(false);
             }
@@ -1829,11 +1769,7 @@ class Playstate : public our::State
         effectsEnabled = true;
         previousWallCollisionPairs.clear();
 
-        pauseMusicIcon = loadPauseIcon("assets/icons/music-player.png");
-        pauseVolumeIcon = loadPauseIcon("assets/icons/volume.png");
-        pauseMenuIcon = loadPauseIcon("assets/icons/menu.png");
-        pauseContinueIcon = loadPauseIcon("assets/icons/continue.png");
-        pauseNothingIcon = loadPauseIcon("assets/icons/nothing.png");
+        pauseAssets.loadDefaultThemeResources();
 
         if (our::AudioManager::getInstance().isInitialized())
         {
@@ -2103,18 +2039,8 @@ class Playstate : public our::State
             our::AudioManager::getInstance().stopLoopingSound(worldAmbientTrack);
         }
 
-        delete pauseMusicIcon;
-        delete pauseVolumeIcon;
-        delete pauseMenuIcon;
-        delete pauseContinueIcon;
-        delete pauseNothingIcon;
-        pauseMusicIcon = nullptr;
-        pauseVolumeIcon = nullptr;
-        pauseMenuIcon = nullptr;
-        pauseContinueIcon = nullptr;
-        pauseNothingIcon = nullptr;
+        pauseAssets.destroy();
 
-        // Don't forget to destroy the renderer
         renderer.destroy();
         hudSystem.destroy();
         // On exit, we call exit for the camera controller system to make sure that the mouse is unlocked
