@@ -35,6 +35,8 @@
 #include <glm/gtc/constants.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 #define ZOMBIE_ATTACK_TRIGGER_DISTANCE 1.8f
@@ -56,11 +58,26 @@ class Playstate : public our::State
     std::string worldAmbientTrack = "assets/audio/world.wav";
     std::string collisionSfxTrack = "assets/audio/collision.wav";
     std::string ouchSfxTrack = "assets/audio/female-ouch.wav";
+    std::string rewardSfxTrack = "assets/audio/reward.wav";
+    our::Mesh *pickupHealthMesh = nullptr;
     float worldAmbientGain = 0.45f;
     float collisionSfxCooldownSeconds = 0.12f;
     float collisionSfxCooldownLeft = 0.0f;
+    float collisionSfxMinPushDistance = 0.05f;
     float ouchSfxDelaySeconds = 0.08f;
     float pendingOuchSfxTimeLeft = -1.0f;
+
+    using CollisionPair = std::pair<const our::Entity *, const our::Entity *>;
+    struct CollisionPairHash
+    {
+        size_t operator()(const CollisionPair &pair) const noexcept
+        {
+            const auto a = reinterpret_cast<std::uintptr_t>(pair.first);
+            const auto b = reinterpret_cast<std::uintptr_t>(pair.second);
+            return std::hash<std::uintptr_t>{}(a) ^ (std::hash<std::uintptr_t>{}(b) << 1);
+        }
+    };
+    std::unordered_set<CollisionPair, CollisionPairHash> previousWallCollisionPairs;
     float muzzleFlashTimeLeft = 0.0f;
     const float muzzleFlashDuration = 0.06f;
     float totalTime = 0.0f;
@@ -340,6 +357,131 @@ class Playstate : public our::State
             ImGui::Columns(1);
         }
         ImGui::End();
+    }
+
+    bool isMainPlayerFamilyEntity(const our::Entity *entity) const
+    {
+        if (!entity)
+            return false;
+
+        const our::Entity *cursor = entity;
+        while (cursor)
+        {
+            if (cursor == mainPlayerEntity)
+                return true;
+            cursor = cursor->parent;
+        }
+
+        return entity == mainCameraEntity;
+    }
+
+    bool isHealthPickupEntity(our::Entity *entity)
+    {
+        if (!entity)
+            return false;
+
+        if (!pickupHealthMesh)
+            pickupHealthMesh = our::AssetLoader<our::Mesh>::get("pickup-health");
+
+        if (auto *renderer = entity->getComponent<our::MeshRendererComponent>())
+        {
+            if (pickupHealthMesh && renderer->mesh == pickupHealthMesh)
+                return true;
+        }
+
+        return entity->name.rfind("pickup_health", 0) == 0;
+    }
+
+    void setupHealthPickupColliders()
+    {
+        float playerColliderWorldY = 0.8f;
+        if (mainCameraEntity)
+        {
+            if (auto *cameraCollider = mainCameraEntity->getComponent<our::ColliderComponent>())
+            {
+                playerColliderWorldY = mainCameraEntity->localTransform.position.y + cameraCollider->center.y;
+            }
+        }
+
+        for (auto entity : world.getEntities())
+        {
+            if (!isHealthPickupEntity(entity))
+                continue;
+
+            auto *collider = entity->getComponent<our::ColliderComponent>();
+            if (!collider)
+                collider = entity->addComponent<our::ColliderComponent>();
+
+            float maxScaleAxis = std::max({std::abs(entity->localTransform.scale.x),
+                                           std::abs(entity->localTransform.scale.y),
+                                           std::abs(entity->localTransform.scale.z),
+                                           1.0f});
+            float triggerHalfSize = std::clamp(0.12f * maxScaleAxis, 1.5f, 5.0f);
+
+            collider->isTrigger = true;
+            collider->halfSize = glm::vec3(triggerHalfSize, triggerHalfSize, triggerHalfSize);
+            collider->center = glm::vec3(0.0f, playerColliderWorldY - entity->localTransform.position.y, 0.0f);
+        }
+    }
+
+    bool collectHealthPickup(our::Entity *pickupEntity)
+    {
+        if (!pickupEntity)
+            return false;
+
+        if (auto *playerHealth = getMainPlayerHealth(); playerHealth)
+        {
+            playerHealth->currentHealth = playerHealth->maxHealth;
+            playerHealth->isAlive = playerHealth->maxHealth > 0.0f;
+        }
+
+        pendingOuchSfxTimeLeft = -1.0f;
+        if (our::AudioManager::getInstance().isInitialized() && !rewardSfxTrack.empty())
+        {
+            our::AudioManager::getInstance().playSound(rewardSfxTrack);
+        }
+        world.markForRemoval(pickupEntity);
+        return true;
+    }
+
+    void processHealthPickups()
+    {
+        if (!mainCameraEntity)
+            mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
+
+        our::ColliderComponent *playerCollider = mainCameraEntity ? mainCameraEntity->getComponent<our::ColliderComponent>() : nullptr;
+        glm::vec3 playerPos = getPlayerTargetPosition();
+
+        for (auto entity : world.getEntities())
+        {
+            if (!isHealthPickupEntity(entity))
+                continue;
+
+            auto *pickupCollider = entity->getComponent<our::ColliderComponent>();
+            if (!(playerCollider && pickupCollider))
+            {
+                glm::vec3 pickupPos = glm::vec3(entity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+                glm::vec3 dxz = playerPos - pickupPos;
+                dxz.y = 0.0f;
+                if (glm::length(dxz) <= 2.0f)
+                {
+                    collectHealthPickup(entity);
+                }
+                continue;
+            }
+
+            glm::vec3 pMin, pMax, hMin, hMax;
+            playerCollider->getWorldBounds(pMin, pMax);
+            pickupCollider->getWorldBounds(hMin, hMax);
+
+            bool overlapXZ = (pMin.x <= hMax.x && pMax.x >= hMin.x) &&
+                             (pMin.z <= hMax.z && pMax.z >= hMin.z);
+
+            if (overlapXZ)
+            {
+                collectHealthPickup(entity);
+            }
+        }
     }
 
     our::Entity *findMainPlayerEntity()
@@ -1417,6 +1559,12 @@ class Playstate : public our::State
         if (!mainCameraEntity)
             mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
 
+        auto makeOrderedPair = [](const our::Entity *a, const our::Entity *b)
+        {
+            return (a < b) ? CollisionPair{a, b} : CollisionPair{b, a};
+        };
+        std::unordered_set<CollisionPair, CollisionPairHash> currentWallCollisionPairs;
+
         const int MAX_PASSES = 4;
         for (int pass = 0; pass < MAX_PASSES; ++pass)
         {
@@ -1428,6 +1576,22 @@ class Playstate : public our::State
             {
                 our::Entity *entityA = collision.entityA;
                 our::Entity *entityB = collision.entityB;
+
+                our::Entity *pickedHealthBox = nullptr;
+                if (isHealthPickupEntity(entityA) && isMainPlayerFamilyEntity(entityB))
+                {
+                    pickedHealthBox = entityA;
+                }
+                else if (isHealthPickupEntity(entityB) && isMainPlayerFamilyEntity(entityA))
+                {
+                    pickedHealthBox = entityB;
+                }
+
+                if (pickedHealthBox)
+                {
+                    collectHealthPickup(pickedHealthBox);
+                    continue;
+                }
 
                 auto envA = entityA->getComponent<our::EnvironmentComponent>();
                 auto envB = entityB->getComponent<our::EnvironmentComponent>();
@@ -1470,6 +1634,14 @@ class Playstate : public our::State
                     rawDynamic = entityB;
                     collidingWithFloor = isFloorA;
                     collidingWithWallLike = isWallLikeA;
+                }
+
+                CollisionPair wallCollisionPair = makeOrderedPair(rawDynamic, oriented.entityB);
+                bool isNewWallCollision = false;
+                if (collidingWithWallLike)
+                {
+                    bool firstSeenThisFrame = currentWallCollisionPairs.insert(wallCollisionPair).second;
+                    isNewWallCollision = firstSeenThisFrame && (previousWallCollisionPairs.find(wallCollisionPair) == previousWallCollisionPairs.end());
                 }
 
                 // If dynamic belongs to player family, push the camera (actual moving body).
@@ -1533,6 +1705,7 @@ class Playstate : public our::State
                 if (glm::length(pushBack) > epsilon)
                 {
                     bool shouldPlayCollisionSfx = false;
+                    float impactPushLen = 0.0f;
 
                     // Add an intentional extra retreat for the main player when
                     // colliding with wall-like geometry so the collision response
@@ -1546,12 +1719,13 @@ class Playstate : public our::State
                             glm::vec3 retreatDir = horizontalPush / pushLen;
                             pushBack += retreatDir * std::max(0.0f, playerWallCollisionRetreatDistance);
                             shouldPlayCollisionSfx = true;
+                            impactPushLen = pushLen;
                         }
                     }
 
                     dynamicEntity->localTransform.position += pushBack;
 
-                    if (shouldPlayCollisionSfx && collisionSfxCooldownLeft <= 0.0f)
+                    if (shouldPlayCollisionSfx && isNewWallCollision && impactPushLen >= collisionSfxMinPushDistance && collisionSfxCooldownLeft <= 0.0f)
                     {
                         if (our::AudioManager::getInstance().isInitialized() && !collisionSfxTrack.empty())
                         {
@@ -1568,6 +1742,8 @@ class Playstate : public our::State
             if (!anyResolved)
                 break;
         }
+
+        previousWallCollisionPairs = std::move(currentWallCollisionPairs);
     }
 
     void onInitialize() override
@@ -1620,6 +1796,7 @@ class Playstate : public our::State
 
         mainPlayerEntity = findMainPlayerEntity();
         mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
+        pickupHealthMesh = our::AssetLoader<our::Mesh>::get("pickup-health");
         mainPlayerMesh = our::AssetLoader<our::Mesh>::get("main-player");
         mainPlayerVisualEntity = findMainPlayerVisualEntity();
         mainPlayerPistolEntity = findPistolEntity();
@@ -1641,6 +1818,7 @@ class Playstate : public our::State
             mainPlayerPistolPrototypeTransform = mainPlayerPistolEntity->localTransform;
             updateMainPlayerPistolAttachment();
         }
+        setupHealthPickupColliders();
         lockCameraAndPlayerVerticalToZero();
         cacheZombiePrototypeAndSpawnPoints();
         cacheBloodSplashAssets();
@@ -1649,6 +1827,7 @@ class Playstate : public our::State
         isPaused = false;
         musicEnabled = true;
         effectsEnabled = true;
+        previousWallCollisionPairs.clear();
 
         pauseMusicIcon = loadPauseIcon("assets/icons/music-player.png");
         pauseVolumeIcon = loadPauseIcon("assets/icons/volume.png");
@@ -1792,6 +1971,7 @@ class Playstate : public our::State
 
         updateWaveSystem((float)deltaTime);
         updateZombies((float)deltaTime);
+        processHealthPickups();
         collisionSystem.update(&world);
         handleCollisions();
         lockCameraAndPlayerVerticalToZero();
@@ -1942,6 +2122,7 @@ class Playstate : public our::State
         // Clear the world
         world.clear();
         collisionSystem.clear();
+        previousWallCollisionPairs.clear();
         // and we delete all the loaded assets to free memory on the RAM and the VRAM
         our::clearAllAssets();
     }
