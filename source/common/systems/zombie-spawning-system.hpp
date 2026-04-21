@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../asset-loader.hpp"
 #include "../components/health.hpp"
 #include "../components/mesh-renderer.hpp"
 #include "../components/zombie.hpp"
@@ -8,6 +9,8 @@
 #include <cmath>
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
+#include <iostream>
+#include <json/json.hpp>
 #include <string>
 #include <vector>
 
@@ -54,6 +57,166 @@ namespace our
     class ZombieSpawningSystem
     {
     public:
+        void loadGameplayConfig(
+            const nlohmann::json &zombiesConfig,
+            std::vector<int> &waveZombieCounts,
+            float &zombieSpawnIntervalSeconds,
+            float &initialWaveDelaySeconds,
+            float &betweenWavesDelaySeconds,
+            float &minSpawnPlayerDistance,
+            float &zombieWalkSpeed,
+            float &zombieCrawlSpeed,
+            float &zombieDamage,
+            float &zombieAttackRange,
+            float &zombieAttackCooldown,
+            float &zombieCorpseLifetime,
+            float &zombieRadius,
+            float &zombieSpawnHeightOffset,
+            float &zombieModelScaleMultiplier,
+            float &zombieSpawnMaxDistance,
+            float &zombieSpawnViewHalfAngleDegrees,
+            float &zombieModelYawOffsetDegrees,
+            float &zombieModelYawOffset) const
+        {
+            if (!zombiesConfig.is_object())
+                return;
+
+            if (zombiesConfig.contains("waveZombieCounts") && zombiesConfig["waveZombieCounts"].is_array())
+            {
+                std::vector<int> parsedCounts;
+                for (const auto &v : zombiesConfig["waveZombieCounts"])
+                {
+                    if (!v.is_number_integer())
+                        continue;
+                    int c = v.get<int>();
+                    if (c > 0)
+                        parsedCounts.push_back(c);
+                }
+                if (!parsedCounts.empty())
+                {
+                    waveZombieCounts = parsedCounts;
+                }
+            }
+
+            zombieSpawnIntervalSeconds = std::max(0.01f, zombiesConfig.value("spawnIntervalSeconds", zombieSpawnIntervalSeconds));
+            initialWaveDelaySeconds = std::max(0.0f, zombiesConfig.value("initialWaveDelaySeconds", initialWaveDelaySeconds));
+            betweenWavesDelaySeconds = std::max(0.0f, zombiesConfig.value("betweenWavesDelaySeconds", betweenWavesDelaySeconds));
+            minSpawnPlayerDistance = std::max(0.0f, zombiesConfig.value("minSpawnPlayerDistance", minSpawnPlayerDistance));
+
+            zombieWalkSpeed = std::max(0.0f, zombiesConfig.value("walkSpeed", zombieWalkSpeed));
+            zombieCrawlSpeed = std::max(0.0f, zombiesConfig.value("crawlSpeed", zombieCrawlSpeed));
+            zombieDamage = std::max(0.0f, zombiesConfig.value("damage", zombieDamage));
+            zombieAttackRange = std::max(0.05f, zombiesConfig.value("attackRange", zombieAttackRange));
+            zombieAttackCooldown = std::max(0.01f, zombiesConfig.value("attackCooldown", zombieAttackCooldown));
+            zombieCorpseLifetime = std::max(0.0f, zombiesConfig.value("corpseLifetime", zombieCorpseLifetime));
+            zombieRadius = std::max(0.05f, zombiesConfig.value("radius", zombieRadius));
+            zombieSpawnHeightOffset = zombiesConfig.value("spawnHeightOffset", zombieSpawnHeightOffset);
+            zombieModelScaleMultiplier = std::max(0.05f, zombiesConfig.value("modelScaleMultiplier", zombieModelScaleMultiplier));
+            zombieSpawnMaxDistance = std::max(minSpawnPlayerDistance + 0.1f, zombiesConfig.value("spawnMaxDistance", zombieSpawnMaxDistance));
+            zombieSpawnViewHalfAngleDegrees = std::clamp(zombiesConfig.value("spawnViewHalfAngleDegrees", zombieSpawnViewHalfAngleDegrees), 1.0f, 85.0f);
+            zombieModelYawOffsetDegrees = zombiesConfig.value("modelYawOffsetDegrees", zombieModelYawOffsetDegrees);
+            zombieModelYawOffset = glm::radians(zombieModelYawOffsetDegrees);
+        }
+
+        void cachePrototypeAndSpawnPoints(
+            World *world,
+            Mesh *&zombieMesh,
+            Material *&zombieMaterial,
+            Transform &zombiePrototypeTransform,
+            std::vector<glm::vec3> &zombieSpawnPoints,
+            float zombieSpawnHeightOffset,
+            float &zombieGroundY) const
+        {
+            zombieMesh = AssetLoader<Mesh>::get("zombie");
+            zombieMaterial = AssetLoader<Material>::get("zombie_theme");
+            if (!zombieMaterial)
+                zombieMaterial = AssetLoader<Material>::get("auto");
+            zombiePrototypeTransform = Transform{};
+            zombiePrototypeTransform.position = glm::vec3(0.0f, -0.5f, 0.0f);
+
+            std::vector<Entity *> startupZombieEntities;
+            zombieSpawnPoints.clear();
+            for (auto entity : world->getEntities())
+            {
+                auto *renderer = entity->getComponent<MeshRendererComponent>();
+                if (!(renderer && renderer->mesh == zombieMesh))
+                    continue;
+
+                startupZombieEntities.push_back(entity);
+                zombieSpawnPoints.push_back(entity->localTransform.position);
+                zombiePrototypeTransform = entity->localTransform;
+                if (renderer->material)
+                    zombieMaterial = renderer->material;
+            }
+
+            for (auto entity : startupZombieEntities)
+            {
+                world->markForRemoval(entity);
+            }
+            world->deleteMarkedEntities();
+
+            zombieGroundY = zombiePrototypeTransform.position.y + zombieSpawnHeightOffset;
+
+            if (zombieSpawnPoints.empty())
+            {
+                zombieSpawnPoints.push_back(glm::vec3(0.0f, -0.5f, 2.0f));
+                zombieSpawnPoints.push_back(glm::vec3(5.0f, -0.5f, 4.0f));
+                zombieSpawnPoints.push_back(glm::vec3(-5.0f, -0.5f, 4.0f));
+                zombieSpawnPoints.push_back(glm::vec3(0.0f, -0.5f, -2.0f));
+            }
+
+            std::cout << "[Zombies] mesh=" << (zombieMesh ? "loaded" : "missing")
+                      << ", gltfBaseColorTexture=" << ((zombieMesh && zombieMesh->hasGLTFBaseColorTexture()) ? "yes" : "no")
+                      << ", material=" << (zombieMaterial ? "loaded" : "missing") << "\n";
+        }
+
+        ZombieSpawnerConfig makeConfig(
+            const std::vector<int> &waveZombieCounts,
+            float zombieSpawnIntervalSeconds,
+            float betweenWavesDelaySeconds,
+            float minSpawnPlayerDistance,
+            float zombieSpawnMaxDistance,
+            float zombieSpawnViewHalfAngleDegrees,
+            float zombieWalkSpeed,
+            float zombieCrawlSpeed,
+            float zombieDamage,
+            float zombieAttackRange,
+            float zombieAttackCooldown,
+            float zombieCorpseLifetime,
+            float zombieRadius,
+            float zombieGroundY,
+            float zombieModelYawOffset,
+            float zombieModelScaleMultiplier,
+            const Transform &zombiePrototypeTransform,
+            Mesh *zombieMesh,
+            Material *zombieMaterial) const
+        {
+            ZombieSpawnerConfig config;
+            config.waveZombieCounts = waveZombieCounts;
+            config.zombieSpawnIntervalSeconds = zombieSpawnIntervalSeconds;
+            config.betweenWavesDelaySeconds = betweenWavesDelaySeconds;
+            config.minSpawnPlayerDistance = minSpawnPlayerDistance;
+            config.zombieSpawnMaxDistance = zombieSpawnMaxDistance;
+            config.zombieSpawnViewHalfAngleDegrees = zombieSpawnViewHalfAngleDegrees;
+
+            config.zombieWalkSpeed = zombieWalkSpeed;
+            config.zombieCrawlSpeed = zombieCrawlSpeed;
+            config.zombieDamage = zombieDamage;
+            config.zombieAttackRange = zombieAttackRange;
+            config.zombieAttackCooldown = zombieAttackCooldown;
+            config.zombieCorpseLifetime = zombieCorpseLifetime;
+            config.zombieRadius = zombieRadius;
+
+            config.zombieGroundY = zombieGroundY;
+            config.zombieModelYawOffset = zombieModelYawOffset;
+            config.zombieModelScaleMultiplier = zombieModelScaleMultiplier;
+            config.zombiePrototypeTransform = zombiePrototypeTransform;
+            config.zombieMesh = zombieMesh;
+            config.zombieMaterial = zombieMaterial;
+
+            return config;
+        }
+
         int getAliveZombieCount(World *world) const
         {
             int alive = 0;
