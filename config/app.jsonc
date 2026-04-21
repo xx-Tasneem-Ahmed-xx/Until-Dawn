@@ -51,8 +51,8 @@
     "mainPlayer": {
       "heightOffset": -5,
       "followDistance": 2,
-      "pistolHandOffset": [-0.3, 3.5, 1.7],
-      "pistolRotationOffset": [-90, -90, 0],
+      "pistolBoneOffset": [0.0, 0.2, 0.17],
+      "pistolRotationOffset": [190, 90, -110],
       "pistolScaleMultiplier": 1
     },
     "assets": {
