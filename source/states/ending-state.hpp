@@ -250,7 +250,10 @@ class EndingState : public our::State
 
         runtime.endingStageCenter = glm::vec3(0.0f, runtime.endingGroundY, 0.0f);
 
+        // Ending scenes should not show gameplay pickups/weapons.
         ending::removeEntitiesByMesh(world, our::AssetLoader<our::Mesh>::get("pistol"));
+        ending::removeEntitiesByMesh(world, our::AssetLoader<our::Mesh>::get("rifle"));
+        ending::removeEntitiesByMesh(world, our::AssetLoader<our::Mesh>::get("pickup-health"));
     }
 
     void setupPlayerVisual()
