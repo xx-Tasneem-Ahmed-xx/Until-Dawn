@@ -10,6 +10,8 @@
 #include <systems/collision-system.hpp>
 #include <systems/scene-manager.hpp>
 #include <systems/hud-system.hpp>
+#include <systems/character-skeleton-system.hpp>
+#include <systems/attachment-system.hpp>
 #include <components/camera.hpp>
 #include <components/environment.hpp>
 #include <components/free-camera-controller.hpp>
@@ -17,6 +19,7 @@
 #include <components/mesh-renderer.hpp>
 #include <components/player.hpp>
 #include <components/weapon.hpp>
+#include <components/weapon-attachment.hpp>
 #include <components/zombie.hpp>
 #include <animation/motion.hpp>
 #include <audio-manager.hpp>
@@ -105,9 +108,13 @@ class Playstate : public our::State
     float mainPlayerHeightOffset = -1.5f;
     our::Entity *mainPlayerPistolEntity = nullptr;
     our::Transform mainPlayerPistolPrototypeTransform{};
-    glm::vec3 mainPlayerPistolHandOffset = glm::vec3(0.20f, 0.95f, -0.06f);
+    glm::vec3 mainPlayerPistolBoneOffset = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 mainPlayerPistolRotationOffset = glm::vec3(0.0f, glm::pi<float>(), 0.0f);
     float mainPlayerPistolScaleMultiplier = 0.03f;
+    std::string mainPlayerWeaponBoneName = "RightHand";
+    our::WeaponAttachmentComponent *mainPlayerWeaponAttachment = nullptr;
+    our::CharacterSkeletonSystem mainPlayerSkeletonSystem;
+    our::AttachmentSystem attachmentSystem;
     float mainPlayerFollowDistance = 2.5f;
     glm::vec3 lastMainPlayerAnchorPosition = glm::vec3(0.0f);
     bool mainPlayerAnchorInitialized = false;
@@ -540,19 +547,42 @@ class Playstate : public our::State
 
     void updateMainPlayerPistolAttachment()
     {
-        if (!mainPlayerPistolEntity)
-            mainPlayerPistolEntity = findPistolEntity();
-        if (!(mainPlayerPistolEntity && mainPlayerVisualEntity))
+        if (!mainPlayerWeaponAttachment)
             return;
 
-        glm::vec3 playerWorldPosition = glm::vec3(mainPlayerVisualEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
-        glm::quat playerWorldRotation = glm::quat(mainPlayerVisualEntity->localTransform.rotation);
-        glm::vec3 handWorld = playerWorldPosition + (playerWorldRotation * mainPlayerPistolHandOffset);
+        attachmentSystem.updateWeaponTransform(mainPlayerWeaponAttachment);
+    }
 
-        mainPlayerPistolEntity->parent = nullptr;
-        mainPlayerPistolEntity->localTransform.position = handWorld;
-        mainPlayerPistolEntity->localTransform.rotation = mainPlayerVisualEntity->localTransform.rotation + mainPlayerPistolRotationOffset;
-        mainPlayerPistolEntity->localTransform.scale = mainPlayerPistolPrototypeTransform.scale * mainPlayerPistolScaleMultiplier;
+    void setupMainPlayerWeaponAttachment()
+    {
+        if (!mainPlayerPistolEntity)
+            mainPlayerPistolEntity = findPistolEntity();
+        if (!mainPlayerPistolEntity)
+            return;
+
+        mainPlayerPistolPrototypeTransform = mainPlayerPistolEntity->localTransform;
+
+        if (!mainPlayerWeaponAttachment)
+        {
+            mainPlayerWeaponAttachment = mainPlayerPistolEntity->getComponent<our::WeaponAttachmentComponent>();
+            if (!mainPlayerWeaponAttachment)
+                mainPlayerWeaponAttachment = mainPlayerPistolEntity->addComponent<our::WeaponAttachmentComponent>();
+        }
+
+        auto *renderer = mainPlayerPistolEntity->getComponent<our::MeshRendererComponent>();
+        if (mainPlayerWeaponAttachment)
+        {
+            if (renderer)
+                mainPlayerWeaponAttachment->mesh = renderer->mesh;
+
+            mainPlayerWeaponAttachment->offsetTransform.position = mainPlayerPistolBoneOffset;
+            mainPlayerWeaponAttachment->offsetTransform.rotation = mainPlayerPistolRotationOffset;
+            mainPlayerWeaponAttachment->offsetTransform.scale = mainPlayerPistolPrototypeTransform.scale * mainPlayerPistolScaleMultiplier;
+            mainPlayerWeaponAttachment->rebuildOffsetMatrix();
+
+            mainPlayerWeaponAttachment->detachedWorldMatrix = mainPlayerPistolEntity->getLocalToWorldMatrix();
+            attachmentSystem.attachWeaponToBone(mainPlayerWeaponAttachment, &mainPlayerSkeletonSystem, mainPlayerWeaponBoneName);
+        }
     }
 
     void bindMainPlayerMotionClips()
@@ -749,6 +779,12 @@ class Playstate : public our::State
             float yaw = std::atan2(facingDirection.x, facingDirection.z);
             mainPlayerVisualEntity->localTransform.rotation.y = yaw + mainPlayerModelYawOffset;
         }
+
+        mainPlayerSkeletonSystem.bindRuntimePose(
+            mainPlayerMotion,
+            clip,
+            player->motionClipTime,
+            mainPlayerVisualEntity->getLocalToWorldMatrix());
 
         updateMainPlayerPistolAttachment();
 
@@ -1725,11 +1761,12 @@ class Playstate : public our::State
 
             const auto &mainPlayerConfig = config["mainPlayer"];
             mainPlayerFollowDistance = mainPlayerConfig.value("followDistance", mainPlayerFollowDistance);
-            if (mainPlayerConfig.contains("pistolHandOffset") && mainPlayerConfig["pistolHandOffset"].is_array())
-                mainPlayerPistolHandOffset = mainPlayerConfig["pistolHandOffset"].get<glm::vec3>();
+            if (mainPlayerConfig.contains("pistolBoneOffset") && mainPlayerConfig["pistolBoneOffset"].is_array())
+                mainPlayerPistolBoneOffset = mainPlayerConfig["pistolBoneOffset"].get<glm::vec3>();
             if (mainPlayerConfig.contains("pistolRotationOffset") && mainPlayerConfig["pistolRotationOffset"].is_array())
                 mainPlayerPistolRotationOffset = glm::radians(mainPlayerConfig["pistolRotationOffset"].get<glm::vec3>());
             mainPlayerPistolScaleMultiplier = mainPlayerConfig.value("pistolScaleMultiplier", mainPlayerPistolScaleMultiplier);
+            mainPlayerWeaponBoneName = mainPlayerConfig.value("pistolBoneName", mainPlayerWeaponBoneName);
         }
         bindZombieMotionClips();
         bindMainPlayerMotionClips();
@@ -1739,7 +1776,8 @@ class Playstate : public our::State
         pickupHealthMesh = our::AssetLoader<our::Mesh>::get("pickup-health");
         mainPlayerMesh = our::AssetLoader<our::Mesh>::get("main-player");
         mainPlayerVisualEntity = findMainPlayerVisualEntity();
-        mainPlayerPistolEntity = findPistolEntity();
+        mainPlayerPistolEntity = nullptr;
+        mainPlayerWeaponAttachment = nullptr;
         if (mainPlayerVisualEntity)
         {
             mainPlayerVisualPrototypeTransform = mainPlayerVisualEntity->localTransform;
@@ -1753,11 +1791,7 @@ class Playstate : public our::State
                 }
             }
         }
-        if (mainPlayerPistolEntity)
-        {
-            mainPlayerPistolPrototypeTransform = mainPlayerPistolEntity->localTransform;
-            updateMainPlayerPistolAttachment();
-        }
+        setupMainPlayerWeaponAttachment();
         setupHealthPickupColliders();
         lockCameraAndPlayerVerticalToZero();
         cacheZombiePrototypeAndSpawnPoints();
@@ -1883,15 +1917,6 @@ class Playstate : public our::State
             renderer.render(&world);
             our::AudioManager::getInstance().cleanupFinishedSources();
             return;
-        }
-
-        // Debug: decrease main player health on K press
-        if (keyboard.justPressed(GLFW_KEY_K))
-        {
-            if (auto health = getMainPlayerHealth(); health)
-            {
-                health->takeDamage(10.0f);
-            }
         }
 
         // Here, we just run a bunch of systems to control the world logic

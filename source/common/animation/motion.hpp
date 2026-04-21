@@ -32,6 +32,7 @@ namespace our
 
     struct MotionNode
     {
+        std::string name;
         int parent = -1;
         std::vector<int> children;
         glm::vec3 baseTranslation = glm::vec3(0.0f);
