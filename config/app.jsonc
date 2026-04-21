@@ -1,4 +1,3 @@
-
 {
   "start-scene": "menu",
   "window": {
@@ -15,12 +14,7 @@
       "postprocess": "assets/shaders/postprocess/blit-muzzle.frag"
     },
     "zombies": {
-      "waveZombieCounts": [
-        3,
-        5,
-        7,
-        10
-      ],
+      "waveZombieCounts": [3, 5, 7, 10],
       "initialWaveDelaySeconds": 0.2,
       "betweenWavesDelaySeconds": 4,
       "spawnIntervalSeconds": 0.8,
@@ -56,16 +50,8 @@
     },
     "mainPlayer": {
       "heightOffset": -5,
-      "pistolHandOffset": [
-        -0.3,
-        3.5,
-        1.7
-      ],
-      "pistolRotationOffset": [
-        -90,
-        -90,
-        0
-      ],
+      "pistolHandOffset": [-0.3, 3.5, 1.7],
+      "pistolRotationOffset": [-90, -90, 0],
       "pistolScaleMultiplier": 1
     },
     "assets": {
@@ -131,12 +117,7 @@
               "enabled": true
             }
           },
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
+          "tint": [1, 1, 1, 1],
           "texture": "grass",
           "sampler": "default"
         },
@@ -151,12 +132,7 @@
               "enabled": true
             }
           },
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ],
+          "tint": [1, 1, 1, 1],
           "texture": "wood",
           "sampler": "default"
         },
@@ -231,17 +207,9 @@
               "enabled": true
             }
           },
-          "tint": [
-            0.82,
-            0.82,
-            0.82,
-            1
-          ],
+          "tint": [0.82, 0.82, 0.82, 1],
           "texture": "brick",
-          "uv_scale": [
-            40,
-            40
-          ],
+          "uv_scale": [40, 40],
           "sampler": "default"
         },
         "glass": {
@@ -262,12 +230,7 @@
             "depthMask": false
           },
           "transparent": true,
-          "tint": [
-            1,
-            1,
-            1,
-            0.6
-          ],
+          "tint": [1, 1, 1, 0.6],
           "texture": "glass",
           "sampler": "default"
         },
@@ -282,12 +245,7 @@
               "enabled": true
             }
           },
-          "tint": [
-            0.38,
-            0.27,
-            0.16,
-            1
-          ]
+          "tint": [0.38, 0.27, 0.16, 1]
         },
         "auto": {
           "type": "tinted",
@@ -300,12 +258,7 @@
               "enabled": true
             }
           },
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ]
+          "tint": [1, 1, 1, 1]
         },
         "blood-fx": {
           "type": "tinted",
@@ -337,12 +290,7 @@
               "enabled": true
             }
           },
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ]
+          "tint": [1, 1, 1, 1]
         },
         "building_theme": {
           "type": "tinted",
@@ -355,12 +303,7 @@
               "enabled": true
             }
           },
-          "tint": [
-            1,
-            1,
-            1,
-            1
-          ]
+          "tint": [1, 1, 1, 1]
         },
         "cone_theme": {
           "type": "textured",
@@ -375,12 +318,7 @@
           },
           "texture": "cone_palette",
           "sampler": "default",
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ]
+          "tint": [1.0, 1.0, 1.0, 1.0]
         },
         "stop_sign_theme": {
           "type": "textured",
@@ -395,23 +333,14 @@
           },
           "texture": "stop_sign_tex",
           "sampler": "default",
-          "tint": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-          ]
+          "tint": [1.0, 1.0, 1.0, 1.0]
         }
       }
     },
     "world": [
       {
         "name": "MainPlayer",
-        "position": [
-          0,
-          0,
-          10
-        ],
+        "position": [0, 0, 10],
         "components": [
           {
             "type": "Player",
@@ -435,16 +364,8 @@
               },
               {
                 "type": "Collider",
-                "size": [
-                  0.8,
-                  1.8,
-                  0.8
-                ],
-                "center": [
-                  0,
-                  0.8,
-                  0
-                ]
+                "size": [0.8, 1.8, 0.8],
+                "center": [0, 0.8, 0]
               },
               {
                 "type": "Free Camera Controller"
@@ -452,21 +373,9 @@
             ],
             "children": [
               {
-                "position": [
-                  1,
-                  -1,
-                  -1
-                ],
-                "rotation": [
-                  -110,
-                  -80,
-                  180
-                ],
-                "scale": [
-                  40,
-                  40,
-                  40
-                ],
+                "position": [1, -1, -1],
+                "rotation": [-110, -80, 180],
+                "scale": [40, 40, 40],
                 "components": [
                   {
                     "type": "Mesh Renderer",
@@ -480,21 +389,9 @@
         ]
       },
       {
-        "position": [
-          6,
-          5,
-          10
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          10,
-          10,
-          10
-        ],
+        "position": [6, 5, 10],
+        "rotation": [0, 0, 0],
+        "scale": [10, 10, 10],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -504,21 +401,9 @@
         ]
       },
       {
-        "position": [
-          6,
-          7,
-          20
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ],
+        "position": [6, 7, 20],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -528,21 +413,9 @@
         ]
       },
       {
-        "position": [
-          6,
-          4,
-          10
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          100,
-          100,
-          100
-        ],
+        "position": [6, 4, 10],
+        "rotation": [0, 0, 0],
+        "scale": [100, 100, 100],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -553,19 +426,11 @@
       },
       {
         "name": "street_floor",
-        "position": [
-          0,
-          -8,
-          0
-        ],
+        "position": [0, -8, 0],
         "components": [
           {
             "type": "Collider",
-            "size": [
-              104,
-              1,
-              104
-            ]
+            "size": [104, 1, 104]
           },
           {
             "type": "Environment",
@@ -575,21 +440,9 @@
         "children": [
           {
             "name": "street_floor_visual",
-            "position": [
-              0,
-              0,
-              0
-            ],
-            "rotation": [
-              -90,
-              0,
-              0
-            ],
-            "scale": [
-              104,
-              104,
-              1
-            ],
+            "position": [0, 0, 0],
+            "rotation": [-90, 0, 0],
+            "scale": [104, 104, 1],
             "components": [
               {
                 "type": "Mesh Renderer",
@@ -667,16 +520,8 @@
       },
       {
         "name": "road_cone_0",
-        "position": [
-          -30.0,
-          -7.5,
-          -10.0
-        ],
-        "scale": [
-          2.2,
-          2.2,
-          2.2
-        ],
+        "position": [-30.0, -7.5, -10.0],
+        "scale": [2.2, 2.2, 2.2],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -685,11 +530,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              0.8,
-              1.2,
-              0.8
-            ]
+            "size": [0.8, 1.2, 0.8]
           },
           {
             "type": "Environment",
@@ -699,16 +540,8 @@
       },
       {
         "name": "road_cone_1",
-        "position": [
-          -18.0,
-          -7.5,
-          22.0
-        ],
-        "scale": [
-          2.2,
-          2.2,
-          2.2
-        ],
+        "position": [-18.0, -7.5, 22.0],
+        "scale": [2.2, 2.2, 2.2],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -717,11 +550,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              0.8,
-              1.2,
-              0.8
-            ]
+            "size": [0.8, 1.2, 0.8]
           },
           {
             "type": "Environment",
@@ -731,16 +560,8 @@
       },
       {
         "name": "road_cone_2",
-        "position": [
-          -6.0,
-          -7.5,
-          -24.0
-        ],
-        "scale": [
-          2.2,
-          2.2,
-          2.2
-        ],
+        "position": [-6.0, -7.5, -24.0],
+        "scale": [2.2, 2.2, 2.2],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -749,11 +570,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              0.8,
-              1.2,
-              0.8
-            ]
+            "size": [0.8, 1.2, 0.8]
           },
           {
             "type": "Environment",
@@ -763,16 +580,8 @@
       },
       {
         "name": "road_cone_3",
-        "position": [
-          8.0,
-          -7.5,
-          26.0
-        ],
-        "scale": [
-          2.2,
-          2.2,
-          2.2
-        ],
+        "position": [8.0, -7.5, 26.0],
+        "scale": [2.2, 2.2, 2.2],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -781,11 +590,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              0.8,
-              1.2,
-              0.8
-            ]
+            "size": [0.8, 1.2, 0.8]
           },
           {
             "type": "Environment",
@@ -795,16 +600,8 @@
       },
       {
         "name": "road_cone_4",
-        "position": [
-          22.0,
-          -7.5,
-          8.0
-        ],
-        "scale": [
-          2.2,
-          2.2,
-          2.2
-        ],
+        "position": [22.0, -7.5, 8.0],
+        "scale": [2.2, 2.2, 2.2],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -813,11 +610,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              0.8,
-              1.2,
-              0.8
-            ]
+            "size": [0.8, 1.2, 0.8]
           },
           {
             "type": "Environment",
@@ -827,16 +620,8 @@
       },
       {
         "name": "road_cone_5",
-        "position": [
-          30.0,
-          -7.5,
-          -12.0
-        ],
-        "scale": [
-          2.2,
-          2.2,
-          2.2
-        ],
+        "position": [30.0, -7.5, -12.0],
+        "scale": [2.2, 2.2, 2.2],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -845,11 +630,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              0.45,
-              0.8,
-              0.45
-            ]
+            "size": [0.45, 0.8, 0.45]
           },
           {
             "type": "Environment",
@@ -859,16 +640,8 @@
       },
       {
         "name": "road_cone_6",
-        "position": [
-          -24.0,
-          -7.5,
-          0.0
-        ],
-        "scale": [
-          2.2,
-          2.2,
-          2.2
-        ],
+        "position": [-24.0, -7.5, 0.0],
+        "scale": [2.2, 2.2, 2.2],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -877,11 +650,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              0.45,
-              0.8,
-              0.45
-            ]
+            "size": [0.45, 0.8, 0.45]
           },
           {
             "type": "Environment",
@@ -891,16 +660,8 @@
       },
       {
         "name": "road_cone_7",
-        "position": [
-          0.0,
-          -7.5,
-          0.0
-        ],
-        "scale": [
-          2.2,
-          2.2,
-          2.2
-        ],
+        "position": [0.0, -7.5, 0.0],
+        "scale": [2.2, 2.2, 2.2],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -909,11 +670,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              0.45,
-              0.8,
-              0.45
-            ]
+            "size": [0.45, 0.8, 0.45]
           },
           {
             "type": "Environment",
@@ -923,16 +680,8 @@
       },
       {
         "name": "road_cone_8",
-        "position": [
-          12.0,
-          -7.5,
-          -2.0
-        ],
-        "scale": [
-          2.2,
-          2.2,
-          2.2
-        ],
+        "position": [12.0, -7.5, -2.0],
+        "scale": [2.2, 2.2, 2.2],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -941,11 +690,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              0.45,
-              0.8,
-              0.45
-            ]
+            "size": [0.45, 0.8, 0.45]
           },
           {
             "type": "Environment",
@@ -955,16 +700,8 @@
       },
       {
         "name": "road_cone_9",
-        "position": [
-          -10.0,
-          -7.5,
-          14.0
-        ],
-        "scale": [
-          2.2,
-          2.2,
-          2.2
-        ],
+        "position": [-10.0, -7.5, 14.0],
+        "scale": [2.2, 2.2, 2.2],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -973,11 +710,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              0.45,
-              0.8,
-              0.45
-            ]
+            "size": [0.45, 0.8, 0.45]
           },
           {
             "type": "Environment",
@@ -987,16 +720,8 @@
       },
       {
         "name": "road_cone_10",
-        "position": [
-          16.0,
-          -7.5,
-          20.0
-        ],
-        "scale": [
-          2.2,
-          2.2,
-          2.2
-        ],
+        "position": [16.0, -7.5, 20.0],
+        "scale": [2.2, 2.2, 2.2],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1005,11 +730,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              0.45,
-              0.8,
-              0.45
-            ]
+            "size": [0.45, 0.8, 0.45]
           },
           {
             "type": "Environment",
@@ -1019,16 +740,8 @@
       },
       {
         "name": "road_cone_11",
-        "position": [
-          -28.0,
-          -7.5,
-          -26.0
-        ],
-        "scale": [
-          2.2,
-          2.2,
-          2.2
-        ],
+        "position": [-28.0, -7.5, -26.0],
+        "scale": [2.2, 2.2, 2.2],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1037,11 +750,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              0.45,
-              0.8,
-              0.45
-            ]
+            "size": [0.45, 0.8, 0.45]
           },
           {
             "type": "Environment",
@@ -1051,200 +760,128 @@
       },
       {
         "name": "stop_sign_0",
-        "position": [
-          -28.0,
-          -8.0,
-          -4.0
-        ],
-        "rotation": [
-          0,
-          20,
-          0
-        ],
-        "scale": [
-          0.012,
-          0.016,
-          0.012
-        ],
+        "position": [-28.0, -8.0, -4.0],
+        "rotation": [0, 20, 0],
+        "scale": [0.012, 0.016, 0.012],
         "components": [
-          { "type": "Mesh Renderer", "mesh": "stop_sign", "material": "stop_sign_theme" },
+          {
+            "type": "Mesh Renderer",
+            "mesh": "stop_sign",
+            "material": "stop_sign_theme"
+          },
           { "type": "Collider", "size": [1.1, 3.4, 0.45] },
           { "type": "Environment", "environmentType": "prop" }
         ]
       },
       {
         "name": "stop_sign_1",
-        "position": [
-          -12.0,
-          -8.0,
-          18.0
-        ],
-        "rotation": [
-          0,
-          -35,
-          0
-        ],
-        "scale": [
-          0.012,
-          0.016,
-          0.012
-        ],
+        "position": [-12.0, -8.0, 18.0],
+        "rotation": [0, -35, 0],
+        "scale": [0.012, 0.016, 0.012],
         "components": [
-          { "type": "Mesh Renderer", "mesh": "stop_sign", "material": "stop_sign_theme" },
+          {
+            "type": "Mesh Renderer",
+            "mesh": "stop_sign",
+            "material": "stop_sign_theme"
+          },
           { "type": "Collider", "size": [1.1, 3.4, 0.45] },
           { "type": "Environment", "environmentType": "prop" }
         ]
       },
       {
         "name": "stop_sign_2",
-        "position": [
-          6.0,
-          -8.0,
-          -20.0
-        ],
-        "rotation": [
-          0,
-          160,
-          0
-        ],
-        "scale": [
-          0.012,
-          0.016,
-          0.012
-        ],
+        "position": [6.0, -8.0, -20.0],
+        "rotation": [0, 160, 0],
+        "scale": [0.012, 0.016, 0.012],
         "components": [
-          { "type": "Mesh Renderer", "mesh": "stop_sign", "material": "stop_sign_theme" },
+          {
+            "type": "Mesh Renderer",
+            "mesh": "stop_sign",
+            "material": "stop_sign_theme"
+          },
           { "type": "Collider", "size": [1.1, 3.4, 0.45] },
           { "type": "Environment", "environmentType": "prop" }
         ]
       },
       {
         "name": "stop_sign_3",
-        "position": [
-          18.0,
-          -8.0,
-          24.0
-        ],
-        "rotation": [
-          0,
-          -140,
-          0
-        ],
-        "scale": [
-          0.012,
-          0.016,
-          0.012
-        ],
+        "position": [18.0, -8.0, 24.0],
+        "rotation": [0, -140, 0],
+        "scale": [0.012, 0.016, 0.012],
         "components": [
-          { "type": "Mesh Renderer", "mesh": "stop_sign", "material": "stop_sign_theme" },
+          {
+            "type": "Mesh Renderer",
+            "mesh": "stop_sign",
+            "material": "stop_sign_theme"
+          },
           { "type": "Collider", "size": [1.1, 3.4, 0.45] },
           { "type": "Environment", "environmentType": "prop" }
         ]
       },
       {
         "name": "stop_sign_4",
-        "position": [
-          30.0,
-          -8.0,
-          2.0
-        ],
-        "rotation": [
-          0,
-          90,
-          0
-        ],
-        "scale": [
-          0.012,
-          0.016,
-          0.012
-        ],
+        "position": [30.0, -8.0, 2.0],
+        "rotation": [0, 90, 0],
+        "scale": [0.012, 0.016, 0.012],
         "components": [
-          { "type": "Mesh Renderer", "mesh": "stop_sign", "material": "stop_sign_theme" },
+          {
+            "type": "Mesh Renderer",
+            "mesh": "stop_sign",
+            "material": "stop_sign_theme"
+          },
           { "type": "Collider", "size": [1.1, 3.4, 0.45] },
           { "type": "Environment", "environmentType": "prop" }
         ]
       },
       {
         "name": "stop_sign_5",
-        "position": [
-          0.0,
-          -8.0,
-          30.0
-        ],
-        "rotation": [
-          0,
-          180,
-          0
-        ],
-        "scale": [
-          0.012,
-          0.016,
-          0.012
-        ],
+        "position": [0.0, -8.0, 30.0],
+        "rotation": [0, 180, 0],
+        "scale": [0.012, 0.016, 0.012],
         "components": [
-          { "type": "Mesh Renderer", "mesh": "stop_sign", "material": "stop_sign_theme" },
+          {
+            "type": "Mesh Renderer",
+            "mesh": "stop_sign",
+            "material": "stop_sign_theme"
+          },
           { "type": "Collider", "size": [1.1, 3.4, 0.45] },
           { "type": "Environment", "environmentType": "prop" }
         ]
       },
       {
         "name": "stop_sign_6",
-        "position": [
-          -2.0,
-          -8.0,
-          4.0
-        ],
-        "rotation": [
-          0,
-          45,
-          0
-        ],
-        "scale": [
-          0.012,
-          0.016,
-          0.012
-        ],
+        "position": [-2.0, -8.0, 4.0],
+        "rotation": [0, 45, 0],
+        "scale": [0.012, 0.016, 0.012],
         "components": [
-          { "type": "Mesh Renderer", "mesh": "stop_sign", "material": "stop_sign_theme" },
+          {
+            "type": "Mesh Renderer",
+            "mesh": "stop_sign",
+            "material": "stop_sign_theme"
+          },
           { "type": "Collider", "size": [1.1, 3.4, 0.45] },
           { "type": "Environment", "environmentType": "prop" }
         ]
       },
       {
         "name": "stop_sign_7",
-        "position": [
-          24.0,
-          -8.0,
-          -18.0
-        ],
-        "rotation": [
-          0,
-          -65,
-          0
-        ],
-        "scale": [
-          0.012,
-          0.016,
-          0.012
-        ],
+        "position": [24.0, -8.0, -18.0],
+        "rotation": [0, -65, 0],
+        "scale": [0.012, 0.016, 0.012],
         "components": [
-          { "type": "Mesh Renderer", "mesh": "stop_sign", "material": "stop_sign_theme" },
+          {
+            "type": "Mesh Renderer",
+            "mesh": "stop_sign",
+            "material": "stop_sign_theme"
+          },
           { "type": "Collider", "size": [1.1, 3.4, 0.45] },
           { "type": "Environment", "environmentType": "prop" }
         ]
       },
       {
         "name": "building_-3_-3",
-        "position": [
-          -39.1284971125994,
-          -8,
-          -38.56414364700205
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [-39.1284971125994, -8, -38.56414364700205],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1253,11 +890,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              20.230828775326138,
-              8
-            ]
+            "size": [8, 20.230828775326138, 8]
           },
           {
             "type": "Environment",
@@ -1267,16 +900,8 @@
       },
       {
         "name": "building_-3_-2",
-        "position": [
-          -37.951930424657036,
-          -8,
-          -25.960029786535838
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [-37.951930424657036, -8, -25.960029786535838],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1285,11 +910,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              14.400469093905908,
-              8
-            ]
+            "size": [8, 14.400469093905908, 8]
           },
           {
             "type": "Environment",
@@ -1299,16 +920,8 @@
       },
       {
         "name": "building_-3_-1",
-        "position": [
-          -39.1284971125994,
-          -8,
-          -12.56414364700205
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [-39.1284971125994, -8, -12.56414364700205],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1317,11 +930,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              21.7835394266242,
-              8
-            ]
+            "size": [8, 21.7835394266242, 8]
           },
           {
             "type": "Environment",
@@ -1331,16 +940,8 @@
       },
       {
         "name": "building_-3_0",
-        "position": [
-          -37.951930424657036,
-          -8,
-          0.039970213464163074
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [-37.951930424657036, -8, 0.039970213464163074],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1349,11 +950,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              16.75074911496433,
-              8
-            ]
+            "size": [8, 16.75074911496433, 8]
           },
           {
             "type": "Environment",
@@ -1363,16 +960,8 @@
       },
       {
         "name": "building_-3_1",
-        "position": [
-          -39.1284971125994,
-          -8,
-          13.43585635299795
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [-39.1284971125994, -8, 13.43585635299795],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1381,11 +970,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              13.498207596857654,
-              8
-            ]
+            "size": [8, 13.498207596857654, 8]
           },
           {
             "type": "Environment",
@@ -1395,16 +980,8 @@
       },
       {
         "name": "building_-3_2",
-        "position": [
-          -37.951930424657036,
-          -8,
-          26.039970213464162
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [-37.951930424657036, -8, 26.039970213464162],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1413,11 +990,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              13.181402410986376,
-              8
-            ]
+            "size": [8, 13.181402410986376, 8]
           },
           {
             "type": "Environment",
@@ -1427,16 +1000,8 @@
       },
       {
         "name": "building_-3_3",
-        "position": [
-          -37.951930424657036,
-          -8,
-          39.039970213464166
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [-37.951930424657036, -8, 39.039970213464166],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1445,11 +1010,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              17.187344740541658,
-              8
-            ]
+            "size": [8, 17.187344740541658, 8]
           },
           {
             "type": "Environment",
@@ -1459,16 +1020,8 @@
       },
       {
         "name": "building_-2_-3",
-        "position": [
-          -26.128497112599398,
-          -8,
-          -38.56414364700205
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [-26.128497112599398, -8, -38.56414364700205],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1477,11 +1030,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              22.140917874076276,
-              8
-            ]
+            "size": [8, 22.140917874076276, 8]
           },
           {
             "type": "Environment",
@@ -1491,16 +1040,8 @@
       },
       {
         "name": "building_-2_-2",
-        "position": [
-          -24.951930424657036,
-          -8,
-          -25.960029786535838
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [-24.951930424657036, -8, -25.960029786535838],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1509,11 +1050,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              16.76183037045604,
-              8
-            ]
+            "size": [8, 16.76183037045604, 8]
           },
           {
             "type": "Environment",
@@ -1523,16 +1060,8 @@
       },
       {
         "name": "building_-2_-1",
-        "position": [
-          -24.951930424657036,
-          -8,
-          -12.960029786535838
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [-24.951930424657036, -8, -12.960029786535838],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1541,11 +1070,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              13.44502019372142,
-              8
-            ]
+            "size": [8, 13.44502019372142, 8]
           },
           {
             "type": "Environment",
@@ -1555,16 +1080,8 @@
       },
       {
         "name": "building_-2_0",
-        "position": [
-          -26,
-          -8,
-          0.29850746268656714
-        ],
-        "scale": [
-          6.451612903225807,
-          6.8,
-          5.970149253731344
-        ],
+        "position": [-26, -8, 0.29850746268656714],
+        "scale": [6.451612903225807, 6.8, 5.970149253731344],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1573,11 +1090,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              11.483933494082367,
-              8
-            ]
+            "size": [8, 11.483933494082367, 8]
           },
           {
             "type": "Environment",
@@ -1587,16 +1100,8 @@
       },
       {
         "name": "building_-2_1",
-        "position": [
-          -24.951930424657036,
-          -8,
-          13.039970213464162
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [-24.951930424657036, -8, 13.039970213464162],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1605,11 +1110,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              23.559909861559355,
-              8
-            ]
+            "size": [8, 23.559909861559355, 8]
           },
           {
             "type": "Environment",
@@ -1619,16 +1120,8 @@
       },
       {
         "name": "building_-2_2",
-        "position": [
-          -26,
-          -8,
-          26.298507462686565
-        ],
-        "scale": [
-          6.451612903225807,
-          6.8,
-          5.970149253731344
-        ],
+        "position": [-26, -8, 26.298507462686565],
+        "scale": [6.451612903225807, 6.8, 5.970149253731344],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1637,11 +1130,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              21.675708587101084,
-              8
-            ]
+            "size": [8, 21.675708587101084, 8]
           },
           {
             "type": "Environment",
@@ -1651,16 +1140,8 @@
       },
       {
         "name": "building_-2_3",
-        "position": [
-          -26.128497112599398,
-          -8,
-          39.43585635299795
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [-26.128497112599398, -8, 39.43585635299795],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1669,11 +1150,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              11.26080316925533,
-              8
-            ]
+            "size": [8, 11.26080316925533, 8]
           },
           {
             "type": "Environment",
@@ -1683,16 +1160,8 @@
       },
       {
         "name": "building_-1_-3",
-        "position": [
-          -13.128497112599398,
-          -8,
-          -38.56414364700205
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [-13.128497112599398, -8, -38.56414364700205],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1701,11 +1170,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              19.896316037827937,
-              8
-            ]
+            "size": [8, 19.896316037827937, 8]
           },
           {
             "type": "Environment",
@@ -1715,16 +1180,8 @@
       },
       {
         "name": "building_-1_-2",
-        "position": [
-          -11.951930424657036,
-          -8,
-          -25.960029786535838
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [-11.951930424657036, -8, -25.960029786535838],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1733,11 +1190,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              13.076617444106558,
-              8
-            ]
+            "size": [8, 13.076617444106558, 8]
           },
           {
             "type": "Environment",
@@ -1747,16 +1200,8 @@
       },
       {
         "name": "building_-1_-1",
-        "position": [
-          -11.951930424657036,
-          -8,
-          -12.960029786535838
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [-11.951930424657036, -8, -12.960029786535838],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1765,11 +1210,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              3.3225266371354203,
-              8
-            ]
+            "size": [8, 3.3225266371354203, 8]
           },
           {
             "type": "Environment",
@@ -1779,16 +1220,8 @@
       },
       {
         "name": "building_-1_0",
-        "position": [
-          -13,
-          -8,
-          0.29850746268656714
-        ],
-        "scale": [
-          6.451612903225807,
-          6.8,
-          5.970149253731344
-        ],
+        "position": [-13, -8, 0.29850746268656714],
+        "scale": [6.451612903225807, 6.8, 5.970149253731344],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1797,11 +1230,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              3.710635442030294,
-              8
-            ]
+            "size": [8, 3.710635442030294, 8]
           },
           {
             "type": "Environment",
@@ -1811,16 +1240,8 @@
       },
       {
         "name": "building_-1_1",
-        "position": [
-          -11.951930424657036,
-          -8,
-          13.039970213464162
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [-11.951930424657036, -8, 13.039970213464162],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1829,11 +1250,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              2.5559472062201842,
-              8
-            ]
+            "size": [8, 2.5559472062201842, 8]
           },
           {
             "type": "Environment",
@@ -1843,16 +1260,8 @@
       },
       {
         "name": "building_-1_2",
-        "position": [
-          -13.128497112599398,
-          -8,
-          26.435856352997952
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [-13.128497112599398, -8, 26.435856352997952],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1861,11 +1270,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              15.922895473870122,
-              8
-            ]
+            "size": [8, 15.922895473870122, 8]
           },
           {
             "type": "Environment",
@@ -1875,16 +1280,8 @@
       },
       {
         "name": "building_-1_3",
-        "position": [
-          -13.128497112599398,
-          -8,
-          39.43585635299795
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [-13.128497112599398, -8, 39.43585635299795],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1893,11 +1290,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              14.271645152785814,
-              8
-            ]
+            "size": [8, 14.271645152785814, 8]
           },
           {
             "type": "Environment",
@@ -1907,16 +1300,8 @@
       },
       {
         "name": "building_0_-3",
-        "position": [
-          1.0480695753429643,
-          -8,
-          -38.960029786535834
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [1.0480695753429643, -8, -38.960029786535834],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1925,11 +1310,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              20.159652611152964,
-              8
-            ]
+            "size": [8, 20.159652611152964, 8]
           },
           {
             "type": "Environment",
@@ -1939,16 +1320,8 @@
       },
       {
         "name": "building_0_-2",
-        "position": [
-          -0.12849711259939767,
-          -8,
-          -25.564143647002048
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [-0.12849711259939767, -8, -25.564143647002048],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1957,11 +1330,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              17.396163389617854,
-              8
-            ]
+            "size": [8, 17.396163389617854, 8]
           },
           {
             "type": "Environment",
@@ -1971,16 +1340,8 @@
       },
       {
         "name": "building_0_-1",
-        "position": [
-          -0.12849711259939767,
-          -8,
-          -12.56414364700205
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [-0.12849711259939767, -8, -12.56414364700205],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1989,11 +1350,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              3.3763239168666264,
-              8
-            ]
+            "size": [8, 3.3763239168666264, 8]
           },
           {
             "type": "Environment",
@@ -2003,16 +1360,8 @@
       },
       {
         "name": "building_0_1",
-        "position": [
-          1.0480695753429643,
-          -8,
-          13.039970213464162
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [1.0480695753429643, -8, 13.039970213464162],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2021,11 +1370,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              2.6485654688306437,
-              8
-            ]
+            "size": [8, 2.6485654688306437, 8]
           },
           {
             "type": "Environment",
@@ -2035,16 +1380,8 @@
       },
       {
         "name": "building_0_2",
-        "position": [
-          0,
-          -8,
-          26.298507462686565
-        ],
-        "scale": [
-          6.451612903225807,
-          6.8,
-          5.970149253731344
-        ],
+        "position": [0, -8, 26.298507462686565],
+        "scale": [6.451612903225807, 6.8, 5.970149253731344],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2053,11 +1390,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              23.148841504108933,
-              8
-            ]
+            "size": [8, 23.148841504108933, 8]
           },
           {
             "type": "Environment",
@@ -2067,16 +1400,8 @@
       },
       {
         "name": "building_0_3",
-        "position": [
-          -0.12849711259939767,
-          -8,
-          39.43585635299795
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [-0.12849711259939767, -8, 39.43585635299795],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2085,11 +1410,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              14.283854015611244,
-              8
-            ]
+            "size": [8, 14.283854015611244, 8]
           },
           {
             "type": "Environment",
@@ -2099,16 +1420,8 @@
       },
       {
         "name": "building_1_-3",
-        "position": [
-          14.048069575342964,
-          -8,
-          -38.960029786535834
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [14.048069575342964, -8, -38.960029786535834],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2117,11 +1430,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              24.021882023562704,
-              8
-            ]
+            "size": [8, 24.021882023562704, 8]
           },
           {
             "type": "Environment",
@@ -2131,16 +1440,8 @@
       },
       {
         "name": "building_1_-2",
-        "position": [
-          12.871502887400602,
-          -8,
-          -25.564143647002048
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [12.871502887400602, -8, -25.564143647002048],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2149,11 +1450,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              20.48701864471808,
-              8
-            ]
+            "size": [8, 20.48701864471808, 8]
           },
           {
             "type": "Environment",
@@ -2163,16 +1460,8 @@
       },
       {
         "name": "building_1_-1",
-        "position": [
-          14.048069575342964,
-          -8,
-          -12.960029786535838
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [14.048069575342964, -8, -12.960029786535838],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2181,11 +1470,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              2.9177037051747976,
-              8
-            ]
+            "size": [8, 2.9177037051747976, 8]
           },
           {
             "type": "Environment",
@@ -2195,16 +1480,8 @@
       },
       {
         "name": "building_1_0",
-        "position": [
-          12.871502887400602,
-          -8,
-          0.4358563529979502
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [12.871502887400602, -8, 0.4358563529979502],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2213,11 +1490,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              2.493255015387967,
-              8
-            ]
+            "size": [8, 2.493255015387967, 8]
           },
           {
             "type": "Environment",
@@ -2227,16 +1500,8 @@
       },
       {
         "name": "building_1_1",
-        "position": [
-          13,
-          -8,
-          13.298507462686567
-        ],
-        "scale": [
-          6.451612903225807,
-          6.8,
-          5.970149253731344
-        ],
+        "position": [13, -8, 13.298507462686567],
+        "scale": [6.451612903225807, 6.8, 5.970149253731344],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2245,11 +1510,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              3.1691719804470813,
-              8
-            ]
+            "size": [8, 3.1691719804470813, 8]
           },
           {
             "type": "Environment",
@@ -2259,16 +1520,8 @@
       },
       {
         "name": "building_1_2",
-        "position": [
-          12.871502887400602,
-          -8,
-          26.435856352997952
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [12.871502887400602, -8, 26.435856352997952],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2277,11 +1530,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              13.509132146516533,
-              8
-            ]
+            "size": [8, 13.509132146516533, 8]
           },
           {
             "type": "Environment",
@@ -2291,16 +1540,8 @@
       },
       {
         "name": "building_1_3",
-        "position": [
-          14.048069575342964,
-          -8,
-          39.039970213464166
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [14.048069575342964, -8, 39.039970213464166],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2309,11 +1550,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              17.896253358234098,
-              8
-            ]
+            "size": [8, 17.896253358234098, 8]
           },
           {
             "type": "Environment",
@@ -2323,16 +1560,8 @@
       },
       {
         "name": "building_2_-3",
-        "position": [
-          25.871502887400602,
-          -8,
-          -38.56414364700205
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [25.871502887400602, -8, -38.56414364700205],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2341,11 +1570,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              12.445461109572177,
-              8
-            ]
+            "size": [8, 12.445461109572177, 8]
           },
           {
             "type": "Environment",
@@ -2355,16 +1580,8 @@
       },
       {
         "name": "building_2_-2",
-        "position": [
-          26,
-          -8,
-          -25.701492537313435
-        ],
-        "scale": [
-          6.451612903225807,
-          6.8,
-          5.970149253731344
-        ],
+        "position": [26, -8, -25.701492537313435],
+        "scale": [6.451612903225807, 6.8, 5.970149253731344],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2373,11 +1590,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              16.754559468794945,
-              8
-            ]
+            "size": [8, 16.754559468794945, 8]
           },
           {
             "type": "Environment",
@@ -2387,16 +1600,8 @@
       },
       {
         "name": "building_2_-1",
-        "position": [
-          25.871502887400602,
-          -8,
-          -12.56414364700205
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [25.871502887400602, -8, -12.56414364700205],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2405,11 +1610,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              16.10590858410459,
-              8
-            ]
+            "size": [8, 16.10590858410459, 8]
           },
           {
             "type": "Environment",
@@ -2419,16 +1620,8 @@
       },
       {
         "name": "building_2_0",
-        "position": [
-          25.871502887400602,
-          -8,
-          0.4358563529979502
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [25.871502887400602, -8, 0.4358563529979502],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2437,11 +1630,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              14.02262591970901,
-              8
-            ]
+            "size": [8, 14.02262591970901, 8]
           },
           {
             "type": "Environment",
@@ -2451,16 +1640,8 @@
       },
       {
         "name": "building_2_1",
-        "position": [
-          25.871502887400602,
-          -8,
-          13.43585635299795
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [25.871502887400602, -8, 13.43585635299795],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2469,11 +1650,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              21.531549109763112,
-              8
-            ]
+            "size": [8, 21.531549109763112, 8]
           },
           {
             "type": "Environment",
@@ -2483,16 +1660,8 @@
       },
       {
         "name": "building_2_2",
-        "position": [
-          26,
-          -8,
-          26.298507462686565
-        ],
-        "scale": [
-          6.451612903225807,
-          6.8,
-          5.970149253731344
-        ],
+        "position": [26, -8, 26.298507462686565],
+        "scale": [6.451612903225807, 6.8, 5.970149253731344],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2501,11 +1670,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              15.442807568496724,
-              8
-            ]
+            "size": [8, 15.442807568496724, 8]
           },
           {
             "type": "Environment",
@@ -2515,16 +1680,8 @@
       },
       {
         "name": "building_2_3",
-        "position": [
-          25.871502887400602,
-          -8,
-          39.43585635299795
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [25.871502887400602, -8, 39.43585635299795],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2533,11 +1690,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              12.530524069514716,
-              8
-            ]
+            "size": [8, 12.530524069514716, 8]
           },
           {
             "type": "Environment",
@@ -2547,16 +1700,8 @@
       },
       {
         "name": "building_3_-3",
-        "position": [
-          38.8715028874006,
-          -8,
-          -38.56414364700205
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [38.8715028874006, -8, -38.56414364700205],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2565,11 +1710,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              24.013647046051105,
-              8
-            ]
+            "size": [8, 24.013647046051105, 8]
           },
           {
             "type": "Environment",
@@ -2579,16 +1720,8 @@
       },
       {
         "name": "building_3_-2",
-        "position": [
-          38.8715028874006,
-          -8,
-          -25.564143647002048
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [38.8715028874006, -8, -25.564143647002048],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2597,11 +1730,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              22.191395184833034,
-              8
-            ]
+            "size": [8, 22.191395184833034, 8]
           },
           {
             "type": "Environment",
@@ -2611,16 +1740,8 @@
       },
       {
         "name": "building_3_-1",
-        "position": [
-          40.048069575342964,
-          -8,
-          -12.960029786535838
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [40.048069575342964, -8, -12.960029786535838],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2629,11 +1750,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              14.775116663178126,
-              8
-            ]
+            "size": [8, 14.775116663178126, 8]
           },
           {
             "type": "Environment",
@@ -2643,16 +1760,8 @@
       },
       {
         "name": "building_3_0",
-        "position": [
-          38.8715028874006,
-          -8,
-          0.4358563529979502
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [38.8715028874006, -8, 0.4358563529979502],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2661,11 +1770,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              15.982621641458367,
-              8
-            ]
+            "size": [8, 15.982621641458367, 8]
           },
           {
             "type": "Environment",
@@ -2675,16 +1780,8 @@
       },
       {
         "name": "building_3_1",
-        "position": [
-          38.8715028874006,
-          -8,
-          13.43585635299795
-        ],
-        "scale": [
-          5.903950111621557,
-          8.444542213006738,
-          6.006778499367074
-        ],
+        "position": [38.8715028874006, -8, 13.43585635299795],
+        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2693,11 +1790,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              25.255995962456044,
-              8
-            ]
+            "size": [8, 25.255995962456044, 8]
           },
           {
             "type": "Environment",
@@ -2707,16 +1800,8 @@
       },
       {
         "name": "building_3_2",
-        "position": [
-          40.048069575342964,
-          -8,
-          26.039970213464162
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [40.048069575342964, -8, 26.039970213464162],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2725,11 +1810,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              15.18649691207477,
-              8
-            ]
+            "size": [8, 15.18649691207477, 8]
           },
           {
             "type": "Environment",
@@ -2739,16 +1820,8 @@
       },
       {
         "name": "building_3_3",
-        "position": [
-          40.048069575342964,
-          -8,
-          39.039970213464166
-        ],
-        "scale": [
-          5.5982734924549264,
-          6.8,
-          7.212236280072771
-        ],
+        "position": [40.048069575342964, -8, 39.039970213464166],
+        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -2757,11 +1830,7 @@
           },
           {
             "type": "Collider",
-            "size": [
-              8,
-              24.865577860233874,
-              8
-            ]
+            "size": [8, 24.865577860233874, 8]
           },
           {
             "type": "Environment",
@@ -2771,778 +1840,403 @@
       },
       {
         "name": "moonlight",
-        "position": [
-          0,
-          60,
-          0
-        ],
-        "rotation": [
-          -50,
-          30,
-          0
-        ],
+        "position": [0, 60, 0],
+        "rotation": [-50, 30, 0],
         "components": [
           {
             "type": "Light",
             "lightType": "directional",
-            "color": [
-              0.18,
-              0.22,
-              0.45
-            ],
+            "color": [0.18, 0.22, 0.45],
             "intensity": 0.7
           }
         ]
       },
       {
         "name": "centre_spotlight",
-        "position": [
-          0,
-          18,
-          0
-        ],
-        "rotation": [
-          -90,
-          0,
-          0
-        ],
+        "position": [0, 18, 0],
+        "rotation": [-90, 0, 0],
         "components": [
           {
             "type": "Light",
             "lightType": "spot",
-            "color": [
-              0.9,
-              0.85,
-              0.7
-            ],
+            "color": [0.9, 0.85, 0.7],
             "intensity": 4,
-            "attenuation": [
-              1,
-              0.04,
-              0.002
-            ],
-            "cone_angles": [
-              15,
-              28
-            ]
+            "attenuation": [1, 0.04, 0.002],
+            "cone_angles": [15, 28]
           }
         ]
       },
       {
         "name": "arena_lamp_0",
-        "position": [
-          10,
-          5,
-          10
-        ],
+        "position": [10, 5, 10],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.72,
-              0.28
-            ],
+            "color": [1, 0.72, 0.28],
             "intensity": 3,
-            "attenuation": [
-              1,
-              0.09,
-              0.008
-            ]
+            "attenuation": [1, 0.09, 0.008]
           }
         ]
       },
       {
         "name": "arena_lamp_1",
-        "position": [
-          -10,
-          5,
-          10
-        ],
+        "position": [-10, 5, 10],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.72,
-              0.28
-            ],
+            "color": [1, 0.72, 0.28],
             "intensity": 3,
-            "attenuation": [
-              1,
-              0.09,
-              0.008
-            ]
+            "attenuation": [1, 0.09, 0.008]
           }
         ]
       },
       {
         "name": "arena_lamp_2",
-        "position": [
-          10,
-          5,
-          -10
-        ],
+        "position": [10, 5, -10],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.72,
-              0.28
-            ],
+            "color": [1, 0.72, 0.28],
             "intensity": 3,
-            "attenuation": [
-              1,
-              0.09,
-              0.008
-            ]
+            "attenuation": [1, 0.09, 0.008]
           }
         ]
       },
       {
         "name": "arena_lamp_3",
-        "position": [
-          -10,
-          5,
-          -10
-        ],
+        "position": [-10, 5, -10],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.72,
-              0.28
-            ],
+            "color": [1, 0.72, 0.28],
             "intensity": 3,
-            "attenuation": [
-              1,
-              0.09,
-              0.008
-            ]
+            "attenuation": [1, 0.09, 0.008]
           }
         ]
       },
       {
         "name": "lamp_-3_-2",
-        "position": [
-          -34,
-          4.5,
-          -26
-        ],
+        "position": [-34, 4.5, -26],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_-3_0",
-        "position": [
-          -34,
-          4.5,
-          0
-        ],
+        "position": [-34, 4.5, 0],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_-3_2",
-        "position": [
-          -34,
-          4.5,
-          26
-        ],
+        "position": [-34, 4.5, 26],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_-2_-3",
-        "position": [
-          -21,
-          4.5,
-          -39
-        ],
+        "position": [-21, 4.5, -39],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_-2_-1",
-        "position": [
-          -21,
-          4.5,
-          -13
-        ],
+        "position": [-21, 4.5, -13],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_-2_1",
-        "position": [
-          -21,
-          4.5,
-          13
-        ],
+        "position": [-21, 4.5, 13],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_-2_3",
-        "position": [
-          -21,
-          4.5,
-          39
-        ],
+        "position": [-21, 4.5, 39],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_-1_-2",
-        "position": [
-          -8,
-          4.5,
-          -26
-        ],
+        "position": [-8, 4.5, -26],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_-1_0",
-        "position": [
-          -8,
-          4.5,
-          0
-        ],
+        "position": [-8, 4.5, 0],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_-1_2",
-        "position": [
-          -8,
-          4.5,
-          26
-        ],
+        "position": [-8, 4.5, 26],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_0_-3",
-        "position": [
-          5,
-          4.5,
-          -39
-        ],
+        "position": [5, 4.5, -39],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_0_-1",
-        "position": [
-          5,
-          4.5,
-          -13
-        ],
+        "position": [5, 4.5, -13],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_0_1",
-        "position": [
-          5,
-          4.5,
-          13
-        ],
+        "position": [5, 4.5, 13],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_0_3",
-        "position": [
-          5,
-          4.5,
-          39
-        ],
+        "position": [5, 4.5, 39],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_1_-2",
-        "position": [
-          8,
-          4.5,
-          -26
-        ],
+        "position": [8, 4.5, -26],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_1_0",
-        "position": [
-          8,
-          4.5,
-          0
-        ],
+        "position": [8, 4.5, 0],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_1_2",
-        "position": [
-          8,
-          4.5,
-          26
-        ],
+        "position": [8, 4.5, 26],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_2_-3",
-        "position": [
-          21,
-          4.5,
-          -39
-        ],
+        "position": [21, 4.5, -39],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_2_-1",
-        "position": [
-          21,
-          4.5,
-          -13
-        ],
+        "position": [21, 4.5, -13],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_2_1",
-        "position": [
-          21,
-          4.5,
-          13
-        ],
+        "position": [21, 4.5, 13],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_2_3",
-        "position": [
-          21,
-          4.5,
-          39
-        ],
+        "position": [21, 4.5, 39],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_3_-2",
-        "position": [
-          34,
-          4.5,
-          -26
-        ],
+        "position": [34, 4.5, -26],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_3_0",
-        "position": [
-          34,
-          4.5,
-          0
-        ],
+        "position": [34, 4.5, 0],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "lamp_3_2",
-        "position": [
-          34,
-          4.5,
-          26
-        ],
+        "position": [34, 4.5, 26],
         "components": [
           {
             "type": "Light",
             "lightType": "point",
-            "color": [
-              1,
-              0.68,
-              0.25
-            ],
+            "color": [1, 0.68, 0.25],
             "intensity": 2.2,
-            "attenuation": [
-              1,
-              0.12,
-              0.012
-            ]
+            "attenuation": [1, 0.12, 0.012]
           }
         ]
       },
       {
         "name": "wall_north",
-        "position": [
-          0,
-          10,
-          52
-        ],
+        "position": [0, 10, 52],
         "components": [
           {
             "type": "Collider",
-            "size": [
-              104,
-              20,
-              2
-            ]
+            "size": [104, 20, 2]
           },
           {
             "type": "Environment",
@@ -3552,19 +2246,11 @@
       },
       {
         "name": "wall_south",
-        "position": [
-          0,
-          10,
-          -52
-        ],
+        "position": [0, 10, -52],
         "components": [
           {
             "type": "Collider",
-            "size": [
-              104,
-              20,
-              2
-            ]
+            "size": [104, 20, 2]
           },
           {
             "type": "Environment",
@@ -3574,19 +2260,11 @@
       },
       {
         "name": "wall_east",
-        "position": [
-          52,
-          10,
-          0
-        ],
+        "position": [52, 10, 0],
         "components": [
           {
             "type": "Collider",
-            "size": [
-              2,
-              20,
-              104
-            ]
+            "size": [2, 20, 104]
           },
           {
             "type": "Environment",
@@ -3596,19 +2274,11 @@
       },
       {
         "name": "wall_west",
-        "position": [
-          -52,
-          10,
-          0
-        ],
+        "position": [-52, 10, 0],
         "components": [
           {
             "type": "Collider",
-            "size": [
-              2,
-              20,
-              104
-            ]
+            "size": [2, 20, 104]
           },
           {
             "type": "Environment",
