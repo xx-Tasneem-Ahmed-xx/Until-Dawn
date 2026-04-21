@@ -50,6 +50,7 @@
     },
     "mainPlayer": {
       "heightOffset": -5,
+      "followDistance": 2,
       "pistolHandOffset": [-0.3, 3.5, 1.7],
       "pistolRotationOffset": [-90, -90, 0],
       "pistolScaleMultiplier": 1
@@ -80,7 +81,7 @@
         "sky": "assets/textures/sky.jpg"
       },
       "meshes": {
-        "main-player": "assets/models/Olivia.glb",
+        "main-player": "assets/models/olivia.glb",
         "cube": "assets/models/cube.obj",
         "plane": "assets/models/plane.obj",
         "pistol": "assets/models/pistol.glb",
