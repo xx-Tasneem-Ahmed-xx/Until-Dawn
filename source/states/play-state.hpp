@@ -10,6 +10,7 @@
 #include <systems/collision-system.hpp>
 #include <systems/scene-manager.hpp>
 #include <systems/hud-system.hpp>
+#include <systems/zombie-animation-system.hpp>
 #include <systems/zombie-spawning-system.hpp>
 #include <components/camera.hpp>
 #include <components/environment.hpp>
@@ -55,6 +56,7 @@ class Playstate : public our::State
     our::MovementSystem movementSystem;
     our::ShootingSystem shootingSystem;
     our::CollisionSystem collisionSystem;
+    our::ZombieAnimationSystem zombieAnimationSystem;
     our::ZombieSpawningSystem zombieSpawningSystem;
     std::string worldAmbientTrack = "assets/audio/world.wav";
     std::string collisionSfxTrack = "assets/audio/collision.wav";
@@ -90,12 +92,6 @@ class Playstate : public our::State
     our::Material *zombieMaterial = nullptr;
     our::Mesh *bloodSplashMesh = nullptr;
     our::Material *bloodSplashMaterial = nullptr;
-    our::Motion *zombieMotion = nullptr;
-    const our::MotionClip *walkClip = nullptr;
-    const our::MotionClip *attackClip = nullptr;
-    const our::MotionClip *crawlClip = nullptr;
-    const our::MotionClip *dieClip = nullptr;
-    const our::MotionClip *crawlDieClip = nullptr;
     our::Mesh *mainPlayerMesh = nullptr;
     our::Motion *mainPlayerMotion = nullptr;
     const our::MotionClip *mainPlayerIdleClip = nullptr;
@@ -823,182 +819,6 @@ class Playstate : public our::State
         return glm::normalize(forward);
     }
 
-    const our::MotionClip *getMotionClipForState(const our::ZombieComponent *zombie) const
-    {
-        if (!zombie)
-            return walkClip;
-
-        our::ZombieState state = zombie->state;
-        if (state == our::ZombieState::Attacking)
-            return attackClip;
-        if (state == our::ZombieState::Crawling)
-            return crawlClip;
-        if (state == our::ZombieState::Dead)
-        {
-            // Prefer a floor-style death animation for second-shot zombie deaths.
-            if (zombie->shotsTaken >= 2 && crawlDieClip)
-                return crawlDieClip;
-            return dieClip;
-        }
-        return walkClip;
-    }
-
-    void updateZombieClipPlayback(our::ZombieComponent *zombie, float deltaTime)
-    {
-        const our::MotionClip *clip = getMotionClipForState(zombie);
-        if (!clip)
-            return;
-
-        if (zombie->activeMotionClip != clip->name)
-        {
-            zombie->activeMotionClip = clip->name;
-            zombie->motionClipTime = 0.0f;
-        }
-        else
-        {
-            zombie->motionClipTime += deltaTime;
-        }
-
-        if (clip->duration > 0.0001f)
-        {
-            if (zombie->state == our::ZombieState::Dead)
-            {
-                zombie->motionClipTime = std::min(zombie->motionClipTime, clip->duration);
-            }
-            else
-            {
-                zombie->motionClipTime = std::fmod(zombie->motionClipTime, clip->duration);
-            }
-        }
-    }
-
-    void updateZombieSkinMatrices(our::Entity *entity, our::ZombieComponent *zombie)
-    {
-        if (!(entity && zombie && zombieMotion))
-        {
-            return;
-        }
-
-        auto *renderer = entity->getComponent<our::MeshRendererComponent>();
-        if (!(renderer && renderer->mesh && renderer->mesh->hasSkinning()))
-        {
-            zombie->skinMatrices.clear();
-            return;
-        }
-
-        const our::MotionClip *clip = getMotionClipForState(zombie);
-        if (!clip)
-        {
-            zombie->skinMatrices.clear();
-            return;
-        }
-
-        if (!zombieMotion->computeSkinMatrices(
-                clip,
-                zombie->motionClipTime,
-                renderer->mesh->getSkinJointNodes(),
-                renderer->mesh->getInverseBindMatrices(),
-                zombie->skinMatrices))
-        {
-            zombie->skinMatrices.clear();
-        }
-    }
-
-    void bindZombieMotionClips()
-    {
-        zombieMotion = our::AssetLoader<our::Motion>::get("zombie-motion");
-        if (!zombieMotion)
-        {
-            std::cout << "[Motion] zombie-motion asset not found.\n";
-            return;
-        }
-
-        auto toLower = [](std::string s)
-        {
-            std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c)
-                           { return static_cast<char>(std::tolower(c)); });
-            return s;
-        };
-
-        auto hasAnyKeyword = [&](const std::string &name, std::initializer_list<std::string> words)
-        {
-            std::string lowered = toLower(name);
-            for (const auto &w : words)
-            {
-                if (lowered.find(toLower(w)) != std::string::npos)
-                    return true;
-            }
-            return false;
-        };
-
-        // Pick a likely locomotion clip while avoiding crawl/attack/death clips.
-        walkClip = nullptr;
-        for (const auto &clip : zombieMotion->clips)
-        {
-            bool hasWalkWord = hasAnyKeyword(clip.name, {"walk", "run", "locomotion", "move"});
-            bool hasBadWord = hasAnyKeyword(clip.name, {"crawl", "attack", "hit", "bite", "die", "death", "dead", "hurt", "injured"});
-            if (hasWalkWord && !hasBadWord)
-            {
-                if (!walkClip || clip.duration > walkClip->duration)
-                    walkClip = &clip;
-            }
-        }
-
-        if (!walkClip)
-            walkClip = zombieMotion->findClipByKeywords({"walk", "run", "locomotion", "move"});
-        if (!walkClip)
-            walkClip = zombieMotion->findClipByKeywords({"idle"});
-        attackClip = zombieMotion->findClipByKeywords({"attack", "hit", "slash", "bite"});
-        crawlClip = zombieMotion->findClipByKeywords({"crawl", "injured", "hurt"});
-
-        // Split death clips into standing-style vs floor/prone-style.
-        dieClip = nullptr;
-        crawlDieClip = nullptr;
-        for (const auto &clip : zombieMotion->clips)
-        {
-            const bool isDeath = hasAnyKeyword(clip.name, {"die", "death", "dead", "fall"});
-            const bool isFloorStyle = hasAnyKeyword(clip.name, {"die2", "die_2", "death2", "ground", "prone", "lying", "bite_ground", "crawl"});
-
-            if (isDeath && isFloorStyle)
-            {
-                if (!crawlDieClip || clip.duration > crawlDieClip->duration)
-                    crawlDieClip = &clip;
-            }
-            else if (isDeath)
-            {
-                if (!dieClip || clip.duration > dieClip->duration)
-                    dieClip = &clip;
-            }
-        }
-
-        if (!dieClip)
-            dieClip = zombieMotion->findClipByKeywords({"die", "death", "dead", "fall"});
-        if (!crawlDieClip)
-            crawlDieClip = zombieMotion->findClipByKeywords({"die2", "die_2", "death2", "ground", "prone", "lying", "bite_ground"});
-
-        if (!walkClip && !zombieMotion->clips.empty())
-            walkClip = &zombieMotion->clips[0];
-        if (!attackClip)
-            attackClip = walkClip;
-        if (!crawlClip)
-            crawlClip = walkClip;
-        if (!dieClip)
-            dieClip = walkClip;
-        if (!crawlDieClip)
-            crawlDieClip = dieClip;
-
-        std::cout << "[Motion] Loaded " << zombieMotion->clips.size() << " clip(s) from " << zombieMotion->sourcePath << "\n";
-        for (const auto &clip : zombieMotion->clips)
-        {
-            std::cout << "  - " << clip.name << " | duration=" << clip.duration << " | channels=" << clip.channelCount << "\n";
-        }
-        std::cout << "[Motion] Bound clips -> walk: " << (walkClip ? walkClip->name : "none")
-                  << ", attack: " << (attackClip ? attackClip->name : "none")
-                  << ", crawl: " << (crawlClip ? crawlClip->name : "none")
-                  << ", die: " << (dieClip ? dieClip->name : "none")
-                  << ", crawl-die: " << (crawlDieClip ? crawlDieClip->name : "none") << "\n";
-    }
-
     void loadZombieGameplayConfig(const nlohmann::json &sceneConfig)
     {
         if (!sceneConfig.contains("zombies"))
@@ -1285,8 +1105,7 @@ class Playstate : public our::State
                 continue;
 
             zombie->update(deltaTime);
-            updateZombieClipPlayback(zombie, deltaTime);
-            updateZombieSkinMatrices(entity, zombie);
+            zombieAnimationSystem.updateZombieAnimation(entity, zombie, deltaTime);
 
             if (!health->isAlive)
             {
@@ -1362,7 +1181,7 @@ class Playstate : public our::State
                     float poseBaseY = zombie->baseY;
                     float attackPitchFrequencyLocal = zombieAttackPitchFrequency;
 
-                    if (const our::MotionClip *active = getMotionClipForState(zombie); active && active->duration > 0.0001f)
+                    if (const our::MotionClip *active = zombieAnimationSystem.getMotionClipForState(zombie); active && active->duration > 0.0001f)
                     {
                         float baseFrequency = glm::two_pi<float>() / active->duration;
                         if (zombie->state == our::ZombieState::Attacking)
@@ -1646,7 +1465,7 @@ class Playstate : public our::State
                 mainPlayerPistolRotationOffset = glm::radians(mainPlayerConfig["pistolRotationOffset"].get<glm::vec3>());
             mainPlayerPistolScaleMultiplier = mainPlayerConfig.value("pistolScaleMultiplier", mainPlayerPistolScaleMultiplier);
         }
-        bindZombieMotionClips();
+        zombieAnimationSystem.bindMotionClips("zombie-motion");
         bindMainPlayerMotionClips();
 
         mainPlayerEntity = findMainPlayerEntity();
