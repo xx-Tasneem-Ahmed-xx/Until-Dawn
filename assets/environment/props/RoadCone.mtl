@@ -1,0 +1,3 @@
+newmtl endesga64
+Kd 1 1 1
+map_Kd ../materials/endesga64_1024.png
