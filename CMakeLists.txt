@@ -109,6 +109,8 @@ set(COMMON_SOURCES
         source/common/components/movement.cpp
         source/common/components/weapon.hpp
         source/common/components/weapon.cpp
+        source/common/components/weapon-attachment.hpp
+        source/common/components/weapon-attachment.cpp
         source/common/components/player.hpp
         source/common/components/player.cpp
         source/common/components/health.hpp
@@ -134,6 +136,10 @@ source/common/components/collider.hpp
         source/common/systems/movement.hpp
         source/common/systems/collision-system.hpp
         source/common/systems/collision-system.cpp
+        source/common/systems/character-skeleton-system.hpp
+        source/common/systems/character-skeleton-system.cpp
+        source/common/systems/attachment-system.hpp
+        source/common/systems/attachment-system.cpp
         source/common/systems/scene-manager.hpp
         source/common/systems/scene-manager.cpp
         source/common/systems/hud-system.hpp
