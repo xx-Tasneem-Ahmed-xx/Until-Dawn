@@ -21,18 +21,14 @@
 #include <audio-manager.hpp>
 #include <asset-loader.hpp>
 #include <deserialize-utils.hpp>
-#include <game-session.hpp>
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cctype>
-#include <cstdint>
 #include <cmath>
 #include <iostream>
 #include <glm/gtc/constants.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <string>
-#include <unordered_set>
-#include <utility>
 #include <vector>
 
 #define ZOMBIE_ATTACK_TRIGGER_DISTANCE 1.8f
@@ -51,31 +47,10 @@ class Playstate : public our::State
     our::ShootingSystem shootingSystem;
     our::CollisionSystem collisionSystem;
     std::string worldAmbientTrack = "assets/audio/world.wav";
-    std::string collisionSfxTrack = "assets/audio/collision.wav";
-    std::string ouchSfxTrack = "assets/audio/female-ouch.wav";
     float worldAmbientGain = 0.45f;
-    float collisionSfxCooldownSeconds = 0.12f;
-    float collisionSfxCooldownLeft = 0.0f;
-    float collisionSfxMinPushDistance = 0.05f;
-    float ouchSfxDelaySeconds = 0.08f;
-    float pendingOuchSfxTimeLeft = -1.0f;
-
-    using CollisionPair = std::pair<const our::Entity *, const our::Entity *>;
-    struct CollisionPairHash
-    {
-        size_t operator()(const CollisionPair &pair) const noexcept
-        {
-            const auto a = reinterpret_cast<std::uintptr_t>(pair.first);
-            const auto b = reinterpret_cast<std::uintptr_t>(pair.second);
-            return std::hash<std::uintptr_t>{}(a) ^ (std::hash<std::uintptr_t>{}(b) << 1);
-        }
-    };
-    std::unordered_set<CollisionPair, CollisionPairHash> previousWallCollisionPairs;
-
     float muzzleFlashTimeLeft = 0.0f;
     const float muzzleFlashDuration = 0.06f;
     float totalTime = 0.0f;
-    bool endingQueued = false;
     our::Entity *mainCameraEntity = nullptr;
     our::Entity *mainPlayerEntity = nullptr;
 
@@ -1242,12 +1217,6 @@ class Playstate : public our::State
         if (!mainCameraEntity)
             mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
 
-        auto makeOrderedPair = [](const our::Entity *a, const our::Entity *b)
-        {
-            return (a < b) ? CollisionPair{a, b} : CollisionPair{b, a};
-        };
-        std::unordered_set<CollisionPair, CollisionPairHash> currentWallCollisionPairs;
-
         const int MAX_PASSES = 4;
         for (int pass = 0; pass < MAX_PASSES; ++pass)
         {
@@ -1301,14 +1270,6 @@ class Playstate : public our::State
                     rawDynamic = entityB;
                     collidingWithFloor = isFloorA;
                     collidingWithWallLike = isWallLikeA;
-                }
-
-                CollisionPair wallCollisionPair = makeOrderedPair(rawDynamic, oriented.entityB);
-                bool isNewWallCollision = false;
-                if (collidingWithWallLike)
-                {
-                    bool firstSeenThisFrame = currentWallCollisionPairs.insert(wallCollisionPair).second;
-                    isNewWallCollision = firstSeenThisFrame && (previousWallCollisionPairs.find(wallCollisionPair) == previousWallCollisionPairs.end());
                 }
 
                 // If dynamic belongs to player family, push the camera (actual moving body).
@@ -1371,9 +1332,6 @@ class Playstate : public our::State
                 const float epsilon = 0.0005f;
                 if (glm::length(pushBack) > epsilon)
                 {
-                    bool shouldPlayCollisionSfx = false;
-                    float impactPushLen = 0.0f;
-
                     // Add an intentional extra retreat for the main player when
                     // colliding with wall-like geometry so the collision response
                     // is clearly noticeable and prevents sticky penetration feel.
@@ -1383,29 +1341,12 @@ class Playstate : public our::State
                         float pushLen = glm::length(horizontalPush);
                         if (pushLen > epsilon)
                         {
-                            impactPushLen = pushLen;
                             glm::vec3 retreatDir = horizontalPush / pushLen;
                             pushBack += retreatDir * std::max(0.0f, playerWallCollisionRetreatDistance);
-                            shouldPlayCollisionSfx = true;
                         }
                     }
 
                     dynamicEntity->localTransform.position += pushBack;
-
-                    if (shouldPlayCollisionSfx && isNewWallCollision && impactPushLen >= collisionSfxMinPushDistance && collisionSfxCooldownLeft <= 0.0f)
-                    {
-                        bool collisionPlayed = false;
-                        if (our::AudioManager::getInstance().isInitialized() && !collisionSfxTrack.empty())
-                        {
-                            collisionPlayed = our::AudioManager::getInstance().playSound(collisionSfxTrack);
-                        }
-                        collisionSfxCooldownLeft = collisionSfxCooldownSeconds;
-                        if (collisionPlayed)
-                        {
-                            pendingOuchSfxTimeLeft = std::max(0.0f, ouchSfxDelaySeconds);
-                        }
-                    }
-
                     anyResolved = true;
                 }
             }
@@ -1413,21 +1354,10 @@ class Playstate : public our::State
             if (!anyResolved)
                 break;
         }
-
-        previousWallCollisionPairs = std::move(currentWallCollisionPairs);
     }
 
     void onInitialize() override
     {
-        currentWaveIndex = 0;
-        zombiesSpawnedThisWave = 0;
-        zombieSpawnTimer = 0.0f;
-        waitingForNextWave = true;
-        betweenWaveTimer = initialWaveDelaySeconds;
-        allWavesCompleted = false;
-        zombiesKilledCount = 0;
-        endingQueued = false;
-
         // First of all, we get the scene configuration from the app config
         auto &config = getApp()->getConfig()["scene"];
         // If we have assets in the scene config, we deserialize them
@@ -1483,10 +1413,9 @@ class Playstate : public our::State
         cacheZombiePrototypeAndSpawnPoints();
         cacheBloodSplashAssets();
         recalculateSunriseTargets();
-        collisionSfxCooldownLeft = 0.0f;
-        pendingOuchSfxTimeLeft = -1.0f;
-        previousWallCollisionPairs.clear();
-        our::GameSession::clear();
+        zombiesKilledCount = 0;
+        waitingForNextWave = true;
+        betweenWaveTimer = initialWaveDelaySeconds;
 
         if (our::AudioManager::getInstance().isInitialized())
         {
@@ -1506,20 +1435,6 @@ class Playstate : public our::State
     {
         totalTime += (float)deltaTime;
         renderer.setTime(totalTime);
-        collisionSfxCooldownLeft = std::max(0.0f, collisionSfxCooldownLeft - static_cast<float>(deltaTime));
-
-        if (pendingOuchSfxTimeLeft >= 0.0f)
-        {
-            pendingOuchSfxTimeLeft -= static_cast<float>(deltaTime);
-            if (pendingOuchSfxTimeLeft <= 0.0f)
-            {
-                if (our::AudioManager::getInstance().isInitialized() && !ouchSfxTrack.empty())
-                {
-                    our::AudioManager::getInstance().playSound(ouchSfxTrack);
-                }
-                pendingOuchSfxTimeLeft = -1.0f;
-            }
-        }
 
         glm::vec2 muzzleFlashCenter = glm::vec2(0.66f, 0.28f);
         our::Entity *cameraEntity = mainCameraEntity;
@@ -1622,31 +1537,6 @@ class Playstate : public our::State
         }
         renderer.setHealth(currentHealth, maxHealth, (float)deltaTime);
 
-        if (!endingQueued)
-        {
-            bool playerDefeated = false;
-            if (auto *health = getMainPlayerHealth(); health)
-            {
-                playerDefeated = (!health->isAlive) || (health->currentHealth <= 0.0f);
-            }
-
-            if (playerDefeated)
-            {
-                endingQueued = true;
-                our::GameSession::setEndingResult(our::EndingOutcome::Lose, computeCurrentExposure());
-                getApp()->changeState("ending");
-                return;
-            }
-
-            if (allWavesCompleted && getAliveZombieCount() == 0)
-            {
-                endingQueued = true;
-                our::GameSession::setEndingResult(our::EndingOutcome::Win, computeCurrentExposure());
-                getApp()->changeState("ending");
-                return;
-            }
-        }
-
         // Clean up finished audio sources
         our::AudioManager::getInstance().cleanupFinishedSources();
 
@@ -1731,7 +1621,6 @@ class Playstate : public our::State
         // Clear the world
         world.clear();
         collisionSystem.clear();
-        previousWallCollisionPairs.clear();
         // and we delete all the loaded assets to free memory on the RAM and the VRAM
         our::clearAllAssets();
     }
