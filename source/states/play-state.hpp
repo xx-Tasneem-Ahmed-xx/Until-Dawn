@@ -1919,15 +1919,6 @@ class Playstate : public our::State
             return;
         }
 
-        // Debug: decrease main player health on K press
-        if (keyboard.justPressed(GLFW_KEY_K))
-        {
-            if (auto health = getMainPlayerHealth(); health)
-            {
-                health->takeDamage(10.0f);
-            }
-        }
-
         // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
