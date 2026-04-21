@@ -63,6 +63,9 @@ namespace our
 
         bool isDead() const { return state == ZombieState::Dead; }
         bool shouldDespawn() const { return isDead() && deathTime >= corpseLifetime; }
+
+    private:
+        void syncStateWithShotsTaken();
     };
 
 }

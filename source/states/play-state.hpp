@@ -10,6 +10,7 @@
 #include <systems/collision-system.hpp>
 #include <systems/scene-manager.hpp>
 #include <systems/hud-system.hpp>
+#include <systems/zombie-spawning-system.hpp>
 #include <components/camera.hpp>
 #include <components/environment.hpp>
 #include <components/free-camera-controller.hpp>
@@ -54,6 +55,7 @@ class Playstate : public our::State
     our::MovementSystem movementSystem;
     our::ShootingSystem shootingSystem;
     our::CollisionSystem collisionSystem;
+    our::ZombieSpawningSystem zombieSpawningSystem;
     std::string worldAmbientTrack = "assets/audio/world.wav";
     std::string collisionSfxTrack = "assets/audio/collision.wav";
     std::string ouchSfxTrack = "assets/audio/female-ouch.wav";
@@ -1216,145 +1218,58 @@ class Playstate : public our::State
             activeBloodSplashes.end());
     }
 
-    glm::vec3 pickSpawnPoint(int spawnedIndex)
+    our::ZombieSpawnerConfig buildZombieSpawnerConfig() const
     {
-        glm::vec3 playerPos = getPlayerTargetPosition();
-        glm::vec3 forward = getCameraForwardOnGround();
+        our::ZombieSpawnerConfig config;
+        config.waveZombieCounts = waveZombieCounts;
+        config.zombieSpawnIntervalSeconds = zombieSpawnIntervalSeconds;
+        config.betweenWavesDelaySeconds = betweenWavesDelaySeconds;
+        config.minSpawnPlayerDistance = minSpawnPlayerDistance;
+        config.zombieSpawnMaxDistance = zombieSpawnMaxDistance;
+        config.zombieSpawnViewHalfAngleDegrees = zombieSpawnViewHalfAngleDegrees;
 
-        // Deterministic spread inside the camera view cone to keep zombies spawning in front of player.
-        int hash = spawnedIndex * 73 + static_cast<int>(currentWaveIndex) * 131 + 17;
-        float tAngle = static_cast<float>(hash % 1000) / 999.0f; // [0,1]
-        float tDist = static_cast<float>((hash * 37) % 1000) / 999.0f;
+        config.zombieWalkSpeed = zombieWalkSpeed;
+        config.zombieCrawlSpeed = zombieCrawlSpeed;
+        config.zombieDamage = zombieDamage;
+        config.zombieAttackRange = zombieAttackRange;
+        config.zombieAttackCooldown = zombieAttackCooldown;
+        config.zombieCorpseLifetime = zombieCorpseLifetime;
+        config.zombieRadius = zombieRadius;
 
-        float halfAngleRad = glm::radians(zombieSpawnViewHalfAngleDegrees);
-        float angle = (tAngle * 2.0f - 1.0f) * halfAngleRad;
+        config.zombieGroundY = zombieGroundY;
+        config.zombieModelYawOffset = zombieModelYawOffset;
+        config.zombieModelScaleMultiplier = zombieModelScaleMultiplier;
+        config.zombiePrototypeTransform = zombiePrototypeTransform;
+        config.zombieMesh = zombieMesh;
+        config.zombieMaterial = zombieMaterial;
 
-        float c = std::cos(angle);
-        float s = std::sin(angle);
-        glm::vec3 dir;
-        dir.x = forward.x * c - forward.z * s;
-        dir.y = 0.0f;
-        dir.z = forward.x * s + forward.z * c;
-        if (glm::dot(dir, dir) < 0.0001f)
-            dir = forward;
-        else
-            dir = glm::normalize(dir);
-
-        float distance = minSpawnPlayerDistance + (zombieSpawnMaxDistance - minSpawnPlayerDistance) * tDist;
-        glm::vec3 spawn = playerPos + dir * distance;
-        spawn.y = zombieGroundY;
-        return spawn;
-    }
-
-    void spawnZombie(const glm::vec3 &spawnPosition)
-    {
-        if (!zombieMesh)
-            return;
-
-        our::Entity *zombieEntity = world.add();
-        zombieEntity->name = "WaveZombie_" + std::to_string(currentWaveIndex + 1) + "_" + std::to_string(zombiesSpawnedThisWave + 1);
-        zombieEntity->parent = nullptr;
-        zombieEntity->localTransform = zombiePrototypeTransform;
-        zombieEntity->localTransform.position = spawnPosition;
-        zombieEntity->localTransform.position.y = zombieGroundY;
-        zombieEntity->localTransform.scale *= zombieModelScaleMultiplier;
-
-        auto *renderer = zombieEntity->addComponent<our::MeshRendererComponent>();
-        renderer->mesh = zombieMesh;
-        renderer->material = zombieMaterial;
-
-        auto *health = zombieEntity->addComponent<our::HealthComponent>();
-        health->maxHealth = 2.0f;
-        health->currentHealth = 2.0f;
-        health->isAlive = true;
-
-        auto *zombie = zombieEntity->addComponent<our::ZombieComponent>();
-        zombie->state = our::ZombieState::Walking;
-        zombie->shotsTaken = 0;
-        zombie->radius = zombieRadius;
-        zombie->speed = zombieWalkSpeed;
-        zombie->crawlSpeed = zombieCrawlSpeed;
-        zombie->damage = zombieDamage;
-        zombie->attackRange = zombieAttackRange;
-        zombie->attackCooldown = zombieAttackCooldown;
-        zombie->corpseLifetime = zombieCorpseLifetime;
-        zombie->baseY = zombieGroundY;
-
-        if (zombieMesh && zombieMesh->hasSkinning())
-        {
-            zombie->skinMatrices.assign(zombieMesh->getSkinJointNodes().size(), glm::mat4(1.0f));
-        }
-
-        glm::vec3 playerPos = getPlayerTargetPosition();
-        glm::vec3 toPlayer = playerPos - zombieEntity->localTransform.position;
-        toPlayer.y = 0.0f;
-        if (glm::dot(toPlayer, toPlayer) > 0.0001f)
-        {
-            glm::vec3 direction = glm::normalize(toPlayer);
-            float yaw = std::atan2(-direction.x, -direction.z);
-            zombieEntity->localTransform.rotation.y = yaw + zombieModelYawOffset;
-        }
-    }
-
-    int getAliveZombieCount()
-    {
-        int alive = 0;
-        for (auto entity : world.getEntities())
-        {
-            auto *zombie = entity->getComponent<our::ZombieComponent>();
-            auto *health = entity->getComponent<our::HealthComponent>();
-            if (zombie && health && health->isAlive)
-                alive++;
-        }
-        return alive;
-    }
-
-    void beginWave(size_t waveIndex)
-    {
-        currentWaveIndex = waveIndex;
-        zombiesSpawnedThisWave = 0;
-        zombieSpawnTimer = 0.0f;
-        waitingForNextWave = false;
+        return config;
     }
 
     void updateWaveSystem(float deltaTime)
     {
-        if (allWavesCompleted)
-            return;
+        our::ZombieWaveRuntime runtime;
+        runtime.currentWaveIndex = currentWaveIndex;
+        runtime.zombiesSpawnedThisWave = zombiesSpawnedThisWave;
+        runtime.zombieSpawnTimer = zombieSpawnTimer;
+        runtime.waitingForNextWave = waitingForNextWave;
+        runtime.betweenWaveTimer = betweenWaveTimer;
+        runtime.allWavesCompleted = allWavesCompleted;
 
-        if (waitingForNextWave)
-        {
-            betweenWaveTimer -= deltaTime;
-            if (betweenWaveTimer <= 0.0f)
-            {
-                beginWave(currentWaveIndex);
-            }
-            return;
-        }
+        zombieSpawningSystem.update(
+            &world,
+            runtime,
+            buildZombieSpawnerConfig(),
+            deltaTime,
+            getPlayerTargetPosition(),
+            getCameraForwardOnGround());
 
-        int targetForWave = waveZombieCounts[currentWaveIndex];
-        zombieSpawnTimer -= deltaTime;
-        while (zombiesSpawnedThisWave < targetForWave && zombieSpawnTimer <= 0.0f)
-        {
-            spawnZombie(pickSpawnPoint(zombiesSpawnedThisWave));
-            zombiesSpawnedThisWave++;
-            zombieSpawnTimer += zombieSpawnIntervalSeconds;
-        }
-
-        if (zombiesSpawnedThisWave >= targetForWave && getAliveZombieCount() == 0)
-        {
-            if (currentWaveIndex + 1 >= waveZombieCounts.size())
-            {
-                allWavesCompleted = true;
-                waitingForNextWave = false;
-            }
-            else
-            {
-                waitingForNextWave = true;
-                currentWaveIndex++;
-                betweenWaveTimer = betweenWavesDelaySeconds;
-            }
-        }
+        currentWaveIndex = runtime.currentWaveIndex;
+        zombiesSpawnedThisWave = runtime.zombiesSpawnedThisWave;
+        zombieSpawnTimer = runtime.zombieSpawnTimer;
+        waitingForNextWave = runtime.waitingForNextWave;
+        betweenWaveTimer = runtime.betweenWaveTimer;
+        allWavesCompleted = runtime.allWavesCompleted;
     }
 
     void updateZombies(float deltaTime)
@@ -1937,7 +1852,7 @@ class Playstate : public our::State
                 our::GameSession::setEndingResult(our::EndingOutcome::Lose, computeCurrentExposure());
                 getApp()->changeState("ending");
             }
-            else if (allWavesCompleted && getAliveZombieCount() == 0)
+            else if (allWavesCompleted && zombieSpawningSystem.getAliveZombieCount(&world) == 0)
             {
                 endingQueued = true;
                 our::GameSession::setEndingResult(our::EndingOutcome::Win, computeCurrentExposure());

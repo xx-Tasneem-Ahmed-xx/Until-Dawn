@@ -1,9 +1,20 @@
 #include "zombie.hpp"
 #include "../ecs/entity.hpp"
 #include "../deserialize-utils.hpp"
+#include <algorithm>
 
 namespace our
 {
+
+    void ZombieComponent::syncStateWithShotsTaken()
+    {
+        if (shotsTaken >= 2)
+            state = ZombieState::Dead;
+        else if (shotsTaken == 1)
+            state = ZombieState::Crawling;
+        else
+            state = ZombieState::Walking;
+    }
 
     void ZombieComponent::deserialize(const nlohmann::json &data)
     {
@@ -17,19 +28,9 @@ namespace our
         attackCooldown = data.value("attackCooldown", attackCooldown);
         corpseLifetime = data.value("corpseLifetime", corpseLifetime);
 
-        shotsTaken = data.value("shotsTaken", shotsTaken);
-        if (shotsTaken >= 2)
-        {
-            state = ZombieState::Dead;
-        }
-        else if (shotsTaken == 1)
-        {
-            state = ZombieState::Crawling;
-        }
-        else
-        {
-            state = ZombieState::Walking;
-        }
+        shotsTaken = std::max(0, data.value("shotsTaken", shotsTaken));
+        syncStateWithShotsTaken();
+
         attackCooldownTimer = 0.0f;
         deathTime = 0.0f;
         motionTime = 0.0f;
@@ -43,9 +44,7 @@ namespace our
 
         if (attackCooldownTimer > 0.0f)
         {
-            attackCooldownTimer -= deltaTime;
-            if (attackCooldownTimer < 0.0f)
-                attackCooldownTimer = 0.0f;
+            attackCooldownTimer = std::max(0.0f, attackCooldownTimer - deltaTime);
         }
 
         if (state == ZombieState::Dead)
@@ -60,15 +59,10 @@ namespace our
             return true;
 
         shotsTaken++;
-        if (shotsTaken == 1)
-        {
-            state = ZombieState::Crawling;
-            return false;
-        }
-
-        state = ZombieState::Dead;
-        deathTime = 0.0f;
-        return true;
+        syncStateWithShotsTaken();
+        if (state == ZombieState::Dead)
+            deathTime = 0.0f;
+        return state == ZombieState::Dead;
     }
 
     float ZombieComponent::getCurrentSpeed() const
