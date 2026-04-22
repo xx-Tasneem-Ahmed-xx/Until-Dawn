@@ -9,7 +9,7 @@
 namespace
 {
     constexpr int MAX_SKIN_BONES = 128;
-    constexpr int MAX_LIGHTS = 16;
+    constexpr int MAX_LIGHTS = 32;
 }
 
 namespace our

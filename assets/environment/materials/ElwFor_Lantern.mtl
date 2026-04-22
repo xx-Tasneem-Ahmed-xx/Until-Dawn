@@ -1,0 +1,19 @@
+#
+## Alias OBJ Material File
+# Exported from SketchUp, (c) 2000-2012 Trimble Navigation Limited
+
+newmtl ElwFor_Lantern_Brown
+Ka 0.000000 0.000000 0.000000
+Kd 0.294118 0.200000 0.101961
+Ks 0.330000 0.330000 0.330000
+
+newmtl ElwFor_Lantern_Grey
+Ka 0.000000 0.000000 0.000000
+Kd 0.239216 0.239216 0.239216
+Ks 0.330000 0.330000 0.330000
+
+newmtl ElwFor_Lantern_Light
+Ka 0.000000 0.000000 0.000000
+Kd 1.000000 0.760784 0.039216
+Ks 0.330000 0.330000 0.330000
+
