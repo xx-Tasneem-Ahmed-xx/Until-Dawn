@@ -24,7 +24,7 @@ uniform float alphaThreshold;
 uniform vec2 uv_scale;
 
 // Lighting definitions
-#define MAX_LIGHTS 16
+#define MAX_LIGHTS 32
 struct Light {
     int type; // 0=Directional, 1=Point, 2=Spot
     vec3 position;
