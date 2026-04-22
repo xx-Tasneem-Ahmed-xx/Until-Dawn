@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../asset-loader.hpp"
+#include "../components/collider.hpp"
+#include "../components/environment.hpp"
 #include "../components/health.hpp"
 #include "../components/mesh-renderer.hpp"
 #include "../components/zombie.hpp"
@@ -11,6 +13,7 @@
 #include <glm/gtc/constants.hpp>
 #include <iostream>
 #include <json/json.hpp>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -48,6 +51,7 @@ namespace our
         float zombieGroundY = -0.5f;
         float zombieModelYawOffset = 0.0f;
         float zombieModelScaleMultiplier = 1.0f;
+        std::vector<glm::vec3> zombieSpawnPoints;
 
         Transform zombiePrototypeTransform{};
         Mesh *zombieMesh = nullptr;
@@ -56,7 +60,217 @@ namespace our
 
     class ZombieSpawningSystem
     {
+        float sampleFloorYAt(World *world, const glm::vec3 &positionXZ, float fallbackY) const
+        {
+            if (!world)
+                return fallbackY;
+
+            bool found = false;
+            float bestY = -std::numeric_limits<float>::infinity();
+
+            for (auto entity : world->getEntities())
+            {
+                auto *env = entity->getComponent<EnvironmentComponent>();
+                if (!(env && env->environmentType == "floor"))
+                    continue;
+
+                if (auto *collider = entity->getComponent<ColliderComponent>())
+                {
+                    glm::vec3 minB, maxB;
+                    collider->getWorldBounds(minB, maxB);
+                    if (positionXZ.x >= minB.x && positionXZ.x <= maxB.x &&
+                        positionXZ.z >= minB.z && positionXZ.z <= maxB.z)
+                    {
+                        found = true;
+                        bestY = std::max(bestY, maxB.y);
+                    }
+                }
+                else
+                {
+                    glm::vec3 p = glm::vec3(entity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+                    found = true;
+                    bestY = std::max(bestY, p.y);
+                }
+            }
+
+            return found ? bestY : fallbackY;
+        }
+
+        float sampleGlobalFloorY(World *world, float fallbackY) const
+        {
+            if (!world)
+                return fallbackY;
+
+            bool found = false;
+            float bestY = -std::numeric_limits<float>::infinity();
+            for (auto entity : world->getEntities())
+            {
+                auto *env = entity->getComponent<EnvironmentComponent>();
+                if (!(env && env->environmentType == "floor"))
+                    continue;
+
+                if (auto *collider = entity->getComponent<ColliderComponent>())
+                {
+                    glm::vec3 minB, maxB;
+                    collider->getWorldBounds(minB, maxB);
+                    found = true;
+                    bestY = std::max(bestY, maxB.y);
+                }
+                else
+                {
+                    glm::vec3 p = glm::vec3(entity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+                    found = true;
+                    bestY = std::max(bestY, p.y);
+                }
+            }
+
+            return found ? bestY : fallbackY;
+        }
+
+        std::vector<glm::vec3> buildFallbackSpawnPoints(World *world, float fallbackY) const
+        {
+            std::vector<glm::vec3> points;
+
+            for (auto entity : world->getEntities())
+            {
+                auto *env = entity->getComponent<EnvironmentComponent>();
+                if (!(env && env->environmentType == "floor"))
+                    continue;
+
+                auto *collider = entity->getComponent<ColliderComponent>();
+                if (!collider)
+                    continue;
+
+                glm::vec3 minB, maxB;
+                collider->getWorldBounds(minB, maxB);
+                float y = maxB.y;
+
+                float marginX = std::max(4.0f, (maxB.x - minB.x) * 0.15f);
+                float marginZ = std::max(4.0f, (maxB.z - minB.z) * 0.15f);
+
+                points.push_back(glm::vec3(minB.x + marginX, y, minB.z + marginZ));
+                points.push_back(glm::vec3(minB.x + marginX, y, maxB.z - marginZ));
+                points.push_back(glm::vec3(maxB.x - marginX, y, minB.z + marginZ));
+                points.push_back(glm::vec3(maxB.x - marginX, y, maxB.z - marginZ));
+                points.push_back(glm::vec3((minB.x + maxB.x) * 0.5f, y, minB.z + marginZ));
+                points.push_back(glm::vec3((minB.x + maxB.x) * 0.5f, y, maxB.z - marginZ));
+                points.push_back(glm::vec3(minB.x + marginX, y, (minB.z + maxB.z) * 0.5f));
+                points.push_back(glm::vec3(maxB.x - marginX, y, (minB.z + maxB.z) * 0.5f));
+            }
+
+            if (points.empty())
+            {
+                points.push_back(glm::vec3(0.0f, fallbackY, 8.0f));
+                points.push_back(glm::vec3(8.0f, fallbackY, 0.0f));
+                points.push_back(glm::vec3(-8.0f, fallbackY, 0.0f));
+                points.push_back(glm::vec3(0.0f, fallbackY, -8.0f));
+            }
+
+            return points;
+        }
+
+        bool isCandidateInViewCone(const ZombieSpawnerConfig &config, const glm::vec3 &playerPos, const glm::vec3 &forward, const glm::vec3 &candidate) const
+        {
+            glm::vec3 toCandidate = candidate - playerPos;
+            toCandidate.y = 0.0f;
+            float lenSq = glm::dot(toCandidate, toCandidate);
+            if (lenSq <= 0.0001f)
+                return false;
+
+            glm::vec3 dir = glm::normalize(toCandidate);
+            float cosine = glm::dot(dir, forward);
+            float minCosine = std::cos(glm::radians(config.zombieSpawnViewHalfAngleDegrees));
+            return cosine >= minCosine;
+        }
+
+        bool isCandidateInDistanceBand(const ZombieSpawnerConfig &config, const glm::vec3 &playerPos, const glm::vec3 &candidate) const
+        {
+            glm::vec3 d = candidate - playerPos;
+            d.y = 0.0f;
+            float distance = glm::length(d);
+            float maxSpawnDistance = std::max(config.minSpawnPlayerDistance + 0.1f, config.zombieSpawnMaxDistance);
+            return distance >= config.minSpawnPlayerDistance && distance <= maxSpawnDistance;
+        }
+
+        bool isBlockedByStaticGeometry(World *world, const ZombieSpawnerConfig &config, const glm::vec3 &candidate) const
+        {
+            if (!world)
+                return false;
+
+            const float radius = std::max(0.1f, config.zombieRadius);
+            for (auto entity : world->getEntities())
+            {
+                auto *env = entity->getComponent<EnvironmentComponent>();
+                if (!env)
+                    continue;
+
+                const std::string &type = env->environmentType;
+                bool isBlocking = (type == "wall" || type == "prop" || type == "obstacle" || type == "building");
+                if (!isBlocking)
+                    continue;
+
+                if (auto *collider = entity->getComponent<ColliderComponent>())
+                {
+                    glm::vec3 minB, maxB;
+                    collider->getWorldBounds(minB, maxB);
+                    if (candidate.x >= (minB.x - radius) && candidate.x <= (maxB.x + radius) &&
+                        candidate.z >= (minB.z - radius) && candidate.z <= (maxB.z + radius))
+                    {
+                        return true;
+                    }
+                    continue;
+                }
+
+                glm::vec3 center = glm::vec3(entity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+                glm::vec2 deltaXZ(candidate.x - center.x, candidate.z - center.z);
+                float approxHalfExtent = std::max(std::abs(entity->localTransform.scale.x), std::abs(entity->localTransform.scale.z));
+                approxHalfExtent = std::max(0.5f, approxHalfExtent);
+                float safeRadius = approxHalfExtent + radius;
+                if (glm::dot(deltaXZ, deltaXZ) <= safeRadius * safeRadius)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool isValidSpawnCandidate(
+            World *world,
+            const ZombieSpawnerConfig &config,
+            const glm::vec3 &playerPos,
+            const glm::vec3 &forward,
+            const glm::vec3 &candidate) const
+        {
+            if (!isCandidateInDistanceBand(config, playerPos, candidate))
+                return false;
+            if (!isCandidateInViewCone(config, playerPos, forward, candidate))
+                return false;
+            if (isBlockedByStaticGeometry(world, config, candidate))
+                return false;
+            return true;
+        }
+
     public:
+        void initializeFromWorld(
+            World *world,
+            Mesh *&zombieMesh,
+            Material *&zombieMaterial,
+            Transform &zombiePrototypeTransform,
+            std::vector<glm::vec3> &zombieSpawnPoints,
+            float zombieSpawnHeightOffset,
+            float &zombieGroundY) const
+        {
+            cachePrototypeAndSpawnPoints(
+                world,
+                zombieMesh,
+                zombieMaterial,
+                zombiePrototypeTransform,
+                zombieSpawnPoints,
+                zombieSpawnHeightOffset,
+                zombieGroundY);
+        }
+
         void loadGameplayConfig(
             const nlohmann::json &zombiesConfig,
             std::vector<int> &waveZombieCounts,
@@ -75,7 +289,6 @@ namespace our
             float &zombieModelScaleMultiplier,
             float &zombieSpawnMaxDistance,
             float &zombieSpawnViewHalfAngleDegrees,
-            float &zombieModelYawOffsetDegrees,
             float &zombieModelYawOffset) const
         {
             if (!zombiesConfig.is_object())
@@ -114,6 +327,7 @@ namespace our
             zombieModelScaleMultiplier = std::max(0.05f, zombiesConfig.value("modelScaleMultiplier", zombieModelScaleMultiplier));
             zombieSpawnMaxDistance = std::max(minSpawnPlayerDistance + 0.1f, zombiesConfig.value("spawnMaxDistance", zombieSpawnMaxDistance));
             zombieSpawnViewHalfAngleDegrees = std::clamp(zombiesConfig.value("spawnViewHalfAngleDegrees", zombieSpawnViewHalfAngleDegrees), 1.0f, 85.0f);
+            float zombieModelYawOffsetDegrees = glm::degrees(zombieModelYawOffset);
             zombieModelYawOffsetDegrees = zombiesConfig.value("modelYawOffsetDegrees", zombieModelYawOffsetDegrees);
             zombieModelYawOffset = glm::radians(zombieModelYawOffsetDegrees);
         }
@@ -155,14 +369,20 @@ namespace our
             }
             world->deleteMarkedEntities();
 
-            zombieGroundY = zombiePrototypeTransform.position.y + zombieSpawnHeightOffset;
+            float sceneFloorY = sampleGlobalFloorY(world, zombiePrototypeTransform.position.y);
+            zombieGroundY = sceneFloorY + zombieSpawnHeightOffset;
+
+            if (!zombieSpawnPoints.empty())
+            {
+                for (auto &p : zombieSpawnPoints)
+                {
+                    p.y = sampleFloorYAt(world, p, sceneFloorY) + zombieSpawnHeightOffset;
+                }
+            }
 
             if (zombieSpawnPoints.empty())
             {
-                zombieSpawnPoints.push_back(glm::vec3(0.0f, -0.5f, 2.0f));
-                zombieSpawnPoints.push_back(glm::vec3(5.0f, -0.5f, 4.0f));
-                zombieSpawnPoints.push_back(glm::vec3(-5.0f, -0.5f, 4.0f));
-                zombieSpawnPoints.push_back(glm::vec3(0.0f, -0.5f, -2.0f));
+                zombieSpawnPoints = buildFallbackSpawnPoints(world, zombieGroundY);
             }
 
             std::cout << "[Zombies] mesh=" << (zombieMesh ? "loaded" : "missing")
@@ -188,6 +408,7 @@ namespace our
             float zombieModelYawOffset,
             float zombieModelScaleMultiplier,
             const Transform &zombiePrototypeTransform,
+            const std::vector<glm::vec3> &zombieSpawnPoints,
             Mesh *zombieMesh,
             Material *zombieMaterial) const
         {
@@ -211,6 +432,7 @@ namespace our
             config.zombieModelYawOffset = zombieModelYawOffset;
             config.zombieModelScaleMultiplier = zombieModelScaleMultiplier;
             config.zombiePrototypeTransform = zombiePrototypeTransform;
+            config.zombieSpawnPoints = zombieSpawnPoints;
             config.zombieMesh = zombieMesh;
             config.zombieMaterial = zombieMaterial;
 
@@ -238,32 +460,53 @@ namespace our
             runtime.waitingForNextWave = false;
         }
 
-        glm::vec3 pickSpawnPoint(const ZombieSpawnerConfig &config, const ZombieWaveRuntime &runtime, const glm::vec3 &playerPos, const glm::vec3 &forward, int spawnedIndex) const
+        glm::vec3 pickSpawnPoint(World *world, const ZombieSpawnerConfig &config, const ZombieWaveRuntime &runtime, const glm::vec3 &playerPos, const glm::vec3 &forward, int spawnedIndex) const
         {
+            if (!config.zombieSpawnPoints.empty())
+            {
+                int start = (spawnedIndex * 17 + static_cast<int>(runtime.currentWaveIndex) * 31) % static_cast<int>(config.zombieSpawnPoints.size());
+                for (size_t i = 0; i < config.zombieSpawnPoints.size(); ++i)
+                {
+                    const glm::vec3 &base = config.zombieSpawnPoints[(start + static_cast<int>(i)) % config.zombieSpawnPoints.size()];
+                    glm::vec3 candidate = base;
+                    candidate.y = sampleFloorYAt(world, candidate, config.zombieGroundY);
+                    if (isValidSpawnCandidate(world, config, playerPos, forward, candidate))
+                        return candidate;
+                }
+            }
+
             int hash = spawnedIndex * 73 + static_cast<int>(runtime.currentWaveIndex) * 131 + 17;
-            float tAngle = static_cast<float>(hash % 1000) / 999.0f;
-            float tDist = static_cast<float>((hash * 37) % 1000) / 999.0f;
-
             float halfAngleRad = glm::radians(config.zombieSpawnViewHalfAngleDegrees);
-            float angle = (tAngle * 2.0f - 1.0f) * halfAngleRad;
-
-            float c = std::cos(angle);
-            float s = std::sin(angle);
-            glm::vec3 dir;
-            dir.x = forward.x * c - forward.z * s;
-            dir.y = 0.0f;
-            dir.z = forward.x * s + forward.z * c;
-            if (glm::dot(dir, dir) < 0.0001f)
-                dir = forward;
-            else
-                dir = glm::normalize(dir);
-
             float maxSpawnDistance = std::max(config.minSpawnPlayerDistance + 0.1f, config.zombieSpawnMaxDistance);
-            float distance = config.minSpawnPlayerDistance + (maxSpawnDistance - config.minSpawnPlayerDistance) * tDist;
 
-            glm::vec3 spawn = playerPos + dir * distance;
-            spawn.y = config.zombieGroundY;
-            return spawn;
+            for (int attempt = 0; attempt < 24; ++attempt)
+            {
+                int seed = hash + attempt * 97;
+                float tAngle = static_cast<float>((seed * 53) % 1000) / 999.0f;
+                float tDist = static_cast<float>((seed * 37) % 1000) / 999.0f;
+
+                float angle = (tAngle * 2.0f - 1.0f) * halfAngleRad;
+                float c = std::cos(angle);
+                float s = std::sin(angle);
+                glm::vec3 dir;
+                dir.x = forward.x * c - forward.z * s;
+                dir.y = 0.0f;
+                dir.z = forward.x * s + forward.z * c;
+                if (glm::dot(dir, dir) < 0.0001f)
+                    dir = forward;
+                else
+                    dir = glm::normalize(dir);
+
+                float distance = config.minSpawnPlayerDistance + (maxSpawnDistance - config.minSpawnPlayerDistance) * tDist;
+                glm::vec3 candidate = playerPos + dir * distance;
+                candidate.y = sampleFloorYAt(world, candidate, config.zombieGroundY);
+                if (isValidSpawnCandidate(world, config, playerPos, forward, candidate))
+                    return candidate;
+            }
+
+            glm::vec3 fallback = playerPos + forward * maxSpawnDistance;
+            fallback.y = sampleFloorYAt(world, fallback, config.zombieGroundY);
+            return fallback;
         }
 
         void spawnZombie(World *world, const ZombieSpawnerConfig &config, const ZombieWaveRuntime &runtime, const glm::vec3 &spawnPosition, const glm::vec3 &playerPos) const
@@ -276,7 +519,6 @@ namespace our
             zombieEntity->parent = nullptr;
             zombieEntity->localTransform = config.zombiePrototypeTransform;
             zombieEntity->localTransform.position = spawnPosition;
-            zombieEntity->localTransform.position.y = config.zombieGroundY;
             zombieEntity->localTransform.scale *= config.zombieModelScaleMultiplier;
 
             auto *renderer = zombieEntity->addComponent<MeshRendererComponent>();
@@ -298,7 +540,7 @@ namespace our
             zombie->attackRange = config.zombieAttackRange;
             zombie->attackCooldown = config.zombieAttackCooldown;
             zombie->corpseLifetime = config.zombieCorpseLifetime;
-            zombie->baseY = config.zombieGroundY;
+            zombie->baseY = spawnPosition.y;
 
             if (config.zombieMesh->hasSkinning())
             {
@@ -344,7 +586,7 @@ namespace our
             runtime.zombieSpawnTimer -= deltaTime;
             while (runtime.zombiesSpawnedThisWave < targetForWave && runtime.zombieSpawnTimer <= 0.0f)
             {
-                spawnZombie(world, config, runtime, pickSpawnPoint(config, runtime, playerPos, forward, runtime.zombiesSpawnedThisWave), playerPos);
+                spawnZombie(world, config, runtime, pickSpawnPoint(world, config, runtime, playerPos, forward, runtime.zombiesSpawnedThisWave), playerPos);
                 runtime.zombiesSpawnedThisWave++;
                 runtime.zombieSpawnTimer += config.zombieSpawnIntervalSeconds;
             }
@@ -363,6 +605,37 @@ namespace our
                     runtime.betweenWaveTimer = config.betweenWavesDelaySeconds;
                 }
             }
+        }
+
+        void updateInPlace(
+            World *world,
+            size_t &currentWaveIndex,
+            int &zombiesSpawnedThisWave,
+            float &zombieSpawnTimer,
+            bool &waitingForNextWave,
+            float &betweenWaveTimer,
+            bool &allWavesCompleted,
+            const ZombieSpawnerConfig &config,
+            float deltaTime,
+            const glm::vec3 &playerPos,
+            const glm::vec3 &forward) const
+        {
+            ZombieWaveRuntime runtime;
+            runtime.currentWaveIndex = currentWaveIndex;
+            runtime.zombiesSpawnedThisWave = zombiesSpawnedThisWave;
+            runtime.zombieSpawnTimer = zombieSpawnTimer;
+            runtime.waitingForNextWave = waitingForNextWave;
+            runtime.betweenWaveTimer = betweenWaveTimer;
+            runtime.allWavesCompleted = allWavesCompleted;
+
+            update(world, runtime, config, deltaTime, playerPos, forward);
+
+            currentWaveIndex = runtime.currentWaveIndex;
+            zombiesSpawnedThisWave = runtime.zombiesSpawnedThisWave;
+            zombieSpawnTimer = runtime.zombieSpawnTimer;
+            waitingForNextWave = runtime.waitingForNextWave;
+            betweenWaveTimer = runtime.betweenWaveTimer;
+            allWavesCompleted = runtime.allWavesCompleted;
         }
     };
 

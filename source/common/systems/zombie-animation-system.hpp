@@ -2,6 +2,7 @@
 
 #include "../animation/motion.hpp"
 #include "../asset-loader.hpp"
+#include "../components/health.hpp"
 #include "../components/mesh-renderer.hpp"
 #include "../components/zombie.hpp"
 #include "../ecs/entity.hpp"
@@ -93,6 +94,12 @@ namespace our
         }
 
     public:
+        void initializeAssets(const std::string &motionAssetName = "zombie-motion", const ZombieClipOverrides &overrides = {})
+        {
+            bindMotionClips(motionAssetName, overrides);
+            cacheBloodSplashAssets();
+        }
+
         void loadGameplayConfig(
             const nlohmann::json &zombiesConfig,
             ZombiePoseConfig &poseConfig,
@@ -383,6 +390,80 @@ namespace our
             entity->localTransform.rotation.x = -posePitch;
             entity->localTransform.rotation.z = poseRoll;
             entity->localTransform.scale = prototypeTransform.scale * poseConfig.modelScaleMultiplier;
+        }
+
+        void updateAllZombies(
+            World *world,
+            float deltaTime,
+            const glm::vec3 &playerTarget,
+            HealthComponent *playerHealth,
+            float zombieModelYawOffset,
+            float deathFallDegrees,
+            float deathSink,
+            const Transform &prototypeTransform,
+            const ZombiePoseConfig &poseConfig) const
+        {
+            if (!world)
+                return;
+
+            for (auto entity : world->getEntities())
+            {
+                auto *zombie = entity->getComponent<ZombieComponent>();
+                auto *health = entity->getComponent<HealthComponent>();
+                if (!(zombie && health))
+                    continue;
+
+                zombie->update(deltaTime);
+                updateZombieAnimation(entity, zombie, deltaTime);
+
+                zombie->applyHealthState(health->isAlive);
+                if (zombie->updateDeathTransform(entity->localTransform, deathFallDegrees, deathSink))
+                {
+                    world->markForRemoval(entity);
+                    continue;
+                }
+
+                glm::vec3 zombiePosition = glm::vec3(entity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+                zombie->updateMovementAndCombat(
+                    entity->localTransform,
+                    zombiePosition,
+                    playerTarget,
+                    zombieModelYawOffset,
+                    deltaTime,
+                    playerHealth);
+
+                applyZombiePose(entity, zombie, prototypeTransform, poseConfig);
+            }
+        }
+
+        bool handleZombieKill(
+            World *world,
+            Entity *hitEntity,
+            bool killedZombie,
+            int &zombiesKilledCount,
+            const Transform &prototypeTransform,
+            Material *fallbackMaterial)
+        {
+            if (!(world && killedZombie && hitEntity))
+                return false;
+
+            zombiesKilledCount++;
+            glm::vec3 worldPos = glm::vec3(hitEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+            float maxAxisScale = std::max({std::abs(hitEntity->localTransform.scale.x),
+                                           std::abs(hitEntity->localTransform.scale.y),
+                                           std::abs(hitEntity->localTransform.scale.z),
+                                           1.0f});
+
+            spawnBloodSplashAt(
+                world,
+                prototypeTransform,
+                fallbackMaterial,
+                worldPos,
+                hitEntity->localTransform.rotation.y,
+                maxAxisScale);
+
+            world->markForRemoval(hitEntity);
+            return true;
         }
     };
 

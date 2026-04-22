@@ -141,19 +141,6 @@ class Playstate : public our::State
     float zombieModelScaleMultiplier = 1.0f;
     float zombieSpawnMaxDistance = 22.0f;
     float zombieSpawnViewHalfAngleDegrees = 24.0f;
-    float zombieModelYawOffsetDegrees = 0.0f;
-
-    float zombieWalkBobAmplitude = 0.055f;
-    float zombieCrawlBobAmplitude = 0.025f;
-    float zombieAttackBobAmplitude = 0.085f;
-    float zombieWalkBobFrequency = 7.0f;
-    float zombieCrawlBobFrequency = 4.2f;
-    float zombieAttackBobFrequency = 11.0f;
-    float zombieWalkRollDegrees = 7.0f;
-    float zombieAttackPitchDegrees = 13.0f;
-    float zombieAttackPitchFrequency = 8.0f;
-    float zombieCrawlPitchDegrees = 58.0f;
-    float zombieCrawlHeightDrop = 0.22f;
     our::ZombiePoseConfig zombiePoseConfig{};
     float zombieDeathFallDegrees = 82.0f;
     float zombieDeathSink = 0.30f;
@@ -833,7 +820,6 @@ class Playstate : public our::State
             zombieModelScaleMultiplier,
             zombieSpawnMaxDistance,
             zombieSpawnViewHalfAngleDegrees,
-            zombieModelYawOffsetDegrees,
             zombieModelYawOffset);
 
         zombiePoseConfig.modelScaleMultiplier = zombieModelScaleMultiplier;
@@ -872,17 +858,14 @@ class Playstate : public our::State
 
     void updateWaveSystem(float deltaTime)
     {
-        our::ZombieWaveRuntime runtime;
-        runtime.currentWaveIndex = currentWaveIndex;
-        runtime.zombiesSpawnedThisWave = zombiesSpawnedThisWave;
-        runtime.zombieSpawnTimer = zombieSpawnTimer;
-        runtime.waitingForNextWave = waitingForNextWave;
-        runtime.betweenWaveTimer = betweenWaveTimer;
-        runtime.allWavesCompleted = allWavesCompleted;
-
-        zombieSpawningSystem.update(
+        zombieSpawningSystem.updateInPlace(
             &world,
-            runtime,
+            currentWaveIndex,
+            zombiesSpawnedThisWave,
+            zombieSpawnTimer,
+            waitingForNextWave,
+            betweenWaveTimer,
+            allWavesCompleted,
             zombieSpawningSystem.makeConfig(
                 waveZombieCounts,
                 zombieSpawnIntervalSeconds,
@@ -901,18 +884,12 @@ class Playstate : public our::State
                 zombieModelYawOffset,
                 zombieModelScaleMultiplier,
                 zombiePrototypeTransform,
+                zombieSpawnPoints,
                 zombieMesh,
                 zombieMaterial),
             deltaTime,
             getPlayerTargetPosition(),
             getCameraForwardOnGround());
-
-        currentWaveIndex = runtime.currentWaveIndex;
-        zombiesSpawnedThisWave = runtime.zombiesSpawnedThisWave;
-        zombieSpawnTimer = runtime.zombieSpawnTimer;
-        waitingForNextWave = runtime.waitingForNextWave;
-        betweenWaveTimer = runtime.betweenWaveTimer;
-        allWavesCompleted = runtime.allWavesCompleted;
     }
 
     void updateZombies(float deltaTime)
@@ -921,34 +898,16 @@ class Playstate : public our::State
         our::HealthComponent *playerHealth = getMainPlayerHealth();
         zombiePoseConfig.modelScaleMultiplier = zombieModelScaleMultiplier;
 
-        for (auto entity : world.getEntities())
-        {
-            auto *zombie = entity->getComponent<our::ZombieComponent>();
-            auto *health = entity->getComponent<our::HealthComponent>();
-            if (!(zombie && health))
-                continue;
-
-            zombie->update(deltaTime);
-            zombieAnimationSystem.updateZombieAnimation(entity, zombie, deltaTime);
-
-            zombie->applyHealthState(health->isAlive);
-            if (zombie->updateDeathTransform(entity->localTransform, zombieDeathFallDegrees, zombieDeathSink))
-            {
-                world.markForRemoval(entity);
-                continue;
-            }
-
-            glm::vec3 zombiePosition = glm::vec3(entity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
-            zombie->updateMovementAndCombat(
-                entity->localTransform,
-                zombiePosition,
-                playerTarget,
-                zombieModelYawOffset,
-                deltaTime,
-                playerHealth);
-
-            zombieAnimationSystem.applyZombiePose(entity, zombie, zombiePrototypeTransform, zombiePoseConfig);
-        }
+        zombieAnimationSystem.updateAllZombies(
+            &world,
+            deltaTime,
+            playerTarget,
+            playerHealth,
+            zombieModelYawOffset,
+            zombieDeathFallDegrees,
+            zombieDeathSink,
+            zombiePrototypeTransform,
+            zombiePoseConfig);
     }
 
     void handleCollisions()
@@ -1190,7 +1149,7 @@ class Playstate : public our::State
                 mainPlayerPistolRotationOffset = glm::radians(mainPlayerConfig["pistolRotationOffset"].get<glm::vec3>());
             mainPlayerPistolScaleMultiplier = mainPlayerConfig.value("pistolScaleMultiplier", mainPlayerPistolScaleMultiplier);
         }
-        zombieAnimationSystem.bindMotionClips("zombie-motion");
+        zombieAnimationSystem.initializeAssets("zombie-motion");
         bindMainPlayerMotionClips();
 
         mainPlayerEntity = findMainPlayerEntity();
@@ -1219,7 +1178,7 @@ class Playstate : public our::State
         }
         setupHealthPickupColliders();
         lockCameraAndPlayerVerticalToZero();
-        zombieSpawningSystem.cachePrototypeAndSpawnPoints(
+        zombieSpawningSystem.initializeFromWorld(
             &world,
             zombieMesh,
             zombieMaterial,
@@ -1227,7 +1186,6 @@ class Playstate : public our::State
             zombieSpawnPoints,
             zombieSpawnHeightOffset,
             zombieGroundY);
-        zombieAnimationSystem.cacheBloodSplashAssets();
         recalculateSunriseTargets();
         betweenWaveTimer = initialWaveDelaySeconds;
         isPaused = false;
@@ -1470,24 +1428,13 @@ class Playstate : public our::State
                     our::Ray ray = shootingSystem.buildRayFromCamera(&world);
                     our::FireResult fireResult = shootingSystem.fireRay(ray, &world, weapon);
 
-                    // Spawn blood instantly on second-shot kill and remove zombie before render.
-                    if (fireResult.killedZombie && fireResult.hitEntity)
-                    {
-                        zombiesKilledCount++;
-                        glm::vec3 worldPos = glm::vec3(fireResult.hitEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
-                        float maxAxisScale = std::max({std::abs(fireResult.hitEntity->localTransform.scale.x),
-                                                       std::abs(fireResult.hitEntity->localTransform.scale.y),
-                                                       std::abs(fireResult.hitEntity->localTransform.scale.z),
-                                                       1.0f});
-                        zombieAnimationSystem.spawnBloodSplashAt(
-                            &world,
-                            zombiePrototypeTransform,
-                            zombieMaterial,
-                            worldPos,
-                            fireResult.hitEntity->localTransform.rotation.y,
-                            maxAxisScale);
-                        world.markForRemoval(fireResult.hitEntity);
-                    }
+                    zombieAnimationSystem.handleZombieKill(
+                        &world,
+                        fireResult.hitEntity,
+                        fireResult.killedZombie,
+                        zombiesKilledCount,
+                        zombiePrototypeTransform,
+                        zombieMaterial);
                 }
             }
         }
