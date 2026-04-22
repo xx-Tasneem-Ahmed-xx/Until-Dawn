@@ -51,6 +51,8 @@
     "mainPlayer": {
       "heightOffset": -5,
       "followDistance": 2,
+      "wallBufferDistance": 0.65,
+      "houseColliderPaddingXZ": 1.4,
       "pistolBoneOffset": [0.0, 0.2, 0.17],
       "pistolRotationOffset": [190, 90, -110],
       "pistolScaleMultiplier": 1

@@ -4,6 +4,7 @@
 #include "../ecs/entity.hpp"
 #include <glm/glm.hpp>
 #include <algorithm>
+#include <cctype>
 
 namespace our {
 
@@ -31,8 +32,19 @@ namespace our {
                 auto envA = entityA->getComponent<EnvironmentComponent>();
                 auto envB = entityB->getComponent<EnvironmentComponent>();
 
-                const bool wallLikeA = envA && (envA->environmentType == "wall" || envA->environmentType == "prop");
-                const bool wallLikeB = envB && (envB->environmentType == "wall" || envB->environmentType == "prop");
+                auto toLower = [](std::string value) {
+                    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
+                        return static_cast<char>(std::tolower(c));
+                    });
+                    return value;
+                };
+
+                const std::string typeA = envA ? toLower(envA->environmentType) : std::string{};
+                const std::string typeB = envB ? toLower(envB->environmentType) : std::string{};
+                const bool floorA = envA && typeA == "floor";
+                const bool floorB = envB && typeB == "floor";
+                const bool wallLikeA = envA && !floorA;
+                const bool wallLikeB = envB && !floorB;
 
                 bool collided = false;
 
