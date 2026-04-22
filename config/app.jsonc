@@ -393,18 +393,6 @@
         ]
       },
       {
-        "position": [6, 5, 10],
-        "rotation": [0, 0, 0],
-        "scale": [10, 10, 10],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "pickup-health",
-            "material": "auto"
-          }
-        ]
-      },
-      {
         "position": [6, 7, 20],
         "rotation": [0, 0, 0],
         "scale": [1, 1, 1],
