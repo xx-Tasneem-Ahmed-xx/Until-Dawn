@@ -29,7 +29,7 @@
       "corpseLifetime": 1.25,
       "radius": 1,
       "spawnHeightOffset": -0.25,
-      "modelScaleMultiplier": 0.42,
+      "modelScaleMultiplier": 2,
       "modelYawOffsetDegrees": 180,
       "walkBobAmplitude": 0.11,
       "crawlBobAmplitude": 0.055,
