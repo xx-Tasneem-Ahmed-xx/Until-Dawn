@@ -117,10 +117,18 @@ namespace our
         float yaw = std::atan2(-direction.x, -direction.z);
         transform.rotation.y = yaw + yawOffset;
 
-        if (distanceToPlayer > attackRange)
+        const float effectiveAttackRange = std::max(0.01f, attackRange);
+        if (distanceToPlayer > effectiveAttackRange)
         {
             state = (shotsTaken >= 1) ? ZombieState::Crawling : ZombieState::Walking;
-            transform.position += direction * (getCurrentSpeed() * deltaTime);
+
+            // Clamp movement so the zombie never crosses inside the attack threshold in one frame.
+            float maxAdvance = std::max(0.0f, distanceToPlayer - effectiveAttackRange);
+            float step = std::min(getCurrentSpeed() * deltaTime, maxAdvance);
+            if (step > 0.0f)
+            {
+                transform.position += direction * step;
+            }
             return;
         }
 

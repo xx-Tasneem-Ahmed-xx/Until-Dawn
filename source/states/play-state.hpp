@@ -758,6 +758,28 @@ class Playstate : public our::State
         return glm::vec3(0.0f);
     }
 
+    glm::vec3 getMainPlayerCombatTargetPosition()
+    {
+        if (!mainPlayerVisualEntity)
+            mainPlayerVisualEntity = findMainPlayerVisualEntity();
+
+        if (mainPlayerVisualEntity)
+        {
+            return glm::vec3(mainPlayerVisualEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+        }
+
+        if (!mainPlayerEntity)
+            mainPlayerEntity = findMainPlayerEntity();
+
+        if (mainPlayerEntity)
+        {
+            return glm::vec3(mainPlayerEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+        }
+
+        // Fallback only if player entity is unavailable.
+        return getPlayerTargetPosition();
+    }
+
     void lockCameraAndPlayerVerticalToZero()
     {
         if (!mainCameraEntity)
@@ -888,13 +910,13 @@ class Playstate : public our::State
                 zombieMesh,
                 zombieMaterial),
             deltaTime,
-            getPlayerTargetPosition(),
+            getMainPlayerCombatTargetPosition(),
             getCameraForwardOnGround());
     }
 
     void updateZombies(float deltaTime)
     {
-        glm::vec3 playerTarget = getPlayerTargetPosition();
+        glm::vec3 playerTarget = getMainPlayerCombatTargetPosition();
         our::HealthComponent *playerHealth = getMainPlayerHealth();
         zombiePoseConfig.modelScaleMultiplier = zombieModelScaleMultiplier;
 
