@@ -139,13 +139,10 @@ void PlayerControllerSystem::update(World      *world,
     //  W=forward, S=back, D=right, A=left (including diagonals).
  glm::mat4 camMatrix = cameraEntity->getLocalToWorldMatrix();
 
-// forward = -Z axis
 glm::vec3 cameraForward = -glm::vec3(camMatrix[2]);
 
-// right = X axis
 glm::vec3 cameraRight = glm::vec3(camMatrix[0]);
 
-// نخلي الحركة على الأرض بس
 cameraForward.y = 0;
 cameraRight.y = 0;
 
@@ -163,6 +160,13 @@ cameraRight   = glm::normalize(cameraRight);
     bool isMoving = glm::length(desiredDir) > 0.001f;
     if (isMoving)
         desiredDir = glm::normalize(desiredDir);
+        float targetYaw = cameraWorldYaw + player->aimYaw;
+
+playerEntity->localTransform.rotation.y =
+    smoothYaw(playerEntity->localTransform.rotation.y,
+              targetYaw,
+              player->turnSpeed,
+              deltaTime);
 
     // Move toward intended direction.
     playerEntity->localTransform.position += desiredDir * player->walkSpeed * deltaTime;
