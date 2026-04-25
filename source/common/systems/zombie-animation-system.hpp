@@ -303,7 +303,7 @@ namespace our
                 return crawlClip;
             if (state == ZombieState::Dead)
             {
-                if (zombie->shotsTaken >= 2 && crawlDieClip)
+                if (zombie->health <= 0.5 * zombie->maxHealth && zombie->health > 0 && crawlDieClip)
                     return crawlDieClip;
                 return dieClip;
             }

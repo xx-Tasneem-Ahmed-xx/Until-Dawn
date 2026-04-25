@@ -244,7 +244,7 @@ class EndingState : public our::State
             const auto &zCfg = cfg["scene"]["zombies"];
             float yawDeg = zCfg.value("modelYawOffsetDegrees", 180.0f);
             runtime.zombieModelYawOffset = glm::radians(yawDeg);
-            runtime.endingZombieScale = std::max(0.2f, zCfg.value("modelScaleMultiplier", 0.42f) * 2.10f);
+            runtime.endingZombieScale = std::max(0.2f, zCfg.value("modelScaleMultiplier", 0.42f) * 0.42f);
             runtime.endingGroundY = -0.5f + zCfg.value("spawnHeightOffset", -0.25f);
         }
 

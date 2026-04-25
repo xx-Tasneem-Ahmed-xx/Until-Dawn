@@ -31,9 +31,10 @@ namespace our
         float attackRange = 1.8f;    // Distance at which zombie starts attacking
         float attackCooldown = 1.0f; // Seconds between attacks
         float corpseLifetime = 1.2f; // Seconds to keep dead zombie before despawn
+        float maxHealth = 20.0f;
+        float health = 20.0f;
 
         ZombieState state = ZombieState::Walking;
-        int shotsTaken = 0;
         float attackCooldownTimer = 0.0f;
         float deathTime = 0.0f;
         float motionTime = 0.0f;
@@ -82,7 +83,7 @@ namespace our
         bool shouldDespawn() const { return isDead() && deathTime >= corpseLifetime; }
 
     private:
-        void syncStateWithShotsTaken();
+        void syncStateWithHealth();
     };
 
 }
