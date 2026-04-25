@@ -1,7 +1,10 @@
 #pragma once
 
 #include "../ecs/component.hpp"
+#include "../ecs/transform.hpp"
+#include "health.hpp"
 #include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
 #include <string>
 #include <vector>
 
@@ -61,8 +64,25 @@ namespace our
         // Current movement speed based on state.
         float getCurrentSpeed() const;
 
+        void applyHealthState(bool isAlive);
+
+        // Applies dead pose to transform and returns true if zombie should despawn now.
+        bool updateDeathTransform(Transform &transform, float deathFallDegrees, float deathSink) const;
+
+        // Updates movement/combat against player and writes transform changes.
+        void updateMovementAndCombat(
+            Transform &transform,
+            const glm::vec3 &zombieWorldPosition,
+            const glm::vec3 &playerTarget,
+            float yawOffset,
+            float deltaTime,
+            HealthComponent *playerHealth);
+
         bool isDead() const { return state == ZombieState::Dead; }
         bool shouldDespawn() const { return isDead() && deathTime >= corpseLifetime; }
+
+    private:
+        void syncStateWithShotsTaken();
     };
 
 }
