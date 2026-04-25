@@ -24,7 +24,7 @@ namespace ending
 
     struct WinRuntime
     {
-        float playerGroundOffset = -0.58f;
+        float playerGroundOffset = -1.10f;
         float cameraBlendInDuration = 2.2f;
         glm::vec3 cameraStartPosition = glm::vec3(0.0f);
         float cameraStartYaw = 0.0f;
