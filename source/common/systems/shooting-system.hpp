@@ -6,8 +6,6 @@
 #include "../components/health.hpp"
 #include "../components/weapon.hpp"
 #include <glm/glm.hpp>
-#include <array>
-#include <cmath>
 #include <limits>
 #include <vector>
 #include <algorithm>
@@ -133,7 +131,39 @@ namespace our
 
                 if (zombie && health && health->isAlive)
                 {
-                    float hitDistance = computeZombieHitDistance(ray, entity, zombie, weapon);
+                    glm::mat4 zombieWorld = entity->getLocalToWorldMatrix();
+                    glm::vec3 zombiePosition = glm::vec3(zombieWorld * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+
+                    glm::vec3 scaleVec = entity->localTransform.scale;
+                    float maxScale = std::max({std::abs(scaleVec.x), std::abs(scaleVec.y), std::abs(scaleVec.z), 1.0f});
+                    float baseRadius = std::max(0.1f, zombie->radius * maxScale);
+
+                    float centerHeight = baseRadius * 0.9f;
+                    if (zombie->state == ZombieState::Crawling)
+                    {
+                        centerHeight = baseRadius * 0.40f;
+                    }
+                    else if (zombie->state == ZombieState::Dead)
+                    {
+                        centerHeight = baseRadius * 0.25f;
+                    }
+
+                    // Use a forgiving 3-sphere body approximation (torso/head/hips)
+                    std::vector<glm::vec3> hitCenters = {
+                        zombiePosition + glm::vec3(0.0f, centerHeight, 0.0f),
+                        zombiePosition + glm::vec3(0.0f, centerHeight + baseRadius * 0.70f, 0.0f),
+                        zombiePosition + glm::vec3(0.0f, centerHeight - baseRadius * 0.55f, 0.0f)};
+
+                    float hitDistance = -1.0f;
+                    const float hitRadius = baseRadius * 1.15f;
+                    for (const auto &center : hitCenters)
+                    {
+                        float candidate = testRaySphereIntersection(ray, center, hitRadius, weapon);
+                        if (candidate >= 0.0f && (hitDistance < 0.0f || candidate < hitDistance))
+                        {
+                            hitDistance = candidate;
+                        }
+                    }
 
                     // If hit and closer than previous closest, update closest hit
                     if (hitDistance >= 0.0f && hitDistance < closestHit.distance)
@@ -175,7 +205,38 @@ namespace our
 
                 if (zombie && health && health->isAlive)
                 {
-                    float hitDistance = computeZombieHitDistance(ray, entity, zombie, weapon);
+                    glm::mat4 zombieWorld = entity->getLocalToWorldMatrix();
+                    glm::vec3 zombiePosition = glm::vec3(zombieWorld * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+
+                    glm::vec3 scaleVec = entity->localTransform.scale;
+                    float maxScale = std::max({std::abs(scaleVec.x), std::abs(scaleVec.y), std::abs(scaleVec.z), 1.0f});
+                    float baseRadius = std::max(0.1f, zombie->radius * maxScale);
+
+                    float centerHeight = baseRadius * 0.9f;
+                    if (zombie->state == ZombieState::Crawling)
+                    {
+                        centerHeight = baseRadius * 0.40f;
+                    }
+                    else if (zombie->state == ZombieState::Dead)
+                    {
+                        centerHeight = baseRadius * 0.25f;
+                    }
+
+                    std::vector<glm::vec3> hitCenters = {
+                        zombiePosition + glm::vec3(0.0f, centerHeight, 0.0f),
+                        zombiePosition + glm::vec3(0.0f, centerHeight + baseRadius * 0.70f, 0.0f),
+                        zombiePosition + glm::vec3(0.0f, centerHeight - baseRadius * 0.55f, 0.0f)};
+
+                    float hitDistance = -1.0f;
+                    const float hitRadius = baseRadius * 1.15f;
+                    for (const auto &center : hitCenters)
+                    {
+                        float candidate = testRaySphereIntersection(ray, center, hitRadius, weapon);
+                        if (candidate >= 0.0f && (hitDistance < 0.0f || candidate < hitDistance))
+                        {
+                            hitDistance = candidate;
+                        }
+                    }
 
                     // Collect only positive hits (in front of camera)
                     if (hitDistance > 0.0f)
@@ -232,44 +293,6 @@ namespace our
             }
 
             return result;
-        }
-
-    private:
-        float computeZombieHitDistance(const Ray &ray, Entity *entity, const ZombieComponent *zombie, const WeaponComponent *weapon)
-        {
-            glm::vec3 zombiePosition = glm::vec3(entity->getLocalToWorldMatrix() * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-
-            glm::vec3 scaleVec = entity->localTransform.scale;
-            float maxScale = std::max({std::abs(scaleVec.x), std::abs(scaleVec.y), std::abs(scaleVec.z), 1.0f});
-            float baseRadius = std::max(0.1f, zombie->radius * maxScale);
-
-            float centerHeight = baseRadius * 0.9f;
-            if (zombie->state == ZombieState::Crawling)
-            {
-                centerHeight = baseRadius * 0.40f;
-            }
-            else if (zombie->state == ZombieState::Dead)
-            {
-                centerHeight = baseRadius * 0.25f;
-            }
-
-            const std::array<glm::vec3, 3> hitCenters = {
-                zombiePosition + glm::vec3(0.0f, centerHeight, 0.0f),
-                zombiePosition + glm::vec3(0.0f, centerHeight + baseRadius * 0.70f, 0.0f),
-                zombiePosition + glm::vec3(0.0f, centerHeight - baseRadius * 0.55f, 0.0f)};
-
-            float hitDistance = -1.0f;
-            const float hitRadius = baseRadius * 1.15f;
-            for (const auto &center : hitCenters)
-            {
-                float candidate = testRaySphereIntersection(ray, center, hitRadius, weapon);
-                if (candidate >= 0.0f && (hitDistance < 0.0f || candidate < hitDistance))
-                {
-                    hitDistance = candidate;
-                }
-            }
-
-            return hitDistance;
         }
     };
 
