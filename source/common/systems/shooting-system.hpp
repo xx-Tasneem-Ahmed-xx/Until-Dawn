@@ -300,7 +300,7 @@ namespace our
                     result.hitEntity = closestHit.entity;
                     result.hitDistance = closestHit.distance;
 
-                    bool killed = targetZombie->registerShot();
+                    bool killed = targetZombie->registerShot(weapon->damage);
                     if (killed)
                     {
                         result.killedZombie = true;

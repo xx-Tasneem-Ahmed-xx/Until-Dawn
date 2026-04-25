@@ -53,11 +53,11 @@ namespace our
         }
     }
 
-    bool ZombieComponent::registerShot()
+    bool ZombieComponent::registerShot(float weaponDamage)
     {
         if (state == ZombieState::Dead)
             return true;
-        health -= 10;
+        health -= weaponDamage;
         syncStateWithHealth();
         if (state == ZombieState::Dead)
             deathTime = 0.0f;

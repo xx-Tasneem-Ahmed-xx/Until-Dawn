@@ -31,8 +31,8 @@ namespace our
         float attackRange = 1.8f;    // Distance at which zombie starts attacking
         float attackCooldown = 1.0f; // Seconds between attacks
         float corpseLifetime = 1.2f; // Seconds to keep dead zombie before despawn
-        float maxHealth = 20.0f;
-        float health = 20.0f;
+        float maxHealth = 16.0f;
+        float health = 16.0f;
 
         ZombieState state = ZombieState::Walking;
         float attackCooldownTimer = 0.0f;
@@ -54,7 +54,7 @@ namespace our
 
         // Registers a shot and updates state.
         // Returns true if this shot kills the zombie.
-        bool registerShot();
+        bool registerShot(float weaponDamage);
 
         // Returns true if zombie may apply attack damage this frame.
         bool canAttack() const { return state != ZombieState::Dead && attackCooldownTimer <= 0.0f; }
