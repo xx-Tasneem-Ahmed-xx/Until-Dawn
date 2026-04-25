@@ -137,8 +137,20 @@ void PlayerControllerSystem::update(World      *world,
     //
     //  Input is interpreted relative to camera yaw so:
     //  W=forward, S=back, D=right, A=left (including diagonals).
-    glm::vec3 cameraForward(std::sin(cameraWorldYaw), 0.0f, -std::cos(cameraWorldYaw));
-    glm::vec3 cameraRight  (std::cos(cameraWorldYaw), 0.0f,  std::sin(cameraWorldYaw));
+ glm::mat4 camMatrix = cameraEntity->getLocalToWorldMatrix();
+
+// forward = -Z axis
+glm::vec3 cameraForward = -glm::vec3(camMatrix[2]);
+
+// right = X axis
+glm::vec3 cameraRight = glm::vec3(camMatrix[0]);
+
+// نخلي الحركة على الأرض بس
+cameraForward.y = 0;
+cameraRight.y = 0;
+
+cameraForward = glm::normalize(cameraForward);
+cameraRight   = glm::normalize(cameraRight);
 
     float inputX = 0.0f;
     float inputZ = 0.0f;
