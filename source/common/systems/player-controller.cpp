@@ -160,6 +160,7 @@ void PlayerControllerSystem::update(World      *world,
     if (isMoving)
         desiredDir = glm::normalize(desiredDir);
 
+        
     // Player body always faces the crosshair (camera yaw + horizontal aim offset).
     float targetYaw = cameraWorldYaw + player->aimYaw;
 

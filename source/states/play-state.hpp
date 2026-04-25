@@ -1604,7 +1604,6 @@ private:
         world.clear();
         collisionSystem.clear();
         previousWallCollisionPairs.clear();
-        // and we delete all the loaded assets to free memory on the RAM and the VRAM
         our::clearAllAssets();
     }
 };
