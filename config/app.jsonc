@@ -348,7 +348,11 @@
         "components": [
           {
             "type": "Player",
-            "isMainPlayer": true
+            "isMainPlayer": true,
+            "walkSpeed": 3.5,
+  "crosshairSensitivity": 0.0010,
+  "crosshairMaxRadius": 0.55,
+  "bodyTurnSpeed": 140.0
           },
           {
             "type": "Health",
