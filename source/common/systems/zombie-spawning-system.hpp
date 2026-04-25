@@ -252,6 +252,24 @@ namespace our
         }
 
     public:
+        void resetRuntime(ZombieWaveRuntime &runtime, float initialWaveDelaySeconds) const
+        {
+            runtime = ZombieWaveRuntime{};
+            runtime.waitingForNextWave = true;
+            runtime.betweenWaveTimer = std::max(0.0f, initialWaveDelaySeconds);
+        }
+
+        int getTotalPlannedZombieCount(const ZombieSpawnerConfig &config) const
+        {
+            int total = 0;
+            for (int waveCount : config.waveZombieCounts)
+            {
+                if (waveCount > 0)
+                    total += waveCount;
+            }
+            return total;
+        }
+
         void initializeFromWorld(
             World *world,
             Mesh *&zombieMesh,
@@ -269,6 +287,21 @@ namespace our
                 zombieSpawnPoints,
                 zombieSpawnHeightOffset,
                 zombieGroundY);
+        }
+
+        void initializeFromWorld(
+            World *world,
+            ZombieSpawnerConfig &config,
+            float zombieSpawnHeightOffset) const
+        {
+            initializeFromWorld(
+                world,
+                config.zombieMesh,
+                config.zombieMaterial,
+                config.zombiePrototypeTransform,
+                config.zombieSpawnPoints,
+                zombieSpawnHeightOffset,
+                config.zombieGroundY);
         }
 
         void loadGameplayConfig(
@@ -330,6 +363,33 @@ namespace our
             float zombieModelYawOffsetDegrees = glm::degrees(zombieModelYawOffset);
             zombieModelYawOffsetDegrees = zombiesConfig.value("modelYawOffsetDegrees", zombieModelYawOffsetDegrees);
             zombieModelYawOffset = glm::radians(zombieModelYawOffsetDegrees);
+        }
+
+        void loadGameplayConfig(
+            const nlohmann::json &zombiesConfig,
+            ZombieSpawnerConfig &config,
+            float &initialWaveDelaySeconds,
+            float &zombieSpawnHeightOffset) const
+        {
+            loadGameplayConfig(
+                zombiesConfig,
+                config.waveZombieCounts,
+                config.zombieSpawnIntervalSeconds,
+                initialWaveDelaySeconds,
+                config.betweenWavesDelaySeconds,
+                config.minSpawnPlayerDistance,
+                config.zombieWalkSpeed,
+                config.zombieCrawlSpeed,
+                config.zombieDamage,
+                config.zombieAttackRange,
+                config.zombieAttackCooldown,
+                config.zombieCorpseLifetime,
+                config.zombieRadius,
+                zombieSpawnHeightOffset,
+                config.zombieModelScaleMultiplier,
+                config.zombieSpawnMaxDistance,
+                config.zombieSpawnViewHalfAngleDegrees,
+                config.zombieModelYawOffset);
         }
 
         void cachePrototypeAndSpawnPoints(

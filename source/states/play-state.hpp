@@ -44,10 +44,8 @@
 #include <utility>
 #include <vector>
 
-#define ZOMBIE_ATTACK_TRIGGER_DISTANCE 1.8f
 #define ZOMBIE_INITIAL_WAVE_DELAY_SECONDS 0.2f
 #define ZOMBIE_BETWEEN_WAVES_DELAY_SECONDS 4.0f
-#define ZOMBIE_MIN_SPAWN_PLAYER_DISTANCE 7.0f
 
 // This state shows how to use the ECS framework and deserialization.
 class Playstate : public our::State
@@ -93,8 +91,8 @@ class Playstate : public our::State
     our::Entity *mainCameraEntity = nullptr;
     our::Entity *mainPlayerEntity = nullptr;
 
-    our::Mesh *zombieMesh = nullptr;
-    our::Material *zombieMaterial = nullptr;
+    our::ZombieSpawnerConfig zombieSpawnerConfig{};
+    our::ZombieWaveRuntime zombieWaveRuntime{};
     our::Mesh *mainPlayerMesh = nullptr;
     our::Motion *mainPlayerMotion = nullptr;
     const our::MotionClip *mainPlayerIdleClip = nullptr;
@@ -116,19 +114,7 @@ class Playstate : public our::State
     float mainPlayerFollowDistance = 2.5f;
     glm::vec3 lastMainPlayerAnchorPosition = glm::vec3(0.0f);
     bool mainPlayerAnchorInitialized = false;
-    our::Transform zombiePrototypeTransform{};
-    float zombieModelYawOffset = 0.0f;
-    float zombieGroundY = -0.5f;
-    std::vector<glm::vec3> zombieSpawnPoints;
 
-    std::vector<int> waveZombieCounts = {3, 5, 7, 10};
-    size_t currentWaveIndex = 0;
-    int zombiesSpawnedThisWave = 0;
-    float zombieSpawnIntervalSeconds = 0.8f;
-    float zombieSpawnTimer = 0.0f;
-    bool waitingForNextWave = true;
-    float betweenWaveTimer = ZOMBIE_INITIAL_WAVE_DELAY_SECONDS;
-    bool allWavesCompleted = false;
     int totalZombiesAcrossAllWaves = 0;
     int zombiesKilledCount = 0;
     float sunriseStartExposure = 0.10f;
@@ -136,23 +122,8 @@ class Playstate : public our::State
     float sunriseEasePower = 1.20f;
 
     float initialWaveDelaySeconds = ZOMBIE_INITIAL_WAVE_DELAY_SECONDS;
-    float betweenWavesDelaySeconds = ZOMBIE_BETWEEN_WAVES_DELAY_SECONDS;
-    float minSpawnPlayerDistance = ZOMBIE_MIN_SPAWN_PLAYER_DISTANCE;
-
-    float zombieWalkSpeed = 1.8f;
-    float zombieCrawlSpeed = 0.8f;
-    float zombieDamage = 8.0f;
-    float zombieAttackRange = ZOMBIE_ATTACK_TRIGGER_DISTANCE;
-    float zombieAttackCooldown = 1.0f;
-    float zombieCorpseLifetime = 1.25f;
-    float zombieRadius = 1.0f;
     float zombieSpawnHeightOffset = 0.0f;
-    float zombieModelScaleMultiplier = 1.0f;
-    float zombieSpawnMaxDistance = 22.0f;
-    float zombieSpawnViewHalfAngleDegrees = 24.0f;
-    our::ZombiePoseConfig zombiePoseConfig{};
-    float zombieDeathFallDegrees = 82.0f;
-    float zombieDeathSink = 0.30f;
+    our::ZombieAnimationConfig zombieAnimationConfig{};
     float playerWallCollisionRetreatDistance = 0.12f;
     float playerVisualWallBufferDistance = 0.65f;
     float houseWallColliderExtraPaddingXZ = 1.4f;
@@ -161,6 +132,16 @@ class Playstate : public our::State
     bool effectsEnabled = true;
     our::ui::pause::Assets pauseAssets{};
 
+public:
+    Playstate()
+    {
+        zombieSpawnerConfig.waveZombieCounts = {3, 5, 7, 10};
+        zombieSpawnerConfig.betweenWavesDelaySeconds = ZOMBIE_BETWEEN_WAVES_DELAY_SECONDS;
+        zombieWaveRuntime.waitingForNextWave = true;
+        zombieWaveRuntime.betweenWaveTimer = ZOMBIE_INITIAL_WAVE_DELAY_SECONDS;
+    }
+
+private:
     void applyAudioPreferences()
     {
         auto &audio = our::AudioManager::getInstance();
@@ -904,26 +885,17 @@ class Playstate : public our::State
 
         zombieSpawningSystem.loadGameplayConfig(
             zombiesConfig,
-            waveZombieCounts,
-            zombieSpawnIntervalSeconds,
+            zombieSpawnerConfig,
             initialWaveDelaySeconds,
-            betweenWavesDelaySeconds,
-            minSpawnPlayerDistance,
-            zombieWalkSpeed,
-            zombieCrawlSpeed,
-            zombieDamage,
-            zombieAttackRange,
-            zombieAttackCooldown,
-            zombieCorpseLifetime,
-            zombieRadius,
-            zombieSpawnHeightOffset,
-            zombieModelScaleMultiplier,
-            zombieSpawnMaxDistance,
-            zombieSpawnViewHalfAngleDegrees,
-            zombieModelYawOffset);
+            zombieSpawnHeightOffset);
 
-        zombiePoseConfig.modelScaleMultiplier = zombieModelScaleMultiplier;
-        zombieAnimationSystem.loadGameplayConfig(zombiesConfig, zombiePoseConfig, zombieDeathFallDegrees, zombieDeathSink);
+        zombieAnimationSystem.configureRuntime(
+            zombieAnimationConfig,
+            zombieSpawnerConfig.zombieModelYawOffset,
+            zombieSpawnerConfig.zombieModelScaleMultiplier,
+            zombieSpawnerConfig.zombiePrototypeTransform,
+            zombieSpawnerConfig.zombieMaterial);
+        zombieAnimationSystem.loadGameplayConfig(zombiesConfig, zombieAnimationConfig);
 
         sunriseStartExposure = std::clamp(zombiesConfig.value("sunriseStartExposure", sunriseStartExposure), 0.0f, 2.0f);
         sunriseEndExposure = std::clamp(zombiesConfig.value("sunriseEndExposure", sunriseEndExposure), 0.0f, 2.0f);
@@ -932,12 +904,7 @@ class Playstate : public our::State
 
     void recalculateSunriseTargets()
     {
-        totalZombiesAcrossAllWaves = 0;
-        for (int waveCount : waveZombieCounts)
-        {
-            if (waveCount > 0)
-                totalZombiesAcrossAllWaves += waveCount;
-        }
+        totalZombiesAcrossAllWaves = zombieSpawningSystem.getTotalPlannedZombieCount(zombieSpawnerConfig);
     }
 
     float computeSunriseProgress() const
@@ -958,35 +925,10 @@ class Playstate : public our::State
 
     void updateWaveSystem(float deltaTime)
     {
-        zombieSpawningSystem.updateInPlace(
+        zombieSpawningSystem.update(
             &world,
-            currentWaveIndex,
-            zombiesSpawnedThisWave,
-            zombieSpawnTimer,
-            waitingForNextWave,
-            betweenWaveTimer,
-            allWavesCompleted,
-            zombieSpawningSystem.makeConfig(
-                waveZombieCounts,
-                zombieSpawnIntervalSeconds,
-                betweenWavesDelaySeconds,
-                minSpawnPlayerDistance,
-                zombieSpawnMaxDistance,
-                zombieSpawnViewHalfAngleDegrees,
-                zombieWalkSpeed,
-                zombieCrawlSpeed,
-                zombieDamage,
-                zombieAttackRange,
-                zombieAttackCooldown,
-                zombieCorpseLifetime,
-                zombieRadius,
-                zombieGroundY,
-                zombieModelYawOffset,
-                zombieModelScaleMultiplier,
-                zombiePrototypeTransform,
-                zombieSpawnPoints,
-                zombieMesh,
-                zombieMaterial),
+            zombieWaveRuntime,
+            zombieSpawnerConfig,
             deltaTime,
             getMainPlayerCombatTargetPosition(),
             getCameraForwardOnGround());
@@ -996,18 +938,13 @@ class Playstate : public our::State
     {
         glm::vec3 playerTarget = getMainPlayerCombatTargetPosition();
         our::HealthComponent *playerHealth = getMainPlayerHealth();
-        zombiePoseConfig.modelScaleMultiplier = zombieModelScaleMultiplier;
 
         zombieAnimationSystem.updateAllZombies(
             &world,
             deltaTime,
             playerTarget,
             playerHealth,
-            zombieModelYawOffset,
-            zombieDeathFallDegrees,
-            zombieDeathSink,
-            zombiePrototypeTransform,
-            zombiePoseConfig);
+            zombieAnimationConfig);
     }
 
     void handleCollisions()
@@ -1218,12 +1155,6 @@ class Playstate : public our::State
     void onInitialize() override
     {
         // Reset all per-run runtime state because this state instance is reused across scene changes.
-        currentWaveIndex = 0;
-        zombiesSpawnedThisWave = 0;
-        zombieSpawnTimer = 0.0f;
-        waitingForNextWave = true;
-        betweenWaveTimer = initialWaveDelaySeconds;
-        allWavesCompleted = false;
         zombiesKilledCount = 0;
         endingQueued = false;
         totalTime = 0.0f;
@@ -1290,16 +1221,15 @@ class Playstate : public our::State
         inflateHouseWallColliders();
         setupHealthPickupColliders();
         lockCameraAndPlayerVerticalToZero();
-        zombieSpawningSystem.initializeFromWorld(
-            &world,
-            zombieMesh,
-            zombieMaterial,
-            zombiePrototypeTransform,
-            zombieSpawnPoints,
-            zombieSpawnHeightOffset,
-            zombieGroundY);
+        zombieSpawningSystem.initializeFromWorld(&world, zombieSpawnerConfig, zombieSpawnHeightOffset);
+        zombieAnimationSystem.configureRuntime(
+            zombieAnimationConfig,
+            zombieSpawnerConfig.zombieModelYawOffset,
+            zombieSpawnerConfig.zombieModelScaleMultiplier,
+            zombieSpawnerConfig.zombiePrototypeTransform,
+            zombieSpawnerConfig.zombieMaterial);
         recalculateSunriseTargets();
-        betweenWaveTimer = initialWaveDelaySeconds;
+        zombieSpawningSystem.resetRuntime(zombieWaveRuntime, initialWaveDelaySeconds);
         isPaused = false;
         musicEnabled = true;
         effectsEnabled = true;
@@ -1469,7 +1399,7 @@ class Playstate : public our::State
                 our::GameSession::setEndingResult(our::EndingOutcome::Lose, computeCurrentExposure());
                 getApp()->changeState("ending");
             }
-            else if (allWavesCompleted && zombieSpawningSystem.getAliveZombieCount(&world) == 0)
+            else if (zombieWaveRuntime.allWavesCompleted && zombieSpawningSystem.getAliveZombieCount(&world) == 0)
             {
                 endingQueued = true;
                 our::GameSession::setEndingResult(our::EndingOutcome::Win, computeCurrentExposure());
@@ -1541,8 +1471,7 @@ class Playstate : public our::State
                         fireResult.hitEntity,
                         fireResult.killedZombie,
                         zombiesKilledCount,
-                        zombiePrototypeTransform,
-                        zombieMaterial);
+                        zombieAnimationConfig);
                 }
             }
         }

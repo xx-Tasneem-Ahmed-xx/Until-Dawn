@@ -44,6 +44,16 @@ namespace our
         float modelScaleMultiplier = 1.0f;
     };
 
+    struct ZombieAnimationConfig
+    {
+        float modelYawOffset = 0.0f;
+        float deathFallDegrees = 82.0f;
+        float deathSink = 0.30f;
+        Transform prototypeTransform{};
+        Material *bloodFallbackMaterial = nullptr;
+        ZombiePoseConfig pose{};
+    };
+
     struct BloodSplashFx
     {
         Entity *entity = nullptr;
@@ -127,6 +137,30 @@ namespace our
             bloodSplashLifetimeSeconds = std::max(0.05f, zombiesConfig.value("bloodSplashLifetimeSeconds", bloodSplashLifetimeSeconds));
             bloodSplashScaleMultiplier = std::max(0.05f, zombiesConfig.value("bloodSplashScaleMultiplier", bloodSplashScaleMultiplier));
             bloodSplashHeightOffset = zombiesConfig.value("bloodSplashHeightOffset", bloodSplashHeightOffset);
+        }
+
+        void loadGameplayConfig(
+            const nlohmann::json &zombiesConfig,
+            ZombieAnimationConfig &animationConfig)
+        {
+            loadGameplayConfig(
+                zombiesConfig,
+                animationConfig.pose,
+                animationConfig.deathFallDegrees,
+                animationConfig.deathSink);
+        }
+
+        void configureRuntime(
+            ZombieAnimationConfig &animationConfig,
+            float modelYawOffset,
+            float modelScaleMultiplier,
+            const Transform &prototypeTransform,
+            Material *bloodFallbackMaterial) const
+        {
+            animationConfig.modelYawOffset = modelYawOffset;
+            animationConfig.pose.modelScaleMultiplier = modelScaleMultiplier;
+            animationConfig.prototypeTransform = prototypeTransform;
+            animationConfig.bloodFallbackMaterial = bloodFallbackMaterial;
         }
 
         void resetEffects()
@@ -436,6 +470,25 @@ namespace our
             }
         }
 
+        void updateAllZombies(
+            World *world,
+            float deltaTime,
+            const glm::vec3 &playerTarget,
+            HealthComponent *playerHealth,
+            const ZombieAnimationConfig &animationConfig) const
+        {
+            updateAllZombies(
+                world,
+                deltaTime,
+                playerTarget,
+                playerHealth,
+                animationConfig.modelYawOffset,
+                animationConfig.deathFallDegrees,
+                animationConfig.deathSink,
+                animationConfig.prototypeTransform,
+                animationConfig.pose);
+        }
+
         bool handleZombieKill(
             World *world,
             Entity *hitEntity,
@@ -464,6 +517,22 @@ namespace our
 
             world->markForRemoval(hitEntity);
             return true;
+        }
+
+        bool handleZombieKill(
+            World *world,
+            Entity *hitEntity,
+            bool killedZombie,
+            int &zombiesKilledCount,
+            const ZombieAnimationConfig &animationConfig)
+        {
+            return handleZombieKill(
+                world,
+                hitEntity,
+                killedZombie,
+                zombiesKilledCount,
+                animationConfig.prototypeTransform,
+                animationConfig.bloodFallbackMaterial);
         }
     };
 
