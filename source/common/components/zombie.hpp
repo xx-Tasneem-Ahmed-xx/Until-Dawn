@@ -1,7 +1,10 @@
 #pragma once
 
 #include "../ecs/component.hpp"
+#include "../ecs/transform.hpp"
+#include "health.hpp"
 #include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
 #include <string>
 #include <vector>
 
@@ -28,9 +31,10 @@ namespace our
         float attackRange = 1.8f;    // Distance at which zombie starts attacking
         float attackCooldown = 1.0f; // Seconds between attacks
         float corpseLifetime = 1.2f; // Seconds to keep dead zombie before despawn
+        float maxHealth = 16.0f;
+        float health = 16.0f;
 
         ZombieState state = ZombieState::Walking;
-        int shotsTaken = 0;
         float attackCooldownTimer = 0.0f;
         float deathTime = 0.0f;
         float motionTime = 0.0f;
@@ -50,7 +54,7 @@ namespace our
 
         // Registers a shot and updates state.
         // Returns true if this shot kills the zombie.
-        bool registerShot();
+        bool registerShot(float weaponDamage);
 
         // Returns true if zombie may apply attack damage this frame.
         bool canAttack() const { return state != ZombieState::Dead && attackCooldownTimer <= 0.0f; }
@@ -61,8 +65,25 @@ namespace our
         // Current movement speed based on state.
         float getCurrentSpeed() const;
 
+        void applyHealthState(bool isAlive);
+
+        // Applies dead pose to transform and returns true if zombie should despawn now.
+        bool updateDeathTransform(Transform &transform, float deathFallDegrees, float deathSink) const;
+
+        // Updates movement/combat against player and writes transform changes.
+        void updateMovementAndCombat(
+            Transform &transform,
+            const glm::vec3 &zombieWorldPosition,
+            const glm::vec3 &playerTarget,
+            float yawOffset,
+            float deltaTime,
+            HealthComponent *playerHealth);
+
         bool isDead() const { return state == ZombieState::Dead; }
         bool shouldDespawn() const { return isDead() && deathTime >= corpseLifetime; }
+
+    private:
+        void syncStateWithHealth();
     };
 
 }
