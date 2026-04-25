@@ -109,6 +109,8 @@ set(COMMON_SOURCES
         source/common/components/movement.cpp
         source/common/components/weapon.hpp
         source/common/components/weapon.cpp
+        source/common/components/weapon-attachment.hpp
+        source/common/components/weapon-attachment.cpp
         source/common/components/player.hpp
         source/common/components/player.cpp
         source/common/components/health.hpp
@@ -123,6 +125,7 @@ source/common/components/collider.hpp
         source/common/components/zombie.cpp
         source/common/components/player.hpp
         source/common/components/player.cpp
+        source/common/components/camera-follow.cpp
         source/common/components/component-deserializer.hpp
 
         source/common/ui/health-bar.hpp
@@ -131,13 +134,20 @@ source/common/components/collider.hpp
         source/common/systems/forward-renderer.hpp
         source/common/systems/forward-renderer.cpp
         source/common/systems/free-camera-controller.hpp
+        "source/common/components/camera-follow.hpp"
         source/common/systems/movement.hpp
         source/common/systems/collision-system.hpp
         source/common/systems/collision-system.cpp
+        source/common/systems/character-skeleton-system.hpp
+        source/common/systems/character-skeleton-system.cpp
+        source/common/systems/attachment-system.hpp
+        source/common/systems/attachment-system.cpp
         source/common/systems/scene-manager.hpp
         source/common/systems/scene-manager.cpp
         source/common/systems/hud-system.hpp
         source/common/systems/hud-system.cpp
+        source/common/systems/player-controller.hpp
+        source/common/systems/player-controller.cpp
 )
 
 # Define the directories in which to search for the included headers

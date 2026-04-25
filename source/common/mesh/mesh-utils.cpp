@@ -934,6 +934,7 @@ our::Motion *our::mesh_utils::loadMotion(const std::string &filename)
     {
         const auto &node = model.nodes[i];
         auto &dstNode = motion->nodes[i];
+        dstNode.name = node.name;
 
         if (node.translation.size() >= 3)
         {

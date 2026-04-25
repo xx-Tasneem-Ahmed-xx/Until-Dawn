@@ -10,6 +10,9 @@
 #include <systems/collision-system.hpp>
 #include <systems/scene-manager.hpp>
 #include <systems/hud-system.hpp>
+#include <systems/character-skeleton-system.hpp>
+#include <systems/attachment-system.hpp>
+#include <systems/player-controller.hpp>
 #include <systems/zombie-animation-system.hpp>
 #include <systems/zombie-spawning-system.hpp>
 #include <components/camera.hpp>
@@ -19,6 +22,7 @@
 #include <components/mesh-renderer.hpp>
 #include <components/player.hpp>
 #include <components/weapon.hpp>
+#include <components/weapon-attachment.hpp>
 #include <components/zombie.hpp>
 #include <animation/motion.hpp>
 #include <audio-manager.hpp>
@@ -53,6 +57,7 @@ class Playstate : public our::State
     our::ForwardRenderer renderer;
     our::HUDSystem hudSystem;
     our::FreeCameraControllerSystem cameraController;
+    our::PlayerControllerSystem playerController;
     our::MovementSystem movementSystem;
     our::ShootingSystem shootingSystem;
     our::CollisionSystem collisionSystem;
@@ -101,9 +106,13 @@ class Playstate : public our::State
     float mainPlayerHeightOffset = -1.5f;
     our::Entity *mainPlayerPistolEntity = nullptr;
     our::Transform mainPlayerPistolPrototypeTransform{};
-    glm::vec3 mainPlayerPistolHandOffset = glm::vec3(0.20f, 0.95f, -0.06f);
+    glm::vec3 mainPlayerPistolBoneOffset = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 mainPlayerPistolRotationOffset = glm::vec3(0.0f, glm::pi<float>(), 0.0f);
     float mainPlayerPistolScaleMultiplier = 0.03f;
+    std::string mainPlayerWeaponBoneName = "RightHand";
+    our::WeaponAttachmentComponent *mainPlayerWeaponAttachment = nullptr;
+    our::CharacterSkeletonSystem mainPlayerSkeletonSystem;
+    our::AttachmentSystem attachmentSystem;
     float mainPlayerFollowDistance = 2.5f;
     glm::vec3 lastMainPlayerAnchorPosition = glm::vec3(0.0f);
     bool mainPlayerAnchorInitialized = false;
@@ -145,6 +154,8 @@ class Playstate : public our::State
     float zombieDeathFallDegrees = 82.0f;
     float zombieDeathSink = 0.30f;
     float playerWallCollisionRetreatDistance = 0.12f;
+    float playerVisualWallBufferDistance = 0.65f;
+    float houseWallColliderExtraPaddingXZ = 1.4f;
     bool isPaused = false;
     bool musicEnabled = true;
     bool effectsEnabled = true;
@@ -337,6 +348,44 @@ class Playstate : public our::State
         }
     }
 
+    void inflateHouseWallColliders()
+    {
+        our::Mesh *houseAMesh = our::AssetLoader<our::Mesh>::get("env_house_a");
+        our::Mesh *houseBMesh = our::AssetLoader<our::Mesh>::get("env_house_b");
+        if (!houseAMesh && !houseBMesh)
+            return;
+
+        const float extra = std::max(0.0f, houseWallColliderExtraPaddingXZ);
+        if (extra <= 0.0f)
+            return;
+
+        for (auto entity : world.getEntities())
+        {
+            auto *env = entity->getComponent<our::EnvironmentComponent>();
+            auto *collider = entity->getComponent<our::ColliderComponent>();
+            auto *renderer = entity->getComponent<our::MeshRendererComponent>();
+            if (!(env && collider && renderer && renderer->mesh))
+                continue;
+
+            auto toLower = [](std::string value)
+            {
+                std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c)
+                               { return static_cast<char>(std::tolower(c)); });
+                return value;
+            };
+
+            if (toLower(env->environmentType) == "floor")
+                continue;
+
+            bool isHouseMesh = (renderer->mesh == houseAMesh) || (renderer->mesh == houseBMesh);
+            if (!isHouseMesh)
+                continue;
+
+            collider->halfSize.x += extra;
+            collider->halfSize.z += extra;
+        }
+    }
+
     bool collectHealthPickup(our::Entity *pickupEntity)
     {
         if (!pickupEntity)
@@ -513,19 +562,42 @@ class Playstate : public our::State
 
     void updateMainPlayerPistolAttachment()
     {
-        if (!mainPlayerPistolEntity)
-            mainPlayerPistolEntity = findPistolEntity();
-        if (!(mainPlayerPistolEntity && mainPlayerVisualEntity))
+        if (!mainPlayerWeaponAttachment)
             return;
 
-        glm::vec3 playerWorldPosition = glm::vec3(mainPlayerVisualEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
-        glm::quat playerWorldRotation = glm::quat(mainPlayerVisualEntity->localTransform.rotation);
-        glm::vec3 handWorld = playerWorldPosition + (playerWorldRotation * mainPlayerPistolHandOffset);
+        attachmentSystem.updateWeaponTransform(mainPlayerWeaponAttachment);
+    }
 
-        mainPlayerPistolEntity->parent = nullptr;
-        mainPlayerPistolEntity->localTransform.position = handWorld;
-        mainPlayerPistolEntity->localTransform.rotation = mainPlayerVisualEntity->localTransform.rotation + mainPlayerPistolRotationOffset;
-        mainPlayerPistolEntity->localTransform.scale = mainPlayerPistolPrototypeTransform.scale * mainPlayerPistolScaleMultiplier;
+    void setupMainPlayerWeaponAttachment()
+    {
+        if (!mainPlayerPistolEntity)
+            mainPlayerPistolEntity = findPistolEntity();
+        if (!mainPlayerPistolEntity)
+            return;
+
+        mainPlayerPistolPrototypeTransform = mainPlayerPistolEntity->localTransform;
+
+        if (!mainPlayerWeaponAttachment)
+        {
+            mainPlayerWeaponAttachment = mainPlayerPistolEntity->getComponent<our::WeaponAttachmentComponent>();
+            if (!mainPlayerWeaponAttachment)
+                mainPlayerWeaponAttachment = mainPlayerPistolEntity->addComponent<our::WeaponAttachmentComponent>();
+        }
+
+        auto *renderer = mainPlayerPistolEntity->getComponent<our::MeshRendererComponent>();
+        if (mainPlayerWeaponAttachment)
+        {
+            if (renderer)
+                mainPlayerWeaponAttachment->mesh = renderer->mesh;
+
+            mainPlayerWeaponAttachment->offsetTransform.position = mainPlayerPistolBoneOffset;
+            mainPlayerWeaponAttachment->offsetTransform.rotation = mainPlayerPistolRotationOffset;
+            mainPlayerWeaponAttachment->offsetTransform.scale = mainPlayerPistolPrototypeTransform.scale * mainPlayerPistolScaleMultiplier;
+            mainPlayerWeaponAttachment->rebuildOffsetMatrix();
+
+            mainPlayerWeaponAttachment->detachedWorldMatrix = mainPlayerPistolEntity->getLocalToWorldMatrix();
+            attachmentSystem.attachWeaponToBone(mainPlayerWeaponAttachment, &mainPlayerSkeletonSystem, mainPlayerWeaponBoneName);
+        }
     }
 
     void bindMainPlayerMotionClips()
@@ -722,6 +794,12 @@ class Playstate : public our::State
             float yaw = std::atan2(facingDirection.x, facingDirection.z);
             mainPlayerVisualEntity->localTransform.rotation.y = yaw + mainPlayerModelYawOffset;
         }
+
+        mainPlayerSkeletonSystem.bindRuntimePose(
+            mainPlayerMotion,
+            clip,
+            player->motionClipTime,
+            mainPlayerVisualEntity->getLocalToWorldMatrix());
 
         updateMainPlayerPistolAttachment();
 
@@ -976,22 +1054,31 @@ class Playstate : public our::State
                 auto envA = entityA->getComponent<our::EnvironmentComponent>();
                 auto envB = entityB->getComponent<our::EnvironmentComponent>();
 
-                bool isStaticA = envA && (envA->environmentType == "wall" ||
-                                          envA->environmentType == "floor" ||
-                                          envA->environmentType == "prop");
-                bool isStaticB = envB && (envB->environmentType == "wall" ||
-                                          envB->environmentType == "floor" ||
-                                          envB->environmentType == "prop");
+                auto toLower = [](std::string value)
+                {
+                    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c)
+                                   { return static_cast<char>(std::tolower(c)); });
+                    return value;
+                };
+
+                const std::string envTypeA = envA ? toLower(envA->environmentType) : std::string{};
+                const std::string envTypeB = envB ? toLower(envB->environmentType) : std::string{};
+
+                bool isStaticA = envA != nullptr;
+                bool isStaticB = envB != nullptr;
 
                 if (isStaticA && isStaticB)
                     continue;
                 if (!isStaticA && !isStaticB)
                     continue;
 
-                bool isFloorA = envA && envA->environmentType == "floor";
-                bool isFloorB = envB && envB->environmentType == "floor";
-                bool isWallLikeA = envA && (envA->environmentType == "wall" || envA->environmentType == "prop");
-                bool isWallLikeB = envB && (envB->environmentType == "wall" || envB->environmentType == "prop");
+                bool isFloorA = envA && envTypeA == "floor";
+                bool isFloorB = envB && envTypeB == "floor";
+                bool isWallLikeA = envA && !isFloorA;
+                bool isWallLikeB = envB && !isFloorB;
+
+                if (isHealthPickupEntity(entityA) || isHealthPickupEntity(entityB))
+                    continue;
 
                 our::CollisionInfo oriented;
                 our::Entity *rawDynamic;
@@ -1055,7 +1142,8 @@ class Playstate : public our::State
                     // Use the moving camera collider for overlap computation.
                     our::ColliderComponent *cameraCollider =
                         mainCameraEntity ? mainCameraEntity->getComponent<our::ColliderComponent>() : nullptr;
-                    our::ColliderComponent *dynamicCollider = cameraCollider ? cameraCollider : oriented.colliderA;
+                    bool useCameraCollider = (dynamicEntity == mainCameraEntity) && cameraCollider;
+                    our::ColliderComponent *dynamicCollider = useCameraCollider ? cameraCollider : oriented.colliderA;
                     our::ColliderComponent *wallCollider = oriented.colliderB;
 
                     glm::vec3 minA, maxA, minB, maxB;
@@ -1097,7 +1185,8 @@ class Playstate : public our::State
                         if (pushLen > epsilon)
                         {
                             glm::vec3 retreatDir = horizontalPush / pushLen;
-                            pushBack += retreatDir * std::max(0.0f, playerWallCollisionRetreatDistance);
+                            float totalRetreat = std::max(0.0f, playerWallCollisionRetreatDistance + playerVisualWallBufferDistance);
+                            pushBack += retreatDir * totalRetreat;
                             shouldPlayCollisionSfx = true;
                             impactPushLen = pushLen;
                         }
@@ -1165,11 +1254,14 @@ class Playstate : public our::State
 
             const auto &mainPlayerConfig = config["mainPlayer"];
             mainPlayerFollowDistance = mainPlayerConfig.value("followDistance", mainPlayerFollowDistance);
-            if (mainPlayerConfig.contains("pistolHandOffset") && mainPlayerConfig["pistolHandOffset"].is_array())
-                mainPlayerPistolHandOffset = mainPlayerConfig["pistolHandOffset"].get<glm::vec3>();
+            if (mainPlayerConfig.contains("pistolBoneOffset") && mainPlayerConfig["pistolBoneOffset"].is_array())
+                mainPlayerPistolBoneOffset = mainPlayerConfig["pistolBoneOffset"].get<glm::vec3>();
             if (mainPlayerConfig.contains("pistolRotationOffset") && mainPlayerConfig["pistolRotationOffset"].is_array())
                 mainPlayerPistolRotationOffset = glm::radians(mainPlayerConfig["pistolRotationOffset"].get<glm::vec3>());
             mainPlayerPistolScaleMultiplier = mainPlayerConfig.value("pistolScaleMultiplier", mainPlayerPistolScaleMultiplier);
+            mainPlayerWeaponBoneName = mainPlayerConfig.value("pistolBoneName", mainPlayerWeaponBoneName);
+            playerVisualWallBufferDistance = std::max(0.0f, mainPlayerConfig.value("wallBufferDistance", playerVisualWallBufferDistance));
+            houseWallColliderExtraPaddingXZ = std::max(0.0f, mainPlayerConfig.value("houseColliderPaddingXZ", houseWallColliderExtraPaddingXZ));
         }
         zombieAnimationSystem.initializeAssets("zombie-motion");
         bindMainPlayerMotionClips();
@@ -1179,7 +1271,8 @@ class Playstate : public our::State
         pickupHealthMesh = our::AssetLoader<our::Mesh>::get("pickup-health");
         mainPlayerMesh = our::AssetLoader<our::Mesh>::get("main-player");
         mainPlayerVisualEntity = findMainPlayerVisualEntity();
-        mainPlayerPistolEntity = findPistolEntity();
+        mainPlayerPistolEntity = nullptr;
+        mainPlayerWeaponAttachment = nullptr;
         if (mainPlayerVisualEntity)
         {
             mainPlayerVisualPrototypeTransform = mainPlayerVisualEntity->localTransform;
@@ -1193,11 +1286,8 @@ class Playstate : public our::State
                 }
             }
         }
-        if (mainPlayerPistolEntity)
-        {
-            mainPlayerPistolPrototypeTransform = mainPlayerPistolEntity->localTransform;
-            updateMainPlayerPistolAttachment();
-        }
+        setupMainPlayerWeaponAttachment();
+        inflateHouseWallColliders();
         setupHealthPickupColliders();
         lockCameraAndPlayerVerticalToZero();
         zombieSpawningSystem.initializeFromWorld(
@@ -1331,18 +1421,14 @@ class Playstate : public our::State
             return;
         }
 
-        // Debug: decrease main player health on K press
-        if (keyboard.justPressed(GLFW_KEY_K))
-        {
-            if (auto health = getMainPlayerHealth(); health)
-            {
-                health->takeDamage(10.0f);
-            }
-        }
-
         // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
+
+        auto &mouse = getApp()->getMouse();
+        auto windowSize = getApp()->getWindowSize();
+        playerController.update(&world, (float)deltaTime, mouse.getMouseDelta().x, mouse.getMouseDelta().y, windowSize.x, windowSize.y, getApp()->getWindow());
+
         updateMainPlayerAnimation((float)deltaTime);
 
         // Update main player weapon (handles cooldown and reload)

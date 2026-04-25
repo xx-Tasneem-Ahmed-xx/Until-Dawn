@@ -51,8 +51,10 @@
     "mainPlayer": {
       "heightOffset": -5,
       "followDistance": 2,
-      "pistolHandOffset": [-0.3, 3.5, 1.7],
-      "pistolRotationOffset": [-90, -90, 0],
+      "wallBufferDistance": 0.65,
+      "houseColliderPaddingXZ": 1.4,
+      "pistolBoneOffset": [0.0, 0.2, 0.17],
+      "pistolRotationOffset": [190, 90, -110],
       "pistolScaleMultiplier": 1
     },
     "assets": {
@@ -97,6 +99,7 @@
         "prop_cart_a": "assets/environment/props/prop_cart_a.obj",
         "road_cone": "assets/environment/props/RoadCone.obj",
         "stop_sign": "assets/environment/props/1358 Stop Sign.obj",
+        "elwfor_lantern": "assets/environment/modular/ElwFor_Lantern.obj",
         "floor_mesh": "assets/environment/modular/floor.obj"
       },
       "motions": {
@@ -345,7 +348,11 @@
         "components": [
           {
             "type": "Player",
-            "isMainPlayer": true
+            "isMainPlayer": true,
+            "walkSpeed": 3.5,
+  "crosshairSensitivity": 0.0010,
+  "crosshairMaxRadius": 0.55,
+  "bodyTurnSpeed": 140.0
           },
           {
             "type": "Health",
@@ -386,18 +393,6 @@
                 ]
               }
             ]
-          }
-        ]
-      },
-      {
-        "position": [6, 5, 10],
-        "rotation": [0, 0, 0],
-        "scale": [10, 10, 10],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "pickup-health",
-            "material": "auto"
           }
         ]
       },
@@ -1916,6 +1911,174 @@
             "color": [1, 0.72, 0.28],
             "intensity": 3,
             "attenuation": [1, 0.09, 0.008]
+          }
+        ]
+      },
+      {
+        "name": "lantern_feature_0",
+        "position": [-30, -7.5, -20],
+        "rotation": [0, 20, 0],
+        "scale": [0.022, 0.022, 0.022],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "elwfor_lantern",
+            "material": "wood"
+          }
+        ],
+        "children": [
+          {
+            "name": "lantern_feature_0_light",
+            "position": [0, 2.8, 0],
+            "components": [
+              {
+                "type": "Light",
+                "lightType": "point",
+                "color": [1.0, 0.78, 0.42],
+                "intensity": 4.2,
+                "attenuation": [1, 0.05, 0.006]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "lantern_feature_1",
+        "position": [-18, -7.5, 20],
+        "rotation": [0, -35, 0],
+        "scale": [0.022, 0.022, 0.022],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "elwfor_lantern",
+            "material": "wood"
+          }
+        ],
+        "children": [
+          {
+            "name": "lantern_feature_1_light",
+            "position": [0, 2.8, 0],
+            "components": [
+              {
+                "type": "Light",
+                "lightType": "point",
+                "color": [1.0, 0.78, 0.42],
+                "intensity": 4.2,
+                "attenuation": [1, 0.05, 0.006]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "lantern_feature_2",
+        "position": [-6, -7.5, -24],
+        "rotation": [0, 50, 0],
+        "scale": [0.022, 0.022, 0.022],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "elwfor_lantern",
+            "material": "wood"
+          }
+        ],
+        "children": [
+          {
+            "name": "lantern_feature_2_light",
+            "position": [0, 2.8, 0],
+            "components": [
+              {
+                "type": "Light",
+                "lightType": "point",
+                "color": [1.0, 0.78, 0.42],
+                "intensity": 4.2,
+                "attenuation": [1, 0.05, 0.006]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "lantern_feature_3",
+        "position": [8, -7.5, 24],
+        "rotation": [0, -30, 0],
+        "scale": [0.022, 0.022, 0.022],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "elwfor_lantern",
+            "material": "wood"
+          }
+        ],
+        "children": [
+          {
+            "name": "lantern_feature_3_light",
+            "position": [0, 2.8, 0],
+            "components": [
+              {
+                "type": "Light",
+                "lightType": "point",
+                "color": [1.0, 0.78, 0.42],
+                "intensity": 4.2,
+                "attenuation": [1, 0.05, 0.006]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "lantern_feature_4",
+        "position": [22, -7.5, 8],
+        "rotation": [0, 90, 0],
+        "scale": [0.022, 0.022, 0.022],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "elwfor_lantern",
+            "material": "wood"
+          }
+        ],
+        "children": [
+          {
+            "name": "lantern_feature_4_light",
+            "position": [0, 2.8, 0],
+            "components": [
+              {
+                "type": "Light",
+                "lightType": "point",
+                "color": [1.0, 0.78, 0.42],
+                "intensity": 4.2,
+                "attenuation": [1, 0.05, 0.006]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "lantern_feature_5",
+        "position": [30, -7.5, -12],
+        "rotation": [0, -65, 0],
+        "scale": [0.022, 0.022, 0.022],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "elwfor_lantern",
+            "material": "wood"
+          }
+        ],
+        "children": [
+          {
+            "name": "lantern_feature_5_light",
+            "position": [0, 2.8, 0],
+            "components": [
+              {
+                "type": "Light",
+                "lightType": "point",
+                "color": [1.0, 0.78, 0.42],
+                "intensity": 4.2,
+                "attenuation": [1, 0.05, 0.006]
+              }
+            ]
           }
         ]
       },
