@@ -49,7 +49,7 @@ namespace our
         ShaderProgram *crosshairShader = nullptr;
         HealthBar healthBar;
         float muzzleFlashStrength = 0.0f;
-        glm::vec2 muzzleFlashCenter = glm::vec2(0.5f, 0.5f);
+        glm::vec2 muzzleFlashCenter;
         // Elapsed time in seconds — fed to animated postprocess shaders (e.g. film grain)
         float elapsedTime = 0.0f;
         // Global scene exposure factor for postprocessing (dark-to-bright transitions).

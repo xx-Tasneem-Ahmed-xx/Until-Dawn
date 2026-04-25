@@ -86,6 +86,7 @@ class Playstate : public our::State
     std::unordered_set<CollisionPair, CollisionPairHash> previousWallCollisionPairs;
     float muzzleFlashTimeLeft = 0.0f;
     const float muzzleFlashDuration = 0.06f;
+    glm::vec2 muzzleFlashCenter = glm::vec2(0.5f, 0.5f);
     float totalTime = 0.0f;
     bool endingQueued = false;
     our::Entity *mainCameraEntity = nullptr;
@@ -1337,7 +1338,6 @@ private:
             }
         }
 
-        glm::vec2 muzzleFlashCenter = glm::vec2(0.66f, 0.28f);
         our::Entity *cameraEntity = mainCameraEntity;
         our::CameraComponent *camera = nullptr;
         our::Entity *pistolEntity = nullptr;
@@ -1519,7 +1519,15 @@ private:
                     }
 
                     muzzleFlashTimeLeft = muzzleFlashDuration;
-                    our::Ray ray = shootingSystem.buildRayFromCamera(&world);
+                    auto frameBufferSize = getApp()->getFrameBufferSize();
+                    float crosshairX = 0.0f;
+                    float crosshairY = 0.0f;
+                    if (auto *player = mainPlayerEntity ? mainPlayerEntity->getComponent<our::PlayerComponent>() : nullptr)
+                    {
+                        crosshairX = player->crosshairX;
+                        crosshairY = player->crosshairY;
+                    }
+                    our::Ray ray = shootingSystem.buildRayFromCamera(&world, frameBufferSize, crosshairX, crosshairY);
                     our::FireResult fireResult = shootingSystem.fireRay(ray, &world, weapon);
 
                     zombieAnimationSystem.handleZombieKill(

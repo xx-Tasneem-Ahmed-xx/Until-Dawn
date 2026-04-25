@@ -11,7 +11,9 @@
   "scene": {
     "renderer": {
       "sky": "assets/textures/sky.jpg",
-      "postprocess": "assets/shaders/postprocess/blit-muzzle.frag"
+      "postprocess": "assets/shaders/postprocess/blit-muzzle.frag",
+      "muzzleFlashCenter": [0.5, 0.5],
+      "muzzleFlashDuration": 0.06
     },
     "zombies": {
       "waveZombieCounts": [3, 5, 7, 10],
@@ -55,6 +57,7 @@
       "houseColliderPaddingXZ": 1.4,
       "pistolBoneOffset": [0.0, 0.2, 0.17],
       "pistolRotationOffset": [190, 90, -110],
+      "pistolMuzzleLocalOffset": [-0.3, -0.1, -0.3],
       "pistolScaleMultiplier": 1
     },
     "assets": {
@@ -350,9 +353,9 @@
             "type": "Player",
             "isMainPlayer": true,
             "walkSpeed": 3.5,
-  "crosshairSensitivity": 0.0010,
-  "crosshairMaxRadius": 0.55,
-  "bodyTurnSpeed": 140.0
+            "crosshairSensitivity": 0.001,
+            "crosshairMaxRadius": 0.55,
+            "bodyTurnSpeed": 140.0
           },
           {
             "type": "Health",
