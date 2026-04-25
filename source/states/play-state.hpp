@@ -1264,7 +1264,6 @@ private:
         if (mainPlayerVisualEntity)
         {
             mainPlayerVisualPrototypeTransform = mainPlayerVisualEntity->localTransform;
-            mainPlayerModelYawOffset = mainPlayerVisualPrototypeTransform.rotation.y;
 
             if (auto *player = mainPlayerEntity ? mainPlayerEntity->getComponent<our::PlayerComponent>() : nullptr)
             {
