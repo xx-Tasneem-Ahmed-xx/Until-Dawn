@@ -84,6 +84,7 @@ class Playstate : public our::State
     std::unordered_set<CollisionPair, CollisionPairHash> previousWallCollisionPairs;
     float muzzleFlashTimeLeft = 0.0f;
     const float muzzleFlashDuration = 0.06f;
+    glm::vec2 muzzleFlashCenter = glm::vec2(0.5f, 0.5f);
     float totalTime = 0.0f;
     bool endingQueued = false;
     our::Entity *mainCameraEntity = nullptr;
@@ -1823,6 +1824,23 @@ class Playstate : public our::State
             playerVisualWallBufferDistance = std::max(0.0f, mainPlayerConfig.value("wallBufferDistance", playerVisualWallBufferDistance));
             houseWallColliderExtraPaddingXZ = std::max(0.0f, mainPlayerConfig.value("houseColliderPaddingXZ", houseWallColliderExtraPaddingXZ));
         }
+
+        if (config.contains("renderer") && config["renderer"].is_object())
+        {
+            const auto &rendererConfig = config["renderer"];
+            if (rendererConfig.contains("muzzleFlashCenter") && rendererConfig["muzzleFlashCenter"].is_array())
+            {
+                const auto &flashCenter = rendererConfig["muzzleFlashCenter"];
+                if (flashCenter.size() >= 2 && flashCenter[0].is_number() && flashCenter[1].is_number())
+                {
+                    muzzleFlashCenter = glm::vec2(
+                        flashCenter[0].get<float>(),
+                        flashCenter[1].get<float>());
+                    muzzleFlashCenter = glm::clamp(muzzleFlashCenter, glm::vec2(0.0f), glm::vec2(1.0f));
+                }
+            }
+        }
+
         bindZombieMotionClips();
         bindMainPlayerMotionClips();
 
@@ -1905,7 +1923,6 @@ class Playstate : public our::State
             }
         }
 
-        glm::vec2 muzzleFlashCenter = glm::vec2(0.66f, 0.28f);
         our::Entity *cameraEntity = mainCameraEntity;
         our::CameraComponent *camera = nullptr;
         our::Entity *pistolEntity = nullptr;
@@ -1977,12 +1994,12 @@ class Playstate : public our::State
 
         // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
-    cameraController.update(&world, (float)deltaTime);
-        
-        auto& mouse = getApp()->getMouse();
+        cameraController.update(&world, (float)deltaTime);
+
+        auto &mouse = getApp()->getMouse();
         auto windowSize = getApp()->getWindowSize();
         playerController.update(&world, (float)deltaTime, mouse.getMouseDelta().x, mouse.getMouseDelta().y, windowSize.x, windowSize.y, getApp()->getWindow());
-        
+
         updateMainPlayerAnimation((float)deltaTime);
 
         // Update main player weapon (handles cooldown and reload)

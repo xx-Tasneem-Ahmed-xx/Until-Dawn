@@ -30,6 +30,7 @@ namespace our
         crosshairShader->link();
 
         healthBar.initialize();
+        muzzleFlashCenter = glm::vec2(0.5f, 0.5f);
 
         // Then we check if there is a sky texture in the configuration
         if (config.contains("sky"))
@@ -462,8 +463,10 @@ namespace our
 
                 crosshairShader->use();
                 glm::vec2 crosshairCenter = glm::vec2(0.5f, 0.5f);
-                for (auto entity : world->getEntities()) {
-                    if (auto player = entity->getComponent<PlayerComponent>()) {
+                for (auto entity : world->getEntities())
+                {
+                    if (auto player = entity->getComponent<PlayerComponent>())
+                    {
                         // Convert NDC to texture space (0..1)
                         crosshairCenter.x = (player->crosshairX + 1.0f) * 0.5f;
                         crosshairCenter.y = (-player->crosshairY + 1.0f) * 0.5f;
