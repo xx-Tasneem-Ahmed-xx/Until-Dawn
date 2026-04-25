@@ -8,11 +8,11 @@
 namespace our
 {
 
-    void ZombieComponent::syncStateWithShotsTaken()
+    void ZombieComponent::syncStateWithHealth()
     {
-        if (shotsTaken >= 2)
+        if (health <= 0)
             state = ZombieState::Dead;
-        else if (shotsTaken == 1)
+        else if (health <= 10)
             state = ZombieState::Crawling;
         else
             state = ZombieState::Walking;
@@ -30,9 +30,7 @@ namespace our
         attackCooldown = data.value("attackCooldown", attackCooldown);
         corpseLifetime = data.value("corpseLifetime", corpseLifetime);
 
-        shotsTaken = std::max(0, data.value("shotsTaken", shotsTaken));
-        syncStateWithShotsTaken();
-
+        syncStateWithHealth();
         attackCooldownTimer = 0.0f;
         deathTime = 0.0f;
         motionTime = 0.0f;
@@ -60,8 +58,8 @@ namespace our
         if (state == ZombieState::Dead)
             return true;
 
-        shotsTaken++;
-        syncStateWithShotsTaken();
+        health -= 10;
+        syncStateWithHealth();
         if (state == ZombieState::Dead)
             deathTime = 0.0f;
         return state == ZombieState::Dead;
@@ -120,7 +118,7 @@ namespace our
         const float effectiveAttackRange = std::max(0.01f, attackRange);
         if (distanceToPlayer > effectiveAttackRange)
         {
-            state = (shotsTaken >= 1) ? ZombieState::Crawling : ZombieState::Walking;
+            state = (health <= 10 && health > 0) ? ZombieState::Crawling : ZombieState::Walking;
 
             // Clamp movement so the zombie never crosses inside the attack threshold in one frame.
             float maxAdvance = std::max(0.0f, distanceToPlayer - effectiveAttackRange);
