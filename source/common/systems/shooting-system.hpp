@@ -2,6 +2,7 @@
 
 #include "../ecs/world.hpp"
 #include "../components/camera.hpp"
+#include "../components/player.hpp"
 #include "../components/zombie.hpp"
 #include "../components/health.hpp"
 #include "../components/weapon.hpp"
@@ -40,9 +41,9 @@ namespace our
     class ShootingSystem
     {
     public:
-        // Build a ray from the camera's position and direction
-        // Returns a Ray struct with origin and direction in world space
-        Ray buildRayFromCamera(World *world)
+        // Build a ray from the camera through a screen-space NDC point.
+        // crosshairX/crosshairY are in NDC [-1,+1] where +Y points up.
+        Ray buildRayFromCamera(World *world, glm::ivec2 viewportSize, float crosshairX = 0.0f, float crosshairY = 0.0f)
         {
             Ray ray;
             ray.origin = glm::vec3(0.0f);
@@ -57,15 +58,41 @@ namespace our
                     // Get the local-to-world transformation matrix of the camera entity
                     glm::mat4 worldMatrix = entity->getLocalToWorldMatrix();
 
-                    // Ray origin is the camera position in world space
-                    // Transform the local origin (0,0,0) by the world matrix
+                    // Ray origin is the camera position in world space.
                     ray.origin = glm::vec3(worldMatrix * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 
-                    // Ray direction is the camera forward direction (negative Z axis in camera space)
-                    // Extract the forward direction from the world matrix
-                    // In camera space, forward is -Z, so we extract column 2 and negate it
+                    // Default direction is camera forward (center screen).
                     glm::vec3 forward = glm::vec3(worldMatrix * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f));
                     ray.direction = glm::normalize(forward);
+
+                    // If viewport is valid, unproject the NDC crosshair to build an exact screen ray.
+                    if (viewportSize.x > 0 && viewportSize.y > 0)
+                    {
+                        float ndcX = glm::clamp(crosshairX, -1.0f, 1.0f);
+                        float ndcY = glm::clamp(crosshairY, -1.0f, 1.0f);
+
+                        glm::mat4 V = camera->getViewMatrix();
+                        glm::mat4 P = camera->getProjectionMatrix(viewportSize);
+                        glm::mat4 invVP = glm::inverse(P * V);
+
+                        glm::vec4 nearClip = glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
+                        glm::vec4 farClip = glm::vec4(ndcX, ndcY, 1.0f, 1.0f);
+
+                        glm::vec4 nearWorld4 = invVP * nearClip;
+                        glm::vec4 farWorld4 = invVP * farClip;
+
+                        if (std::abs(nearWorld4.w) > 1e-6f && std::abs(farWorld4.w) > 1e-6f)
+                        {
+                            glm::vec3 nearWorld = glm::vec3(nearWorld4) / nearWorld4.w;
+                            glm::vec3 farWorld = glm::vec3(farWorld4) / farWorld4.w;
+                            glm::vec3 unprojectedDir = farWorld - nearWorld;
+                            float dirLen = glm::length(unprojectedDir);
+                            if (dirLen > 1e-6f)
+                            {
+                                ray.direction = unprojectedDir / dirLen;
+                            }
+                        }
+                    }
 
                     // Only use the first camera found
                     break;

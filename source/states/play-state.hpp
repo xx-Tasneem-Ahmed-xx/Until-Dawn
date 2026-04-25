@@ -1519,7 +1519,15 @@ private:
                     }
 
                     muzzleFlashTimeLeft = muzzleFlashDuration;
-                    our::Ray ray = shootingSystem.buildRayFromCamera(&world);
+                    auto frameBufferSize = getApp()->getFrameBufferSize();
+                    float crosshairX = 0.0f;
+                    float crosshairY = 0.0f;
+                    if (auto *player = mainPlayerEntity ? mainPlayerEntity->getComponent<our::PlayerComponent>() : nullptr)
+                    {
+                        crosshairX = player->crosshairX;
+                        crosshairY = player->crosshairY;
+                    }
+                    our::Ray ray = shootingSystem.buildRayFromCamera(&world, frameBufferSize, crosshairX, crosshairY);
                     our::FireResult fireResult = shootingSystem.fireRay(ray, &world, weapon);
 
                     zombieAnimationSystem.handleZombieKill(
