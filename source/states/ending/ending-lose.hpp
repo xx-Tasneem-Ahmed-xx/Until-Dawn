@@ -90,7 +90,7 @@ namespace ending
 
         auto *zombieComp = entity->addComponent<our::ZombieComponent>();
         zombieComp->state = our::ZombieState::Crawling;
-        zombieComp->shotsTaken = 1;
+        zombieComp->health = 10.0f;
         if (zombieMesh->hasSkinning())
         {
             zombieComp->skinMatrices.assign(zombieMesh->getSkinJointNodes().size(), glm::mat4(1.0f));
