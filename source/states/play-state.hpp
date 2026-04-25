@@ -1007,8 +1007,47 @@ private:
 
                 if (isStaticA && isStaticB)
                     continue;
+
+                // Soft dynamic-vs-dynamic separation for zombies so they don't overlap each other.
                 if (!isStaticA && !isStaticB)
+                {
+                    auto *zombieA = entityA->getComponent<our::ZombieComponent>();
+                    auto *zombieB = entityB->getComponent<our::ZombieComponent>();
+                    if (!(zombieA && zombieB))
+                        continue;
+
+                    // Resolve using actual collider overlap in XZ for robust crowd separation.
+                    glm::vec3 minA, maxA, minB, maxB;
+                    collision.colliderA->getWorldBounds(minA, maxA);
+                    collision.colliderB->getWorldBounds(minB, maxB);
+
+                    float overlapX = std::min(maxA.x, maxB.x) - std::max(minA.x, minB.x);
+                    float overlapZ = std::min(maxA.z, maxB.z) - std::max(minA.z, minB.z);
+                    if (overlapX <= 0.0f || overlapZ <= 0.0f)
+                        continue;
+
+                    glm::vec3 posA = glm::vec3(entityA->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+                    glm::vec3 posB = glm::vec3(entityB->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+
+                    const float separationMargin = 0.04f;
+                    if (overlapX <= overlapZ)
+                    {
+                        float sign = (posA.x < posB.x) ? -1.0f : 1.0f;
+                        float pushEach = (overlapX + separationMargin) * 0.5f;
+                        entityA->localTransform.position.x += sign * pushEach;
+                        entityB->localTransform.position.x -= sign * pushEach;
+                    }
+                    else
+                    {
+                        float sign = (posA.z < posB.z) ? -1.0f : 1.0f;
+                        float pushEach = (overlapZ + separationMargin) * 0.5f;
+                        entityA->localTransform.position.z += sign * pushEach;
+                        entityB->localTransform.position.z -= sign * pushEach;
+                    }
+                    anyResolved = true;
+
                     continue;
+                }
 
                 bool isFloorA = envA && envTypeA == "floor";
                 bool isFloorB = envB && envTypeB == "floor";

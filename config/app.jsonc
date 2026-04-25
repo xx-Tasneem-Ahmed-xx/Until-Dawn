@@ -898,26 +898,6 @@
         ]
       },
       {
-        "name": "building_-3_-2",
-        "position": [-37.951930424657036, -8, -25.960029786535838],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 14.400469093905908, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
         "name": "building_-3_-1",
         "position": [-39.1284971125994, -8, -12.56414364700205],
         "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
@@ -930,26 +910,6 @@
           {
             "type": "Collider",
             "size": [8, 21.7835394266242, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_-3_0",
-        "position": [-37.951930424657036, -8, 0.039970213464163074],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 16.75074911496433, 8]
           },
           {
             "type": "Environment",
@@ -978,46 +938,6 @@
         ]
       },
       {
-        "name": "building_-3_2",
-        "position": [-37.951930424657036, -8, 26.039970213464162],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 13.181402410986376, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_-3_3",
-        "position": [-37.951930424657036, -8, 39.039970213464166],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 17.187344740541658, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
         "name": "building_-2_-3",
         "position": [-26.128497112599398, -8, -38.56414364700205],
         "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
@@ -1038,46 +958,6 @@
         ]
       },
       {
-        "name": "building_-2_-2",
-        "position": [-24.951930424657036, -8, -25.960029786535838],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 16.76183037045604, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_-2_-1",
-        "position": [-24.951930424657036, -8, -12.960029786535838],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 13.44502019372142, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
         "name": "building_-2_0",
         "position": [-26, -8, 0.29850746268656714],
         "scale": [6.451612903225807, 6.8, 5.970149253731344],
@@ -1090,26 +970,6 @@
           {
             "type": "Collider",
             "size": [8, 11.483933494082367, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_-2_1",
-        "position": [-24.951930424657036, -8, 13.039970213464162],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 23.559909861559355, 8]
           },
           {
             "type": "Environment",
@@ -1178,46 +1038,6 @@
         ]
       },
       {
-        "name": "building_-1_-2",
-        "position": [-11.951930424657036, -8, -25.960029786535838],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 13.076617444106558, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_-1_-1",
-        "position": [-11.951930424657036, -8, -12.960029786535838],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 3.3225266371354203, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
         "name": "building_-1_0",
         "position": [-13, -8, 0.29850746268656714],
         "scale": [6.451612903225807, 6.8, 5.970149253731344],
@@ -1230,26 +1050,6 @@
           {
             "type": "Collider",
             "size": [8, 3.710635442030294, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_-1_1",
-        "position": [-11.951930424657036, -8, 13.039970213464162],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 2.5559472062201842, 8]
           },
           {
             "type": "Environment",
@@ -1298,26 +1098,6 @@
         ]
       },
       {
-        "name": "building_0_-3",
-        "position": [1.0480695753429643, -8, -38.960029786535834],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 20.159652611152964, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
         "name": "building_0_-2",
         "position": [-0.12849711259939767, -8, -25.564143647002048],
         "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
@@ -1350,26 +1130,6 @@
           {
             "type": "Collider",
             "size": [8, 3.3763239168666264, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_0_1",
-        "position": [1.0480695753429643, -8, 13.039970213464162],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 2.6485654688306437, 8]
           },
           {
             "type": "Environment",
@@ -1418,26 +1178,6 @@
         ]
       },
       {
-        "name": "building_1_-3",
-        "position": [14.048069575342964, -8, -38.960029786535834],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 24.021882023562704, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
         "name": "building_1_-2",
         "position": [12.871502887400602, -8, -25.564143647002048],
         "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
@@ -1450,26 +1190,6 @@
           {
             "type": "Collider",
             "size": [8, 20.48701864471808, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_1_-1",
-        "position": [14.048069575342964, -8, -12.960029786535838],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 2.9177037051747976, 8]
           },
           {
             "type": "Environment",
@@ -1530,26 +1250,6 @@
           {
             "type": "Collider",
             "size": [8, 13.509132146516533, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_1_3",
-        "position": [14.048069575342964, -8, 39.039970213464166],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 17.896253358234098, 8]
           },
           {
             "type": "Environment",
@@ -1738,26 +1438,6 @@
         ]
       },
       {
-        "name": "building_3_-1",
-        "position": [40.048069575342964, -8, -12.960029786535838],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 14.775116663178126, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
         "name": "building_3_0",
         "position": [38.8715028874006, -8, 0.4358563529979502],
         "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
@@ -1790,46 +1470,6 @@
           {
             "type": "Collider",
             "size": [8, 25.255995962456044, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_3_2",
-        "position": [40.048069575342964, -8, 26.039970213464162],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 15.18649691207477, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_3_3",
-        "position": [40.048069575342964, -8, 39.039970213464166],
-        "scale": [5.5982734924549264, 6.8, 7.212236280072771],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_a",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 24.865577860233874, 8]
           },
           {
             "type": "Environment",
