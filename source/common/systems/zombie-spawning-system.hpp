@@ -602,6 +602,16 @@ namespace our
             zombie->corpseLifetime = config.zombieCorpseLifetime;
             zombie->baseY = spawnPosition.y;
 
+            // Ensure zombies physically collide with environment colliders (walls/props/floor).
+            // Use gameplay radius on XZ and a stable upright Y extent.
+            auto *collider = zombieEntity->addComponent<ColliderComponent>();
+            float modelScale = std::max(0.05f, config.zombieModelScaleMultiplier);
+            float horizontalHalfExtent = std::max(0.15f, config.zombieRadius * modelScale);
+            float verticalHalfExtent = std::max(0.5f, config.zombieRadius * modelScale * 1.2f);
+            collider->halfSize = glm::vec3(horizontalHalfExtent, verticalHalfExtent, horizontalHalfExtent);
+            collider->center = glm::vec3(0.0f, verticalHalfExtent, 0.0f);
+            collider->isTrigger = false;
+
             if (config.zombieMesh->hasSkinning())
             {
                 zombie->skinMatrices.assign(config.zombieMesh->getSkinJointNodes().size(), glm::mat4(1.0f));

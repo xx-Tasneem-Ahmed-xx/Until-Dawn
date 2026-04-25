@@ -1128,6 +1128,23 @@ private:
                             impactPushLen = pushLen;
                         }
                     }
+                    else if (collidingWithWallLike)
+                    {
+                        // Add a small margin for non-player entities (especially zombies)
+                        // to avoid visible wall penetration due to animation/scale mismatch.
+                        glm::vec3 horizontalPush(pushBack.x, 0.0f, pushBack.z);
+                        float pushLen = glm::length(horizontalPush);
+                        if (pushLen > epsilon)
+                        {
+                            glm::vec3 retreatDir = horizontalPush / pushLen;
+                            float wallSeparation = 0.06f;
+                            if (auto *z = dynamicEntity->getComponent<our::ZombieComponent>())
+                            {
+                                wallSeparation = std::clamp(z->radius * 0.12f, 0.04f, 0.22f);
+                            }
+                            pushBack += retreatDir * wallSeparation;
+                        }
+                    }
 
                     dynamicEntity->localTransform.position += pushBack;
 
