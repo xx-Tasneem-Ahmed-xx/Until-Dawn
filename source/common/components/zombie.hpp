@@ -31,6 +31,7 @@ namespace our
         float attackRange = 1.8f;    // Distance at which zombie starts attacking
         float attackCooldown = 1.0f; // Seconds between attacks
         float corpseLifetime = 1.2f; // Seconds to keep dead zombie before despawn
+        float maxHealth = 20.0f;
         float health = 20.0f;
 
         ZombieState state = ZombieState::Walking;

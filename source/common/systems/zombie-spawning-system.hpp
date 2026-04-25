@@ -592,7 +592,7 @@ namespace our
 
             auto *zombie = zombieEntity->addComponent<ZombieComponent>();
             zombie->state = ZombieState::Walking;
-            zombie->health = 10.0f;
+            zombie->health = zombie->maxHealth;
             zombie->radius = config.zombieRadius;
             zombie->speed = config.zombieWalkSpeed;
             zombie->crawlSpeed = config.zombieCrawlSpeed;

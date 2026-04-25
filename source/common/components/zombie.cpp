@@ -12,7 +12,7 @@ namespace our
     {
         if (health <= 0)
             state = ZombieState::Dead;
-        else if (health <= 10)
+        else if (health <= 0.5 * maxHealth)
             state = ZombieState::Crawling;
         else
             state = ZombieState::Walking;
@@ -57,7 +57,6 @@ namespace our
     {
         if (state == ZombieState::Dead)
             return true;
-
         health -= 10;
         syncStateWithHealth();
         if (state == ZombieState::Dead)
@@ -118,7 +117,7 @@ namespace our
         const float effectiveAttackRange = std::max(0.01f, attackRange);
         if (distanceToPlayer > effectiveAttackRange)
         {
-            state = (health <= 10 && health > 0) ? ZombieState::Crawling : ZombieState::Walking;
+            state = (health <= 0.5 * maxHealth && health > 0) ? ZombieState::Crawling : ZombieState::Walking;
 
             // Clamp movement so the zombie never crosses inside the attack threshold in one frame.
             float maxAdvance = std::max(0.0f, distanceToPlayer - effectiveAttackRange);
