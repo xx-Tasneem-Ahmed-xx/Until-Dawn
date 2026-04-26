@@ -57,6 +57,7 @@ namespace our
         std::string             activeMotionClip;
         float                   motionClipTime  = 0.0f;
         float                   shootClipTime   = 0.0f;
+        float turnSpeed = 360.0f; 
 
         static std::string getID() { return "Player"; }
 

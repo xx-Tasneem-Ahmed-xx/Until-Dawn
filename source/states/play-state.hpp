@@ -592,15 +592,6 @@ private:
             return;
         }
 
-        // std::cout << "[Motion] Olivia clips found (" << mainPlayerMotion->clips.size() << "): ";
-        // for (size_t i = 0; i < mainPlayerMotion->clips.size(); ++i)
-        // {
-        //     std::cout << "[" << i << "] " << mainPlayerMotion->clips[i].name;
-        //     if (i + 1 < mainPlayerMotion->clips.size())
-        //         std::cout << ", ";
-        // }
-        // std::cout << "\n";
-
         auto toLower = [](std::string s)
         {
             std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c)
@@ -739,43 +730,14 @@ private:
         mainPlayerVisualEntity->localTransform.position.y = mainPlayerHeightOffset;
         mainPlayerVisualEntity->localTransform.scale = mainPlayerVisualPrototypeTransform.scale;
 
-        glm::vec3 cameraRight = glm::normalize(glm::vec3(-cameraForward.z, 0.0f, cameraForward.x));
-        bool forwardPressed = keyboard.isPressed(GLFW_KEY_W);
-        bool backwardPressed = keyboard.isPressed(GLFW_KEY_S);
-        bool rightPressed = keyboard.isPressed(GLFW_KEY_D);
-        bool leftPressed = keyboard.isPressed(GLFW_KEY_A);
-
-        glm::vec3 moveDirection(0.0f);
-        if (forwardPressed)
-            moveDirection += cameraForward;
-        if (backwardPressed)
-            moveDirection -= cameraForward;
-        if (rightPressed)
-            moveDirection += cameraRight;
-        if (leftPressed)
-            moveDirection -= cameraRight;
-
-        glm::vec3 facingDirection(0.0f);
-        if (forwardPressed)
-            facingDirection += cameraForward;
-        if (backwardPressed)
-        {
-            if (!forwardPressed && !leftPressed && !rightPressed)
-                facingDirection += cameraForward;
-            else
-                facingDirection -= cameraForward;
-        }
-        if (rightPressed)
-            facingDirection += cameraRight;
-        if (leftPressed)
-            facingDirection -= cameraRight;
-
-        if (glm::dot(facingDirection, facingDirection) > 0.0001f)
-        {
-            facingDirection = glm::normalize(facingDirection);
-            float yaw = std::atan2(facingDirection.x, facingDirection.z);
-            mainPlayerVisualEntity->localTransform.rotation.y = yaw + mainPlayerModelYawOffset;
-        }
+        // ── FIX: Sync visual mesh yaw to the player entity rotation. ─────────
+        // PlayerControllerSystem already sets playerEntity->localTransform.rotation.y
+        // to (cameraWorldYaw + aimYaw), which exactly matches the ray direction built
+        // by ShootingSystem::buildRayFromCamera. Reading that value here eliminates
+        // the divergence between the bullet direction and where the model faces.
+        mainPlayerVisualEntity->localTransform.rotation.y =
+            mainPlayerEntity->localTransform.rotation.y + mainPlayerModelYawOffset;
+        // ─────────────────────────────────────────────────────────────────────
 
         mainPlayerSkeletonSystem.bindRuntimePose(
             mainPlayerMotion,
@@ -1090,6 +1052,7 @@ private:
 
                 // If dynamic belongs to player family, push the camera (actual moving body).
                 our::Entity *dynamicEntity = rawDynamic;
+                bool isPlayerFamilyCollision = false;
                 if (mainCameraEntity)
                 {
                     our::Entity *cursor = rawDynamic;
@@ -1098,6 +1061,7 @@ private:
                         if (cursor == mainPlayerEntity)
                         {
                             dynamicEntity = mainCameraEntity;
+                            isPlayerFamilyCollision = true;
                             break;
                         }
                         cursor = cursor->parent;
@@ -1188,6 +1152,14 @@ private:
 
                     dynamicEntity->localTransform.position += pushBack;
 
+                    // When the player family is pushed from a wall, also move the player
+                    // entity by the same XZ so it never re-penetrates next frame.
+                    if (isPlayerFamilyCollision && mainPlayerEntity && collidingWithWallLike)
+                    {
+                        mainPlayerEntity->localTransform.position.x += pushBack.x;
+                        mainPlayerEntity->localTransform.position.z += pushBack.z;
+                    }
+
                     if (shouldPlayCollisionSfx && isNewWallCollision && impactPushLen >= collisionSfxMinPushDistance && collisionSfxCooldownLeft <= 0.0f)
                     {
                         if (our::AudioManager::getInstance().isInitialized() && !collisionSfxTrack.empty())
@@ -1277,6 +1249,44 @@ private:
         inflateHouseWallColliders();
         setupHealthPickupColliders();
         lockCameraAndPlayerVerticalToZero();
+
+        // ── Sync camera starting position to the player entity position ───────
+        // Without this, the camera spawns at whatever position the scene JSON
+        // defines, which may differ from the player spawn point.
+        if (mainPlayerEntity && mainCameraEntity)
+        {
+            glm::vec3 playerSpawnXZ = glm::vec3(
+                mainPlayerEntity->localTransform.position.x,
+                0.0f,
+                mainPlayerEntity->localTransform.position.z);
+
+            // If the camera is a child of the player, only fix its local offset;
+            // otherwise move it in world space directly.
+            if (mainCameraEntity->parent == mainPlayerEntity)
+            {
+                mainCameraEntity->localTransform.position.x = 0.0f;
+                mainCameraEntity->localTransform.position.z = 0.0f;
+            }
+            else
+            {
+                mainCameraEntity->localTransform.position.x = playerSpawnXZ.x;
+                mainCameraEntity->localTransform.position.z = playerSpawnXZ.z;
+
+                // Keep the camera's parent in sync too if it has one.
+                if (mainCameraEntity->parent)
+                {
+                    mainCameraEntity->parent->localTransform.position.x = playerSpawnXZ.x;
+                    mainCameraEntity->parent->localTransform.position.z = playerSpawnXZ.z;
+                }
+            }
+
+            // ── Sync camera starting yaw to match the player's facing direction.
+            // The camera forward is -Z, but the player model forward is +Z,
+            // so we add π to flip the camera around to face the same way.
+            float playerYaw = mainPlayerEntity->localTransform.rotation.y;
+            mainCameraEntity->localTransform.rotation.y = playerYaw + glm::pi<float>();
+        }
+        // ─────────────────────────────────────────────────────────────────────
         zombieSpawningSystem.initializeFromWorld(&world, zombieSpawnerConfig, zombieSpawnHeightOffset);
         zombieAnimationSystem.configureRuntime(
             zombieAnimationConfig,
@@ -1414,6 +1424,32 @@ private:
         auto windowSize = getApp()->getWindowSize();
         playerController.update(&world, (float)deltaTime, mouse.getMouseDelta().x, mouse.getMouseDelta().y, windowSize.x, windowSize.y, getApp()->getWindow());
 
+        // ── Sync camera XZ position to player every frame ────────────────────
+        // The player entity is the authoritative position (moved by WASD).
+        // The camera handles only rotation (via FreeCameraControllerSystem).
+        // Without this sync the camera drifts away from the player.
+        if (mainPlayerEntity && mainCameraEntity)
+        {
+            float px = mainPlayerEntity->localTransform.position.x;
+            float pz = mainPlayerEntity->localTransform.position.z;
+            if (mainCameraEntity->parent == mainPlayerEntity)
+            {
+                mainCameraEntity->localTransform.position.x = 0.0f;
+                mainCameraEntity->localTransform.position.z = 0.0f;
+            }
+            else
+            {
+                mainCameraEntity->localTransform.position.x = px;
+                mainCameraEntity->localTransform.position.z = pz;
+                if (mainCameraEntity->parent)
+                {
+                    mainCameraEntity->parent->localTransform.position.x = px;
+                    mainCameraEntity->parent->localTransform.position.z = pz;
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         updateMainPlayerAnimation((float)deltaTime);
 
         // Update main player weapon (handles cooldown and reload)
@@ -1482,7 +1518,7 @@ private:
 
         if (keyboard.justPressed(GLFW_KEY_ESCAPE))
         {
-            // If the escape  key is pressed in this frame, go to the play state
+            // If the escape key is pressed in this frame, go to the play state
             getApp()->changeState("menu");
         }
     }
@@ -1568,7 +1604,6 @@ private:
         world.clear();
         collisionSystem.clear();
         previousWallCollisionPairs.clear();
-        // and we delete all the loaded assets to free memory on the RAM and the VRAM
         our::clearAllAssets();
     }
 };

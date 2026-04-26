@@ -137,8 +137,16 @@ void PlayerControllerSystem::update(World      *world,
     //
     //  Input is interpreted relative to camera yaw so:
     //  W=forward, S=back, D=right, A=left (including diagonals).
-    glm::vec3 cameraForward(std::sin(cameraWorldYaw), 0.0f, -std::cos(cameraWorldYaw));
-    glm::vec3 cameraRight  (std::cos(cameraWorldYaw), 0.0f,  std::sin(cameraWorldYaw));
+    glm::mat4 camMatrix = cameraEntity->getLocalToWorldMatrix();
+
+    glm::vec3 cameraForward = -glm::vec3(camMatrix[2]);
+    glm::vec3 cameraRight   =  glm::vec3(camMatrix[0]);
+
+    cameraForward.y = 0;
+    cameraRight.y   = 0;
+
+    cameraForward = glm::normalize(cameraForward);
+    cameraRight   = glm::normalize(cameraRight);
 
     float inputX = 0.0f;
     float inputZ = 0.0f;
@@ -152,9 +160,18 @@ void PlayerControllerSystem::update(World      *world,
     if (isMoving)
         desiredDir = glm::normalize(desiredDir);
 
+        
+    // Player body always faces the crosshair (camera yaw + horizontal aim offset).
+    float targetYaw = cameraWorldYaw + player->aimYaw;
+
+    playerEntity->localTransform.rotation.y =
+        smoothYaw(playerEntity->localTransform.rotation.y,
+                  targetYaw,
+                  player->turnSpeed,
+                  deltaTime);
+
     // Move toward intended direction.
     playerEntity->localTransform.position += desiredDir * player->walkSpeed * deltaTime;
-    
 
     // Animation state hint (used by play-state animation logic)
     player->animationState = isMoving
