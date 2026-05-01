@@ -352,9 +352,9 @@
         {
           "type": "Player",
           "isMainPlayer": true,
-          "walkSpeed": 3.5,
-          "jumpSpeed": 8.6,
-          "gravity": -16.0,
+          "walkSpeed": 5.5,
+          "jumpSpeed": 9.6,
+          "gravity": -14.0,
           "groundY": 0.0,
           "rotationSensitivity": 0.001,
           "pitchSensitivity": 0.0015
@@ -372,7 +372,7 @@
             },
              {
                 "type": "Collider",
-                "size": [0.8, 1.8, 1.8],
+                "size": [0.8, 1.2, 1.8],
                 "center": [0, 0.8, 0]
               },
               {
