@@ -13,51 +13,54 @@ namespace our
     {
         Idle,
         Running,
-        Shooting
+        Shooting,
+        Jumping
     };
 
     // PlayerComponent used by the PlayerControllerSystem and the Playstate animation logic.
-    // Stores tuning parameters and runtime state for the main player.
     class PlayerComponent : public Component
     {
     public:
-        bool isMainPlayer = true;    // Marks the entity as the main controllable player
-        float walkSpeed = 1.8f;      // units per second
+        // ── Basic movement ────────────────────────────────────────────────────
+        bool  isMainPlayer         = true;
+        float walkSpeed            = 1.8f;    // units/second
 
-        // Mouse sensitivity for crosshair movement (kept very low for 3rd-person feel)
-    float crosshairSensitivity = 0.0004f; // pixels of crosshair movement per pixel of mouse movement (screen-space)
+        // ── Mouse rotation ────────────────────────────────────────────────────
+        // Mouse X delta  → player body yaws instantly by (delta * rotationSensitivity).
+        // Mouse Y delta  → crosshair moves vertically (no camera pitch).
+        float rotationSensitivity  = 0.0020f; // radians / pixel  (horizontal)
+        float pitchSensitivity     = 0.0015f; // radians / pixel  (vertical, crosshair only)
 
-        // Crosshair position in Normalised Device Coordinates [-1, +1]
-        // (0,0) = screen centre.  Updated every frame by PlayerControllerSystem.
-        float crosshairX = 0.0f;
-        float crosshairY = 0.0f;
+        // ── Crosshair (screen-space HUD dot) ─────────────────────────────────
+        // The crosshair position in NDC [-1, +1].  (0,0) = screen centre.
+        // Mouse X moves it horizontally AND rotates the player simultaneously.
+        // Mouse Y moves it vertically only (no camera pitch).
+        float crosshairSensitivity = 0.0008f; // NDC drift per pixel (small = slow)
+        float crosshairX           = 0.0f;
+        float crosshairY           = 0.0f;
+        float crosshairMaxRadius   = 0.55f;   // clamp radius in NDC
 
-        // Maximum crosshair travel from centre, in NDC units [0..1].
-        // 0.6 keeps it well inside a typical 16:9 frame.
-        float crosshairMaxRadius = 0.6f;
+        // ── Derived aim angles (set every frame by PlayerControllerSystem) ────
+        float aimYaw               = 0.0f;    // radians, horizontal offset from camera fwd
+        float aimPitch             = 0.0f;    // radians, vertical   offset from camera fwd
 
-        // How fast the player body yaws to face the crosshair direction (deg/s).
-        // Lower = lazy / cinematic; higher = snappy / responsive.
-        float bodyTurnSpeed = 120.0f; // degrees per second
+        // ── Jump / gravity ────────────────────────────────────────────────────
+        float jumpSpeed            = 6.5f;    // initial upward velocity (units/s)
+        float gravity              = -18.0f;  // downward acceleration  (units/s²) — negative
+        float groundY              = 0.0f;    // Y at which the player is considered grounded
 
-        // Derived aim angles computed by PlayerControllerSystem each frame.
-        // aimYaw   – horizontal angle from camera-forward to the crosshair ray (radians)
-        // aimPitch – vertical   angle from camera-forward to the crosshair ray (radians)
-        float aimYaw   = 0.0f;
-        float aimPitch = 0.0f;
+        // Runtime jump state – NOT serialised, reset on deserialize
+        bool  isJumping            = false;
+        float verticalVelocity     = 0.0f;
 
-        // ----- Legacy fields kept for compatibility with animation/shoot logic -----
-        float rotationSensitivity = 0.0020f; // (no longer drives body rotation directly)
-        float pitchSensitivity    = 0.0020f; // (no longer drives camera pitch directly)
-        bool  shootRequested      = false;
+        // ── Legacy / animation ────────────────────────────────────────────────
+        bool shootRequested = false;
 
-        // Runtime animation state used by play-state.hpp
         std::vector<glm::mat4>  skinMatrices;
-        PlayerAnimationState    animationState  = PlayerAnimationState::Idle;
+        PlayerAnimationState    animationState   = PlayerAnimationState::Idle;
         std::string             activeMotionClip;
-        float                   motionClipTime  = 0.0f;
-        float                   shootClipTime   = 0.0f;
-        float turnSpeed = 360.0f; 
+        float                   motionClipTime   = 0.0f;
+        float                   shootClipTime    = 0.0f;
 
         static std::string getID() { return "Player"; }
 
