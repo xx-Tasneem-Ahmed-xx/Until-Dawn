@@ -1112,11 +1112,22 @@ private:
 
                 if (collidingWithFloor)
                 {
-                    pushBack   = collisionSystem.resolveAABB(oriented);
-                    pushBack.x = 0.0f;
-                    pushBack.z = 0.0f;
-                    if (pushBack.y < 0.0f)
-                        pushBack.y = 0.0f;
+                    // While the player is jumping, skip floor Y pushback entirely.
+                    // The jump physics own Y — letting the floor collider push the
+                    // camera (child of player) upward would cancel the jump and make
+                    // it look like only the camera frame moves, not the player.
+                    if (isPlayerFamilyCollision && isPlayerJumping())
+                    {
+                        pushBack = glm::vec3(0.0f);
+                    }
+                    else
+                    {
+                        pushBack   = collisionSystem.resolveAABB(oriented);
+                        pushBack.x = 0.0f;
+                        pushBack.z = 0.0f;
+                        if (pushBack.y < 0.0f)
+                            pushBack.y = 0.0f;
+                    }
                 }
                 else if (collidingWithWallLike)
                 {

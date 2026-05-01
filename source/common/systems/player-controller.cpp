@@ -6,6 +6,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 namespace our
 {
@@ -111,12 +112,19 @@ void PlayerControllerSystem::update(World      *world,
         playerEntity->localTransform.position += glm::normalize(move) * player->walkSpeed * deltaTime;
 
     // ── 6. Jump — SPACE ───────────────────────────────────────────────────────
-    if (!player->isJumping && glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-    {
+    bool jPressed = (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS);
+    static bool jKeyWasPressedLastFrame = false;
+   if (!player->isJumping && jPressed && jKeyWasPressedLastFrame){
         player->isJumping        = true;
         player->verticalVelocity = player->jumpSpeed;
     }
-
+    jKeyWasPressedLastFrame = jPressed;
+float distanceToFloor = playerEntity->localTransform.position.y - player->groundY;
+if (std::abs(distanceToFloor) > 0.01f) {
+    std::cout << "[DEBUG] Player Y: " << playerEntity->localTransform.position.y 
+              << " | GroundY: " << player->groundY 
+              << " | Gap: " << distanceToFloor << std::endl;
+}
     if (player->isJumping)
     {
         player->verticalVelocity                += player->gravity * deltaTime;
