@@ -345,17 +345,22 @@
     },
     "world": [
       {
-        "name": "MainPlayer",
-        "position": [0, 0, 10],
-        "components": [
-          {
-            "type": "Player",
-            "isMainPlayer": true,
-            "walkSpeed": 3.5,
-            "crosshairSensitivity": 0.001,
-            "crosshairMaxRadius": 0.55,
-            "bodyTurnSpeed": 140.0
-          },
+  "name": "MainPlayer",
+  "position": [0, 0, 10],
+  "components": [
+    {
+      "type": "Player",
+      "isMainPlayer": true,
+      "walkSpeed": 3.5,
+      "rotationSensitivity": 0.0020,
+      "pitchSensitivity": 0.0015,
+      "crosshairSensitivity": 0.001,
+      "crosshairMaxRadius": 0.55,
+      "jumpSpeed": 6.5,
+      "gravity": -18.0,
+      "groundY": 0.0
+    },
+  
           {
             "type": "Health",
             "maxHealth": 100,
