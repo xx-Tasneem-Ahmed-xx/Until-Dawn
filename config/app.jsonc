@@ -353,7 +353,7 @@
           "type": "Player",
           "isMainPlayer": true,
           "walkSpeed": 3.5,
-          "jumpSpeed": 10.5,
+          "jumpSpeed": 8.6,
           "gravity": -16.0,
           "groundY": 0.0,
           "rotationSensitivity": 0.001,
