@@ -55,7 +55,6 @@ class Playstate : public our::State
     our::ForwardRenderer renderer;
     our::HUDSystem hudSystem;
     our::FreeCameraControllerSystem cameraController;
-    our::PlayerControllerSystem playerController;
     our::MovementSystem movementSystem;
     our::ShootingSystem shootingSystem;
     our::CollisionSystem collisionSystem;
@@ -1409,11 +1408,6 @@ private:
         // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
         cameraController.update(&world, (float)deltaTime);
-
-        auto &mouse = getApp()->getMouse();
-        auto windowSize = getApp()->getWindowSize();
-        playerController.update(&world, (float)deltaTime, mouse.getMouseDelta().x, mouse.getMouseDelta().y, windowSize.x, windowSize.y, getApp()->getWindow());
-
         updateMainPlayerAnimation((float)deltaTime);
 
         // Update main player weapon (handles cooldown and reload)

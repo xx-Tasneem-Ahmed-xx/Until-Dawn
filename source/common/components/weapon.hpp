@@ -52,7 +52,6 @@ namespace our
 
             std::cout << "shoot | Remaining ammo: " << ammo << std::endl;
 
-            // Play shoot sound once per successful shot
             if (AudioManager::getInstance().isInitialized() && !shootSound.empty())
             {
                 AudioManager::getInstance().playSound(shootSound);

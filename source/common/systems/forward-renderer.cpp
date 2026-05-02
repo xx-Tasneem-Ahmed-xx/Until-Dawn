@@ -462,18 +462,7 @@ namespace our
                 crosshairPipelineState.setup();
 
                 crosshairShader->use();
-                glm::vec2 crosshairCenter = glm::vec2(0.5f, 0.5f);
-                for (auto entity : world->getEntities())
-                {
-                    if (auto player = entity->getComponent<PlayerComponent>())
-                    {
-                        // Convert NDC to texture space (0..1)
-                        crosshairCenter.x = (player->crosshairX + 1.0f) * 0.5f;
-                        crosshairCenter.y = (-player->crosshairY + 1.0f) * 0.5f;
-                        break;
-                    }
-                }
-                crosshairShader->set("center", crosshairCenter);
+                crosshairShader->set("center", glm::vec2(0.5f, 0.5f));
                 crosshairShader->set("halfLength", 0.014f);
                 crosshairShader->set("halfThickness", 0.0018f);
                 crosshairShader->set("color", glm::vec4(1.0f, 1.0f, 1.0f, 0.95f));

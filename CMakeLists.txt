@@ -125,7 +125,6 @@ source/common/components/collider.hpp
         source/common/components/zombie.cpp
         source/common/components/player.hpp
         source/common/components/player.cpp
-        source/common/components/camera-follow.cpp
         source/common/components/component-deserializer.hpp
 
         source/common/ui/health-bar.hpp
@@ -134,7 +133,6 @@ source/common/components/collider.hpp
         source/common/systems/forward-renderer.hpp
         source/common/systems/forward-renderer.cpp
         source/common/systems/free-camera-controller.hpp
-        "source/common/components/camera-follow.hpp"
         source/common/systems/movement.hpp
         source/common/systems/collision-system.hpp
         source/common/systems/collision-system.cpp
@@ -146,8 +144,6 @@ source/common/components/collider.hpp
         source/common/systems/scene-manager.cpp
         source/common/systems/hud-system.hpp
         source/common/systems/hud-system.cpp
-        source/common/systems/player-controller.hpp
-        source/common/systems/player-controller.cpp
 )
 
 # Define the directories in which to search for the included headers

@@ -2,7 +2,6 @@
 
 #include "../ecs/entity.hpp"
 #include "camera.hpp"
-#include "camera-follow.hpp"
 #include "mesh-renderer.hpp"
 #include "free-camera-controller.hpp"
 #include "movement.hpp"
@@ -63,10 +62,6 @@ namespace our
         else if (type == PlayerComponent::getID())
         {
             component = entity->addComponent<PlayerComponent>();
-        }
-        else if (type == CameraFollowComponent::getID())
-        {
-            component = entity->addComponent<CameraFollowComponent>();
         }
         else if (type == ColliderComponent::getID())
         {
