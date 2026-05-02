@@ -343,65 +343,73 @@
         }
       }
     },
-    
-  "world": [
-    {
-      "name": "MainPlayer",
-      "position": [0, 0, 10],
-      "components": [
-        {
-          "type": "Player",
-          "isMainPlayer": true,
-          "walkSpeed": 5.5,
-          "jumpSpeed": 9.6,
-          "gravity": -14.0,
-          "groundY": 0.0,
-          "rotationSensitivity": 0.001,
-          "pitchSensitivity": 0.0015
-        },
-        { "type": "Health", "maxHealth": 100, "currentHealth": 100 },
-        { "type": "Pistol" }
-      ],
-      "children": [
-        {
-          "name": "MainCamera",
-          "components": [
-            {
-              "type": "Camera",
-              "position": [0.8, 2.2, 4.0]
-            },
-             {
+    "world": [
+      {
+        "name": "MainPlayer",
+        "position": [0, 0, 10],
+        "components": [
+          {
+            "type": "Player",
+            "isMainPlayer": true,
+            "walkSpeed": 3.5,
+            "crosshairSensitivity": 0.001,
+            "crosshairMaxRadius": 0.55,
+            "bodyTurnSpeed": 140.0
+          },
+          {
+            "type": "Health",
+            "maxHealth": 100,
+            "currentHealth": 100
+          },
+          {
+            "type": "Pistol"
+          }
+        ],
+        "children": [
+          {
+            "name": "MainCamera",
+            "components": [
+              {
+                "type": "Camera"
+              },
+              {
                 "type": "Collider",
-                "size": [0.8, 1.2, 1.8],
+                "size": [0.8, 1.8, 0.8],
                 "center": [0, 0.8, 0]
               },
               {
                 "type": "Free Camera Controller"
               }
-          ],
-          "children": [
-            {
-              "name": "PistolMesh",
-              "position": [0.3, -0.5, -0.8],
-              "rotation": [-110, -80, 180],
-              "scale": [40, 40, 40],
-              "components": [
-                { "type": "Mesh Renderer", "mesh": "pistol", "material": "metal" }
-              ]
-            }
-          ]
-        },
-        {
-          "name": "PlayerVisualModel",
-          "position": [0, 0, 2],
-          "rotation": [0, 180, 0],
-          "scale": [100, 100, 100],
-          "components": [
-            { "type": "Mesh Renderer", "mesh": "main-player", "material": "auto" }
-          ]
-        }
-      ]
-    },
+            ],
+            "children": [
+              {
+                "position": [1, -1, -1],
+                "rotation": [-110, -80, 180],
+                "scale": [40, 40, 40],
+                "components": [
+                  {
+                    "type": "Mesh Renderer",
+                    "mesh": "pistol",
+                    "material": "metal"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "position": [6, 4, 10],
+        "rotation": [0, 180, 0],
+        "scale": [100, 100, 100],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "main-player",
+            "material": "auto"
+          }
+        ]
+      },
       {
         "name": "street_floor",
         "position": [0, -8, 0],
