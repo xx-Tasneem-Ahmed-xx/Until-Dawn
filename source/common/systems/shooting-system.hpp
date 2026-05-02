@@ -69,7 +69,7 @@ namespace our
                     if (viewportSize.x > 0 && viewportSize.y > 0)
                     {
                         float ndcX = glm::clamp(crosshairX, -1.0f, 1.0f);
-                        float ndcY = glm::clamp(crosshairY, -1.0f, 1.0f);
+                        float ndcY = glm::clamp(-crosshairY, -1.0f, 1.0f);
 
                         glm::mat4 V = camera->getViewMatrix();
                         glm::mat4 P = camera->getProjectionMatrix(viewportSize);
