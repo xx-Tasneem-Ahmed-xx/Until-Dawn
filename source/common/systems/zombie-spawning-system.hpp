@@ -127,6 +127,57 @@ namespace our
             return found ? bestY : fallbackY;
         }
 
+        bool getPlayableBounds(World *world, glm::vec3 &minOut, glm::vec3 &maxOut) const
+        {
+            if (!world)
+                return false;
+
+            bool found = false;
+            glm::vec3 minB(0.0f), maxB(0.0f);
+            for (auto entity : world->getEntities())
+            {
+                auto *env = entity->getComponent<EnvironmentComponent>();
+                if (!(env && env->environmentType == "floor"))
+                    continue;
+
+                auto *collider = entity->getComponent<ColliderComponent>();
+                if (!collider)
+                    continue;
+
+                glm::vec3 cMin, cMax;
+                collider->getWorldBounds(cMin, cMax);
+                if (!found)
+                {
+                    minB = cMin;
+                    maxB = cMax;
+                    found = true;
+                }
+                else
+                {
+                    minB = glm::min(minB, cMin);
+                    maxB = glm::max(maxB, cMax);
+                }
+            }
+
+            if (found)
+            {
+                minOut = minB;
+                maxOut = maxB;
+            }
+            return found;
+        }
+
+        bool isCandidateInsidePlayableArea(World *world, const ZombieSpawnerConfig &config, const glm::vec3 &candidate) const
+        {
+            glm::vec3 minB, maxB;
+            if (!getPlayableBounds(world, minB, maxB))
+                return true;
+
+            float margin = std::max(0.5f, config.zombieRadius);
+            return candidate.x >= (minB.x + margin) && candidate.x <= (maxB.x - margin) &&
+                   candidate.z >= (minB.z + margin) && candidate.z <= (maxB.z - margin);
+        }
+
         std::vector<glm::vec3> buildFallbackSpawnPoints(World *world, float fallbackY) const
         {
             std::vector<glm::vec3> points;
@@ -245,6 +296,8 @@ namespace our
             if (!isCandidateInDistanceBand(config, playerPos, candidate))
                 return false;
             if (!isCandidateInViewCone(config, playerPos, forward, candidate))
+                return false;
+            if (!isCandidateInsidePlayableArea(world, config, candidate))
                 return false;
             if (isBlockedByStaticGeometry(world, config, candidate))
                 return false;
