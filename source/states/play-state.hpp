@@ -777,7 +777,7 @@ private:
 
         // Sync visual mesh yaw to the player entity rotation.
         mainPlayerVisualEntity->localTransform.rotation.y =
-            mainPlayerEntity->localTransform.rotation.y + mainPlayerModelYawOffset;
+        mainPlayerModelYawOffset;
 
         if (!clip) return;
 
