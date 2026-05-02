@@ -235,7 +235,7 @@ class EndingState : public our::State
         if (scene.playerMotion)
         {
             scene.playerLoseClip = scene.playerMotion->findClip("Die");
-            scene.playerWinClip = scene.playerMotion->findClip("Dance");
+            scene.playerWinClip = scene.playerMotion->findClip("Salute.001");
         }
 
         auto &cfg = getApp()->getConfig();
@@ -246,6 +246,29 @@ class EndingState : public our::State
             runtime.zombieModelYawOffset = glm::radians(yawDeg);
             runtime.endingZombieScale = std::max(0.2f, zCfg.value("modelScaleMultiplier", 0.42f) * 0.42f);
             runtime.endingGroundY = -0.5f + zCfg.value("spawnHeightOffset", -0.25f);
+        }
+
+        if (cfg.contains("scene") && cfg["scene"].contains("ending"))
+        {
+            const auto &endingCfg = cfg["scene"]["ending"];
+            if (endingCfg.contains("win"))
+            {
+                const auto &winCfg = endingCfg["win"];
+                if (winCfg.contains("playerPositionOffset"))
+                    runtime.winRuntime.playerPositionOffset = winCfg["playerPositionOffset"].get<glm::vec3>();
+                if (winCfg.contains("playerRotationDegrees"))
+                    runtime.winRuntime.playerRotationDegrees = winCfg["playerRotationDegrees"].get<glm::vec3>();
+                if (winCfg.contains("cameraTargetOffset"))
+                    runtime.winRuntime.cameraTargetOffset = winCfg["cameraTargetOffset"].get<glm::vec3>();
+                if (winCfg.contains("playerGroundOffset"))
+                    runtime.winRuntime.playerGroundOffset = winCfg.value("playerGroundOffset", runtime.winRuntime.playerGroundOffset);
+                if (winCfg.contains("zoomTargetDistance"))
+                    runtime.winRuntime.zoomTargetDistance = winCfg.value("zoomTargetDistance", runtime.winRuntime.zoomTargetDistance);
+                if (winCfg.contains("zoomHeightOffset"))
+                    runtime.winRuntime.zoomHeightOffset = winCfg.value("zoomHeightOffset", runtime.winRuntime.zoomHeightOffset);
+                if (winCfg.contains("zoomDuration"))
+                    runtime.winRuntime.zoomDuration = winCfg.value("zoomDuration", runtime.winRuntime.zoomDuration);
+            }
         }
 
         runtime.endingStageCenter = glm::vec3(0.0f, runtime.endingGroundY, 0.0f);
@@ -296,7 +319,7 @@ class EndingState : public our::State
         }
         else if (our::GameSession::endingOutcome == our::EndingOutcome::Win)
         {
-            ending::applyWinPose(scene.playerVisualEntity, runtime.endingGroundY, runtime.winRuntime);
+            ending::applyWinPose(scene.playerVisualEntity, runtime.endingGroundY, runtime.endingStageCenter, runtime.winRuntime);
         }
     }
 
@@ -353,6 +376,7 @@ class EndingState : public our::State
                 scene.playerWinClip,
                 runtime.elapsedTime,
                 runtime.endingGroundY,
+                runtime.endingStageCenter,
                 runtime.winRuntime);
         }
     }
@@ -372,7 +396,7 @@ class EndingState : public our::State
         }
         else if (our::GameSession::endingOutcome == our::EndingOutcome::Win)
         {
-            ending::updateWinCamera(scene.cameraEntity, scene.playerVisualEntity, runtime.elapsedTime, runtime.winRuntime);
+            ending::updateWinCamera(scene.cameraEntity, scene.playerVisualEntity, runtime.elapsedTime, runtime.endingStageCenter, runtime.winRuntime);
         }
     }
 

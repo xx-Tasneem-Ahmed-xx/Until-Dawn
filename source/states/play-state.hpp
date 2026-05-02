@@ -12,7 +12,6 @@
 #include <systems/hud-system.hpp>
 #include <systems/character-skeleton-system.hpp>
 #include <systems/attachment-system.hpp>
-#include <systems/player-controller.hpp>
 #include <systems/zombie-animation-system.hpp>
 #include <systems/zombie-spawning-system.hpp>
 #include <components/camera.hpp>
@@ -590,15 +589,6 @@ private:
             std::cout << "[Motion] main-player-motion asset not found.\n";
             return;
         }
-
-        // std::cout << "[Motion] Olivia clips found (" << mainPlayerMotion->clips.size() << "): ";
-        // for (size_t i = 0; i < mainPlayerMotion->clips.size(); ++i)
-        // {
-        //     std::cout << "[" << i << "] " << mainPlayerMotion->clips[i].name;
-        //     if (i + 1 < mainPlayerMotion->clips.size())
-        //         std::cout << ", ";
-        // }
-        // std::cout << "\n";
 
         auto toLower = [](std::string s)
         {
@@ -1321,6 +1311,12 @@ private:
             totalTime += (float)deltaTime;
         }
         renderer.setTime(totalTime);
+        if (getApp()->getKeyboard().justPressed(GLFW_KEY_I))
+        {
+            our::GameSession::setEndingResult(our::EndingOutcome::Win, computeCurrentExposure());
+            getApp()->changeState("ending");
+            return;
+        }
         collisionSfxCooldownLeft = std::max(0.0f, collisionSfxCooldownLeft - static_cast<float>(deltaTime));
 
         if (pendingOuchSfxTimeLeft >= 0.0f)
@@ -1513,14 +1509,7 @@ private:
 
                     muzzleFlashTimeLeft = muzzleFlashDuration;
                     auto frameBufferSize = getApp()->getFrameBufferSize();
-                    float crosshairX = 0.0f;
-                    float crosshairY = 0.0f;
-                    if (auto *player = mainPlayerEntity ? mainPlayerEntity->getComponent<our::PlayerComponent>() : nullptr)
-                    {
-                        crosshairX = player->crosshairX;
-                        crosshairY = player->crosshairY;
-                    }
-                    our::Ray ray = shootingSystem.buildRayFromCamera(&world, frameBufferSize, crosshairX, crosshairY);
+                    our::Ray ray = shootingSystem.buildRayFromCamera(&world, frameBufferSize);
                     our::FireResult fireResult = shootingSystem.fireRay(ray, &world, weapon);
 
                     zombieAnimationSystem.handleZombieKill(
