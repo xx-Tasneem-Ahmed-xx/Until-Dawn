@@ -69,8 +69,6 @@ namespace our
                     if (viewportSize.x > 0 && viewportSize.y > 0)
                     {
                         float ndcX = glm::clamp(crosshairX, -1.0f, 1.0f);
-                        // Crosshair rendering maps screen Y using -crosshairY,
-                        // so we must flip here too to keep ray + reticle aligned.
                         float ndcY = glm::clamp(-crosshairY, -1.0f, 1.0f);
 
                         glm::mat4 V = camera->getViewMatrix();

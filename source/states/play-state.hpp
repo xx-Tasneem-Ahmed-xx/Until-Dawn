@@ -12,7 +12,6 @@
 #include <systems/hud-system.hpp>
 #include <systems/character-skeleton-system.hpp>
 #include <systems/attachment-system.hpp>
-#include <systems/player-controller.hpp>
 #include <systems/zombie-animation-system.hpp>
 #include <systems/zombie-spawning-system.hpp>
 #include <components/camera.hpp>
@@ -55,7 +54,6 @@ class Playstate : public our::State
     our::ForwardRenderer renderer;
     our::HUDSystem hudSystem;
     our::FreeCameraControllerSystem cameraController;
-    our::PlayerControllerSystem playerController;
     our::MovementSystem movementSystem;
     our::ShootingSystem shootingSystem;
     our::CollisionSystem collisionSystem;
@@ -143,15 +141,6 @@ public:
     }
 
 private:
-
-    // ── Helper: is the main player currently airborne? ───────────────────────
-    bool isPlayerJumping() const
-    {
-        if (!mainPlayerEntity) return false;
-        auto *p = mainPlayerEntity->getComponent<our::PlayerComponent>();
-        return p && p->isJumping;
-    }
-
     void applyAudioPreferences()
     {
         auto &audio = our::AudioManager::getInstance();
@@ -625,28 +614,18 @@ private:
             return nullptr;
         };
 
-        mainPlayerRunClip   = findClipCaseInsensitive("Run");
+        mainPlayerRunClip = findClipCaseInsensitive("Run");
         mainPlayerShootClip = findClipCaseInsensitive("Pistol Shoot");
-        mainPlayerIdleClip  = findClipCaseInsensitive("Pistol Idle");
+        mainPlayerIdleClip = findClipCaseInsensitive("Pistol Idle");
     }
 
-    // Returns the best clip for a given animation state.
-    // Jumping has no dedicated clip — we reuse the idle pose so the character
-    // holds its stance in the air.  Add a jump clip here if one is available.
     const our::MotionClip *getMainPlayerClipForState(our::PlayerAnimationState state) const
     {
-        switch (state)
-        {
-        case our::PlayerAnimationState::Shooting:
-            return mainPlayerShootClip ? mainPlayerShootClip : mainPlayerIdleClip;
-        case our::PlayerAnimationState::Running:
+        if (state == our::PlayerAnimationState::Shooting)
+            return mainPlayerShootClip ? mainPlayerShootClip : mainPlayerRunClip;
+        if (state == our::PlayerAnimationState::Running)
             return mainPlayerRunClip ? mainPlayerRunClip : mainPlayerIdleClip;
-        case our::PlayerAnimationState::Jumping:
-            // No dedicated jump clip: freeze in idle pose while airborne.
-            return mainPlayerIdleClip;
-        default: // Idle
-            return mainPlayerIdleClip;
-        }
+        return mainPlayerIdleClip;
     }
 
     void updateMainPlayerAnimation(float deltaTime)
@@ -661,61 +640,41 @@ private:
         if (!(mainPlayerEntity && mainPlayerVisualEntity))
             return;
 
-        auto *player   = mainPlayerEntity->getComponent<our::PlayerComponent>();
+        auto *player = mainPlayerEntity->getComponent<our::PlayerComponent>();
         auto *renderer = mainPlayerVisualEntity->getComponent<our::MeshRendererComponent>();
         if (!(player && renderer && renderer->mesh))
             return;
 
         auto &keyboard = getApp()->getKeyboard();
-        bool movementKeysPressed = keyboard.isPressed(GLFW_KEY_W) || keyboard.isPressed(GLFW_KEY_A) ||
-                                   keyboard.isPressed(GLFW_KEY_S) || keyboard.isPressed(GLFW_KEY_D);
+        bool movementKeysPressed = keyboard.isPressed(GLFW_KEY_W) || keyboard.isPressed(GLFW_KEY_A) || keyboard.isPressed(GLFW_KEY_S) || keyboard.isPressed(GLFW_KEY_D);
 
-        // ── Resolve animation priority: Jump > Shoot > Run > Idle ────────────
         bool startedShootingThisFrame = false;
-
-        if (player->isJumping)
+        if (player->shootRequested && player->animationState != our::PlayerAnimationState::Shooting)
         {
-            // Jumping overrides everything — don't let shoot trigger mid-air.
-            player->shootRequested = false;
-            if (player->animationState != our::PlayerAnimationState::Jumping)
-            {
-                player->animationState   = our::PlayerAnimationState::Jumping;
-                player->activeMotionClip.clear();
-                player->motionClipTime   = 0.0f;
-            }
+            player->animationState = our::PlayerAnimationState::Shooting;
+            player->activeMotionClip.clear();
+            player->motionClipTime = 0.0f;
+            player->shootClipTime = 0.0f;
+            startedShootingThisFrame = true;
         }
-        else
-        {
-            if (player->shootRequested && player->animationState != our::PlayerAnimationState::Shooting)
-            {
-                player->animationState   = our::PlayerAnimationState::Shooting;
-                player->activeMotionClip.clear();
-                player->motionClipTime   = 0.0f;
-                player->shootClipTime    = 0.0f;
-                startedShootingThisFrame = true;
-            }
-            player->shootRequested = false;
-        }
+        player->shootRequested = false;
 
         glm::vec3 cameraWorldPos = glm::vec3(0.0f);
         if (mainCameraEntity)
             cameraWorldPos = glm::vec3(mainCameraEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
 
-        glm::vec3 playerWorldPos  = glm::vec3(mainPlayerEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
-        glm::vec3 cameraForward   = getCameraForwardOnGround();
-        glm::vec3 anchorPosition  = cameraWorldPos + (cameraForward * mainPlayerFollowDistance);
+        glm::vec3 playerWorldPos = glm::vec3(mainPlayerEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
+        glm::vec3 cameraForward = getCameraForwardOnGround();
+        glm::vec3 anchorPosition = cameraWorldPos + (cameraForward * mainPlayerFollowDistance);
 
-        lastMainPlayerAnchorPosition  = playerWorldPos;
-        mainPlayerAnchorInitialized   = true;
+        lastMainPlayerAnchorPosition = playerWorldPos;
+        mainPlayerAnchorInitialized = true;
 
         bool isMoving = movementKeysPressed;
 
-        // Update non-jump, non-shoot states
-        if (!player->isJumping && !startedShootingThisFrame &&
-            player->animationState != our::PlayerAnimationState::Shooting)
+        if (!startedShootingThisFrame && player->animationState != our::PlayerAnimationState::Shooting)
         {
-            player->animationState = isMoving ? our::PlayerAnimationState::Running
-                                              : our::PlayerAnimationState::Idle;
+            player->animationState = isMoving ? our::PlayerAnimationState::Running : our::PlayerAnimationState::Idle;
         }
 
         const our::MotionClip *clip = getMainPlayerClipForState(player->animationState);
@@ -730,7 +689,7 @@ private:
         if (player->activeMotionClip != clip->name)
         {
             player->activeMotionClip = clip->name;
-            player->motionClipTime   = 0.0f;
+            player->motionClipTime = 0.0f;
             if (player->animationState == our::PlayerAnimationState::Shooting)
                 player->shootClipTime = 0.0f;
         }
@@ -747,21 +706,15 @@ private:
             bool shootingFinished = (clip->duration <= 0.0001f) || (player->shootClipTime >= clip->duration);
             if (shootingFinished)
             {
-                player->animationState = isMoving ? our::PlayerAnimationState::Running
-                                                  : our::PlayerAnimationState::Idle;
+                player->animationState = isMoving ? our::PlayerAnimationState::Running : our::PlayerAnimationState::Idle;
                 const our::MotionClip *nextClip = getMainPlayerClipForState(player->animationState);
                 if (nextClip)
                 {
                     player->activeMotionClip = nextClip->name;
-                    player->motionClipTime   = 0.0f;
+                    player->motionClipTime = 0.0f;
                 }
                 clip = nextClip;
             }
-        }
-        else if (player->animationState == our::PlayerAnimationState::Jumping)
-        {
-            // Hold the idle pose: clamp time so it doesn't advance past the first frame.
-            player->motionClipTime = 0.0f;
         }
         else if (clip->duration > 0.0001f)
         {
@@ -773,13 +726,45 @@ private:
             mainPlayerVisualEntity->localTransform.position = anchorPosition;
         }
         mainPlayerVisualEntity->localTransform.position.y = mainPlayerHeightOffset;
-        mainPlayerVisualEntity->localTransform.scale      = mainPlayerVisualPrototypeTransform.scale;
+        mainPlayerVisualEntity->localTransform.scale = mainPlayerVisualPrototypeTransform.scale;
 
-        // Sync visual mesh yaw to the player entity rotation.
-        mainPlayerVisualEntity->localTransform.rotation.y =
-        mainPlayerModelYawOffset;
+        glm::vec3 cameraRight = glm::normalize(glm::vec3(-cameraForward.z, 0.0f, cameraForward.x));
+        bool forwardPressed = keyboard.isPressed(GLFW_KEY_W);
+        bool backwardPressed = keyboard.isPressed(GLFW_KEY_S);
+        bool rightPressed = keyboard.isPressed(GLFW_KEY_D);
+        bool leftPressed = keyboard.isPressed(GLFW_KEY_A);
 
-        if (!clip) return;
+        glm::vec3 moveDirection(0.0f);
+        if (forwardPressed)
+            moveDirection += cameraForward;
+        if (backwardPressed)
+            moveDirection -= cameraForward;
+        if (rightPressed)
+            moveDirection += cameraRight;
+        if (leftPressed)
+            moveDirection -= cameraRight;
+
+        glm::vec3 facingDirection(0.0f);
+        if (forwardPressed)
+            facingDirection += cameraForward;
+        if (backwardPressed)
+        {
+            if (!forwardPressed && !leftPressed && !rightPressed)
+                facingDirection += cameraForward;
+            else
+                facingDirection -= cameraForward;
+        }
+        if (rightPressed)
+            facingDirection += cameraRight;
+        if (leftPressed)
+            facingDirection -= cameraRight;
+
+        if (glm::dot(facingDirection, facingDirection) > 0.0001f)
+        {
+            facingDirection = glm::normalize(facingDirection);
+            float yaw = std::atan2(facingDirection.x, facingDirection.z);
+            mainPlayerVisualEntity->localTransform.rotation.y = yaw + mainPlayerModelYawOffset;
+        }
 
         mainPlayerSkeletonSystem.bindRuntimePose(
             mainPlayerMotion,
@@ -840,30 +825,25 @@ private:
             return glm::vec3(mainPlayerEntity->getLocalToWorldMatrix() * glm::vec4(0, 0, 0, 1));
         }
 
+        // Fallback only if player entity is unavailable.
         return getPlayerTargetPosition();
     }
 
-    // Locks camera and player Y to zero — SKIPPED while the player is jumping
-    // so gravity can move the Y position freely.
-    // Snaps player Y to groundY when grounded. SKIPPED while jumping.
-    // Camera is a child of the player — it inherits world-Y from the parent,
-    // so we never touch camera local-Y here.
     void lockCameraAndPlayerVerticalToZero()
     {
-        if (isPlayerJumping())
-            return;
-
+        if (!mainCameraEntity)
+            mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
         if (!mainPlayerEntity)
             mainPlayerEntity = findMainPlayerEntity();
 
         if (mainPlayerEntity)
+            mainPlayerEntity->localTransform.position.y = 0.0f;
+
+        if (mainCameraEntity)
         {
-            float groundY = 0.0f;
-            if (auto *p = mainPlayerEntity->getComponent<our::PlayerComponent>())
-                groundY = p->groundY;
-            mainPlayerEntity->localTransform.position.y = groundY;
-            // Camera is a child of MainPlayer: its local Y = 0 is correct,
-            // parent world-Y drives the camera height automatically.
+            mainCameraEntity->localTransform.position.y = 0.0f;
+            if (mainCameraEntity->parent)
+                mainCameraEntity->parent->localTransform.position.y = 0.0f;
         }
     }
 
@@ -908,8 +888,8 @@ private:
         zombieAnimationSystem.loadGameplayConfig(zombiesConfig, zombieAnimationConfig);
 
         sunriseStartExposure = std::clamp(zombiesConfig.value("sunriseStartExposure", sunriseStartExposure), 0.0f, 2.0f);
-        sunriseEndExposure   = std::clamp(zombiesConfig.value("sunriseEndExposure",   sunriseEndExposure),   0.0f, 2.0f);
-        sunriseEasePower     = std::max(0.05f, zombiesConfig.value("sunriseEasePower", sunriseEasePower));
+        sunriseEndExposure = std::clamp(zombiesConfig.value("sunriseEndExposure", sunriseEndExposure), 0.0f, 2.0f);
+        sunriseEasePower = std::max(0.05f, zombiesConfig.value("sunriseEasePower", sunriseEasePower));
     }
 
     void recalculateSunriseTargets()
@@ -928,7 +908,7 @@ private:
 
     float computeCurrentExposure() const
     {
-        float progress      = computeSunriseProgress();
+        float progress = computeSunriseProgress();
         float easedProgress = std::pow(progress, sunriseEasePower);
         return glm::mix(sunriseStartExposure, sunriseEndExposure, easedProgress);
     }
@@ -946,7 +926,7 @@ private:
 
     void updateZombies(float deltaTime)
     {
-        glm::vec3 playerTarget         = getMainPlayerCombatTargetPosition();
+        glm::vec3 playerTarget = getMainPlayerCombatTargetPosition();
         our::HealthComponent *playerHealth = getMainPlayerHealth();
 
         zombieAnimationSystem.updateAllZombies(
@@ -975,7 +955,7 @@ private:
         {
             collisionSystem.update(&world);
             auto &allCollisions = collisionSystem.getCurrentCollisions();
-            bool anyResolved    = false;
+            bool anyResolved = false;
 
             for (const auto &collision : allCollisions)
             {
@@ -984,9 +964,13 @@ private:
 
                 our::Entity *pickedHealthBox = nullptr;
                 if (isHealthPickupEntity(entityA) && isMainPlayerFamilyEntity(entityB))
+                {
                     pickedHealthBox = entityA;
+                }
                 else if (isHealthPickupEntity(entityB) && isMainPlayerFamilyEntity(entityA))
+                {
                     pickedHealthBox = entityB;
+                }
 
                 if (pickedHealthBox)
                 {
@@ -1013,6 +997,7 @@ private:
                 if (isStaticA && isStaticB)
                     continue;
 
+                // Soft dynamic-vs-dynamic separation for zombies so they don't overlap each other.
                 if (!isStaticA && !isStaticB)
                 {
                     auto *zombieA = entityA->getComponent<our::ZombieComponent>();
@@ -1020,6 +1005,7 @@ private:
                     if (!(zombieA && zombieB))
                         continue;
 
+                    // Resolve using actual collider overlap in XZ for robust crowd separation.
                     glm::vec3 minA, maxA, minB, maxB;
                     collision.colliderA->getWorldBounds(minA, maxA);
                     collision.colliderB->getWorldBounds(minB, maxB);
@@ -1035,24 +1021,25 @@ private:
                     const float separationMargin = 0.04f;
                     if (overlapX <= overlapZ)
                     {
-                        float sign     = (posA.x < posB.x) ? -1.0f : 1.0f;
+                        float sign = (posA.x < posB.x) ? -1.0f : 1.0f;
                         float pushEach = (overlapX + separationMargin) * 0.5f;
                         entityA->localTransform.position.x += sign * pushEach;
                         entityB->localTransform.position.x -= sign * pushEach;
                     }
                     else
                     {
-                        float sign     = (posA.z < posB.z) ? -1.0f : 1.0f;
+                        float sign = (posA.z < posB.z) ? -1.0f : 1.0f;
                         float pushEach = (overlapZ + separationMargin) * 0.5f;
                         entityA->localTransform.position.z += sign * pushEach;
                         entityB->localTransform.position.z -= sign * pushEach;
                     }
                     anyResolved = true;
+
                     continue;
                 }
 
-                bool isFloorA    = envA && envTypeA == "floor";
-                bool isFloorB    = envB && envTypeB == "floor";
+                bool isFloorA = envA && envTypeA == "floor";
+                bool isFloorB = envB && envTypeB == "floor";
                 bool isWallLikeA = envA && !isFloorA;
                 bool isWallLikeB = envB && !isFloorB;
 
@@ -1066,33 +1053,32 @@ private:
 
                 if (isStaticB)
                 {
-                    oriented            = collision;
-                    rawDynamic          = entityA;
-                    collidingWithFloor  = isFloorB;
+                    oriented = collision;
+                    rawDynamic = entityA;
+                    collidingWithFloor = isFloorB;
                     collidingWithWallLike = isWallLikeB;
                 }
                 else
                 {
-                    oriented.entityA    = entityB;
-                    oriented.entityB    = entityA;
-                    oriented.colliderA  = collision.colliderB;
-                    oriented.colliderB  = collision.colliderA;
-                    rawDynamic          = entityB;
-                    collidingWithFloor  = isFloorA;
+                    oriented.entityA = entityB;
+                    oriented.entityB = entityA;
+                    oriented.colliderA = collision.colliderB;
+                    oriented.colliderB = collision.colliderA;
+                    rawDynamic = entityB;
+                    collidingWithFloor = isFloorA;
                     collidingWithWallLike = isWallLikeA;
                 }
 
                 CollisionPair wallCollisionPair = makeOrderedPair(rawDynamic, oriented.entityB);
-                bool isNewWallCollision         = false;
+                bool isNewWallCollision = false;
                 if (collidingWithWallLike)
                 {
                     bool firstSeenThisFrame = currentWallCollisionPairs.insert(wallCollisionPair).second;
-                    isNewWallCollision = firstSeenThisFrame &&
-                                        (previousWallCollisionPairs.find(wallCollisionPair) == previousWallCollisionPairs.end());
+                    isNewWallCollision = firstSeenThisFrame && (previousWallCollisionPairs.find(wallCollisionPair) == previousWallCollisionPairs.end());
                 }
 
-                our::Entity *dynamicEntity      = rawDynamic;
-                bool isPlayerFamilyCollision    = false;
+                // If dynamic belongs to player family, push the camera (actual moving body).
+                our::Entity *dynamicEntity = rawDynamic;
                 if (mainCameraEntity)
                 {
                     our::Entity *cursor = rawDynamic;
@@ -1100,8 +1086,7 @@ private:
                     {
                         if (cursor == mainPlayerEntity)
                         {
-                            dynamicEntity           = mainCameraEntity;
-                            isPlayerFamilyCollision = true;
+                            dynamicEntity = mainCameraEntity;
                             break;
                         }
                         cursor = cursor->parent;
@@ -1112,30 +1097,20 @@ private:
 
                 if (collidingWithFloor)
                 {
-                    // While the player is jumping, skip floor Y pushback entirely.
-                    // The jump physics own Y — letting the floor collider push the
-                    // camera (child of player) upward would cancel the jump and make
-                    // it look like only the camera frame moves, not the player.
-                    if (isPlayerFamilyCollision && isPlayerJumping())
-                    {
-                        pushBack = glm::vec3(0.0f);
-                    }
-                    else
-                    {
-                        pushBack   = collisionSystem.resolveAABB(oriented);
-                        pushBack.x = 0.0f;
-                        pushBack.z = 0.0f;
-                        if (pushBack.y < 0.0f)
-                            pushBack.y = 0.0f;
-                    }
+                    pushBack = collisionSystem.resolveAABB(oriented);
+                    pushBack.x = 0.0f;
+                    pushBack.z = 0.0f;
+                    if (pushBack.y < 0.0f)
+                        pushBack.y = 0.0f;
                 }
                 else if (collidingWithWallLike)
                 {
+                    // Use the moving camera collider for overlap computation.
                     our::ColliderComponent *cameraCollider =
                         mainCameraEntity ? mainCameraEntity->getComponent<our::ColliderComponent>() : nullptr;
                     bool useCameraCollider = (dynamicEntity == mainCameraEntity) && cameraCollider;
                     our::ColliderComponent *dynamicCollider = useCameraCollider ? cameraCollider : oriented.colliderA;
-                    our::ColliderComponent *wallCollider    = oriented.colliderB;
+                    our::ColliderComponent *wallCollider = oriented.colliderB;
 
                     glm::vec3 minA, maxA, minB, maxB;
                     dynamicCollider->getWorldBounds(minA, maxA);
@@ -1163,9 +1138,12 @@ private:
                 const float epsilon = 0.0005f;
                 if (glm::length(pushBack) > epsilon)
                 {
-                    bool  shouldPlayCollisionSfx = false;
-                    float impactPushLen          = 0.0f;
+                    bool shouldPlayCollisionSfx = false;
+                    float impactPushLen = 0.0f;
 
+                    // Add an intentional extra retreat for the main player when
+                    // colliding with wall-like geometry so the collision response
+                    // is clearly noticeable and prevents sticky penetration feel.
                     if (collidingWithWallLike && dynamicEntity == mainCameraEntity)
                     {
                         glm::vec3 horizontalPush(pushBack.x, 0.0f, pushBack.z);
@@ -1173,41 +1151,40 @@ private:
                         if (pushLen > epsilon)
                         {
                             glm::vec3 retreatDir = horizontalPush / pushLen;
-                            float totalRetreat   = std::max(0.0f, playerWallCollisionRetreatDistance + playerVisualWallBufferDistance);
-                            pushBack            += retreatDir * totalRetreat;
+                            float totalRetreat = std::max(0.0f, playerWallCollisionRetreatDistance + playerVisualWallBufferDistance);
+                            pushBack += retreatDir * totalRetreat;
                             shouldPlayCollisionSfx = true;
-                            impactPushLen          = pushLen;
+                            impactPushLen = pushLen;
                         }
                     }
                     else if (collidingWithWallLike)
                     {
+                        // Add a small margin for non-player entities (especially zombies)
+                        // to avoid visible wall penetration due to animation/scale mismatch.
                         glm::vec3 horizontalPush(pushBack.x, 0.0f, pushBack.z);
                         float pushLen = glm::length(horizontalPush);
                         if (pushLen > epsilon)
                         {
-                            glm::vec3 retreatDir  = horizontalPush / pushLen;
-                            float wallSeparation  = 0.06f;
+                            glm::vec3 retreatDir = horizontalPush / pushLen;
+                            float wallSeparation = 0.06f;
                             if (auto *z = dynamicEntity->getComponent<our::ZombieComponent>())
+                            {
                                 wallSeparation = std::clamp(z->radius * 0.12f, 0.04f, 0.22f);
+                            }
                             pushBack += retreatDir * wallSeparation;
                         }
                     }
 
                     dynamicEntity->localTransform.position += pushBack;
 
-                    if (isPlayerFamilyCollision && mainPlayerEntity && collidingWithWallLike)
-                    {
-                        mainPlayerEntity->localTransform.position.x += pushBack.x;
-                        mainPlayerEntity->localTransform.position.z += pushBack.z;
-                    }
-
-                    if (shouldPlayCollisionSfx && isNewWallCollision &&
-                        impactPushLen >= collisionSfxMinPushDistance && collisionSfxCooldownLeft <= 0.0f)
+                    if (shouldPlayCollisionSfx && isNewWallCollision && impactPushLen >= collisionSfxMinPushDistance && collisionSfxCooldownLeft <= 0.0f)
                     {
                         if (our::AudioManager::getInstance().isInitialized() && !collisionSfxTrack.empty())
+                        {
                             our::AudioManager::getInstance().playSound(collisionSfxTrack);
-                        collisionSfxCooldownLeft  = collisionSfxCooldownSeconds;
-                        pendingOuchSfxTimeLeft    = std::max(0.0f, ouchSfxDelaySeconds);
+                        }
+                        collisionSfxCooldownLeft = collisionSfxCooldownSeconds;
+                        pendingOuchSfxTimeLeft = std::max(0.0f, ouchSfxDelaySeconds);
                     }
 
                     anyResolved = true;
@@ -1223,56 +1200,65 @@ private:
 
     void onInitialize() override
     {
-        zombiesKilledCount             = 0;
-        endingQueued                   = false;
-        totalTime                      = 0.0f;
-        collisionSfxCooldownLeft       = 0.0f;
-        pendingOuchSfxTimeLeft         = -1.0f;
-        muzzleFlashTimeLeft            = 0.0f;
-        mainPlayerAnchorInitialized    = false;
-        lastMainPlayerAnchorPosition   = glm::vec3(0.0f);
+        // Reset all per-run runtime state because this state instance is reused across scene changes.
+        zombiesKilledCount = 0;
+        endingQueued = false;
+        totalTime = 0.0f;
+        collisionSfxCooldownLeft = 0.0f;
+        pendingOuchSfxTimeLeft = -1.0f;
+        muzzleFlashTimeLeft = 0.0f;
+        mainPlayerAnchorInitialized = false;
+        lastMainPlayerAnchorPosition = glm::vec3(0.0f);
         zombieAnimationSystem.resetEffects();
 
+        // First of all, we get the scene configuration from the app config
         auto &config = getApp()->getConfig()["scene"];
+        // If we have assets in the scene config, we deserialize them
         if (config.contains("assets"))
+        {
             our::deserializeAllAssets(config["assets"]);
+        }
+        // If we have a world in the scene config, we use it to populate our world
         if (config.contains("world"))
+        {
             world.deserialize(config["world"]);
+        }
 
         loadZombieGameplayConfig(config);
         if (config.contains("mainPlayer") && config["mainPlayer"].is_object())
         {
-            mainPlayerHeightOffset    = config["mainPlayer"].value("heightOffset", mainPlayerHeightOffset);
+            mainPlayerHeightOffset = config["mainPlayer"].value("heightOffset", mainPlayerHeightOffset);
+
             const auto &mainPlayerConfig = config["mainPlayer"];
-            mainPlayerFollowDistance  = mainPlayerConfig.value("followDistance", mainPlayerFollowDistance);
+            mainPlayerFollowDistance = mainPlayerConfig.value("followDistance", mainPlayerFollowDistance);
             if (mainPlayerConfig.contains("pistolBoneOffset") && mainPlayerConfig["pistolBoneOffset"].is_array())
                 mainPlayerPistolBoneOffset = mainPlayerConfig["pistolBoneOffset"].get<glm::vec3>();
             if (mainPlayerConfig.contains("pistolRotationOffset") && mainPlayerConfig["pistolRotationOffset"].is_array())
                 mainPlayerPistolRotationOffset = glm::radians(mainPlayerConfig["pistolRotationOffset"].get<glm::vec3>());
             mainPlayerPistolScaleMultiplier = mainPlayerConfig.value("pistolScaleMultiplier", mainPlayerPistolScaleMultiplier);
-            mainPlayerWeaponBoneName        = mainPlayerConfig.value("pistolBoneName", mainPlayerWeaponBoneName);
-            playerVisualWallBufferDistance  = std::max(0.0f, mainPlayerConfig.value("wallBufferDistance", playerVisualWallBufferDistance));
+            mainPlayerWeaponBoneName = mainPlayerConfig.value("pistolBoneName", mainPlayerWeaponBoneName);
+            playerVisualWallBufferDistance = std::max(0.0f, mainPlayerConfig.value("wallBufferDistance", playerVisualWallBufferDistance));
             houseWallColliderExtraPaddingXZ = std::max(0.0f, mainPlayerConfig.value("houseColliderPaddingXZ", houseWallColliderExtraPaddingXZ));
         }
         zombieAnimationSystem.initializeAssets("zombie-motion");
         bindMainPlayerMotionClips();
 
-        mainPlayerEntity       = findMainPlayerEntity();
-        mainCameraEntity       = findMainCameraEntity(mainPlayerEntity);
-        pickupHealthMesh       = our::AssetLoader<our::Mesh>::get("pickup-health");
-        mainPlayerMesh         = our::AssetLoader<our::Mesh>::get("main-player");
+        mainPlayerEntity = findMainPlayerEntity();
+        mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
+        pickupHealthMesh = our::AssetLoader<our::Mesh>::get("pickup-health");
+        mainPlayerMesh = our::AssetLoader<our::Mesh>::get("main-player");
         mainPlayerVisualEntity = findMainPlayerVisualEntity();
         mainPlayerPistolEntity = nullptr;
         mainPlayerWeaponAttachment = nullptr;
         if (mainPlayerVisualEntity)
         {
             mainPlayerVisualPrototypeTransform = mainPlayerVisualEntity->localTransform;
+
             if (auto *player = mainPlayerEntity ? mainPlayerEntity->getComponent<our::PlayerComponent>() : nullptr)
             {
-                if (auto *r = mainPlayerVisualEntity->getComponent<our::MeshRendererComponent>();
-                    r && r->mesh && r->mesh->hasSkinning())
+                if (auto *renderer = mainPlayerVisualEntity->getComponent<our::MeshRendererComponent>(); renderer && renderer->mesh && renderer->mesh->hasSkinning())
                 {
-                    player->skinMatrices.assign(r->mesh->getSkinJointNodes().size(), glm::mat4(1.0f));
+                    player->skinMatrices.assign(renderer->mesh->getSkinJointNodes().size(), glm::mat4(1.0f));
                 }
             }
         }
@@ -1280,34 +1266,6 @@ private:
         inflateHouseWallColliders();
         setupHealthPickupColliders();
         lockCameraAndPlayerVerticalToZero();
-
-        if (mainPlayerEntity && mainCameraEntity)
-        {
-            glm::vec3 playerSpawnXZ = glm::vec3(
-                mainPlayerEntity->localTransform.position.x,
-                0.0f,
-                mainPlayerEntity->localTransform.position.z);
-
-            if (mainCameraEntity->parent == mainPlayerEntity)
-            {
-                mainCameraEntity->localTransform.position.x = 0.0f;
-                mainCameraEntity->localTransform.position.z = 0.0f;
-            }
-            else
-            {
-                mainCameraEntity->localTransform.position.x = playerSpawnXZ.x;
-                mainCameraEntity->localTransform.position.z = playerSpawnXZ.z;
-                if (mainCameraEntity->parent)
-                {
-                    mainCameraEntity->parent->localTransform.position.x = playerSpawnXZ.x;
-                    mainCameraEntity->parent->localTransform.position.z = playerSpawnXZ.z;
-                }
-            }
-
-            float playerYaw = mainPlayerEntity->localTransform.rotation.y;
-            mainCameraEntity->localTransform.rotation.y = playerYaw + glm::pi<float>();
-        }
-
         zombieSpawningSystem.initializeFromWorld(&world, zombieSpawnerConfig, zombieSpawnHeightOffset);
         zombieAnimationSystem.configureRuntime(
             zombieAnimationConfig,
@@ -1317,8 +1275,8 @@ private:
             zombieSpawnerConfig.zombieMaterial);
         recalculateSunriseTargets();
         zombieSpawningSystem.resetRuntime(zombieWaveRuntime, initialWaveDelaySeconds);
-        isPaused      = false;
-        musicEnabled  = true;
+        isPaused = false;
+        musicEnabled = true;
         effectsEnabled = true;
         previousWallCollisionPairs.clear();
 
@@ -1330,7 +1288,9 @@ private:
             applyAudioPreferences();
         }
 
+        // We initialize the camera controller system since it needs a pointer to the app
         cameraController.enter(getApp());
+        // Then we initialize the renderer
         auto size = getApp()->getFrameBufferSize();
         renderer.initialize(size, config["renderer"]);
         hudSystem.initialize();
@@ -1342,12 +1302,21 @@ private:
     {
         auto &keyboard = getApp()->getKeyboard();
         if (keyboard.justPressed(GLFW_KEY_P))
+        {
             setPauseMode(!isPaused);
+        }
 
         if (!isPaused)
+        {
             totalTime += (float)deltaTime;
-
+        }
         renderer.setTime(totalTime);
+        if (getApp()->getKeyboard().justPressed(GLFW_KEY_I))
+        {
+            our::GameSession::setEndingResult(our::EndingOutcome::Win, computeCurrentExposure());
+            getApp()->changeState("ending");
+            return;
+        }
         collisionSfxCooldownLeft = std::max(0.0f, collisionSfxCooldownLeft - static_cast<float>(deltaTime));
 
         if (pendingOuchSfxTimeLeft >= 0.0f)
@@ -1356,25 +1325,33 @@ private:
             if (pendingOuchSfxTimeLeft <= 0.0f)
             {
                 if (our::AudioManager::getInstance().isInitialized() && !ouchSfxTrack.empty())
+                {
                     our::AudioManager::getInstance().playSound(ouchSfxTrack);
+                }
                 pendingOuchSfxTimeLeft = -1.0f;
             }
         }
 
         our::Entity *cameraEntity = mainCameraEntity;
         our::CameraComponent *camera = nullptr;
-        our::Entity *pistolEntity    = nullptr;
-        our::Mesh *pistolMesh        = our::AssetLoader<our::Mesh>::get("pistol");
+        our::Entity *pistolEntity = nullptr;
+        our::Mesh *pistolMesh = our::AssetLoader<our::Mesh>::get("pistol");
 
         if (!cameraEntity)
         {
-            cameraEntity     = findMainCameraEntity(mainPlayerEntity);
+            cameraEntity = findMainCameraEntity(mainPlayerEntity);
             mainCameraEntity = cameraEntity;
         }
+
         if (!mainPlayerEntity)
+        {
             mainPlayerEntity = findMainPlayerEntity();
+        }
+
         if (cameraEntity)
+        {
             camera = cameraEntity->getComponent<our::CameraComponent>();
+        }
 
         auto mainPlayerWeapon = getMainPlayerWeapon();
 
@@ -1386,22 +1363,27 @@ private:
             {
                 if (auto meshRenderer = entity->getComponent<our::MeshRendererComponent>();
                     meshRenderer && meshRenderer->mesh == pistolMesh)
+                {
                     pistolEntity = entity;
+                }
             }
-            if (pistolEntity) break;
+
+            if (pistolEntity)
+                break;
         }
 
         if (camera && cameraEntity && pistolEntity)
         {
             auto frameBufferSize = getApp()->getFrameBufferSize();
-            glm::mat4 VP         = camera->getProjectionMatrix(frameBufferSize) * camera->getViewMatrix();
+            glm::mat4 VP = camera->getProjectionMatrix(frameBufferSize) * camera->getViewMatrix();
+
             glm::vec3 muzzleLocalOffset = glm::vec3(-0.3f, -0.1f, 0.3f);
             glm::vec4 muzzleWorld = pistolEntity->getLocalToWorldMatrix() * glm::vec4(muzzleLocalOffset, 1.0f);
-            glm::vec4 clip        = VP * muzzleWorld;
+            glm::vec4 clip = VP * muzzleWorld;
             if (clip.w > 0.0001f)
             {
-                glm::vec2 ndc      = glm::vec2(clip) / clip.w;
-                muzzleFlashCenter  = glm::clamp(ndc * 0.5f + 0.5f, glm::vec2(0.0f), glm::vec2(1.0f));
+                glm::vec2 ndc = glm::vec2(clip) / clip.w;
+                muzzleFlashCenter = glm::clamp(ndc * 0.5f + 0.5f, glm::vec2(0.0f), glm::vec2(1.0f));
             }
         }
 
@@ -1419,67 +1401,32 @@ private:
             return;
         }
 
+        // Here, we just run a bunch of systems to control the world logic
         movementSystem.update(&world, (float)deltaTime);
-        // cameraController.update() removed — it was applying a second mouse rotation
-        // on top of playerController, causing double-speed turning.
-
-        auto  &mouse      = getApp()->getMouse();
-        auto   windowSize = getApp()->getWindowSize();
-        playerController.update(
-            &world, (float)deltaTime,
-            mouse.getMouseDelta().x, mouse.getMouseDelta().y,
-            windowSize.x, windowSize.y,
-            getApp()->getWindow());
-
-        // ── Sync camera XZ position to player every frame ────────────────────
-        // Camera handles only rotation; player entity owns XZ position.
-        // Y is NOT synced here — jump physics own Y while airborne.
-        if (mainPlayerEntity && mainCameraEntity)
-        {
-            float px = mainPlayerEntity->localTransform.position.x;
-            float pz = mainPlayerEntity->localTransform.position.z;
-
-            if (mainCameraEntity->parent == mainPlayerEntity)
-            {
-                mainCameraEntity->localTransform.position.x = 0.0f;
-                mainCameraEntity->localTransform.position.z = 0.0f;
-            }
-            else
-            {
-                mainCameraEntity->localTransform.position.x = px;
-                mainCameraEntity->localTransform.position.z = pz;
-                if (mainCameraEntity->parent)
-                {
-                    mainCameraEntity->parent->localTransform.position.x = px;
-                    mainCameraEntity->parent->localTransform.position.z = pz;
-                }
-            }
-            // NOTE: camera Y is intentionally NOT touched here.
-            // While grounded, lockCameraAndPlayerVerticalToZero() handles Y.
-            // While jumping,  player-controller.cpp moves cameraEntity->position.y
-            // directly and lockCameraAndPlayerVerticalToZero() skips itself.
-        }
-
+        cameraController.update(&world, (float)deltaTime);
         updateMainPlayerAnimation((float)deltaTime);
 
+        // Update main player weapon (handles cooldown and reload)
         if (mainPlayerWeapon)
+        {
             mainPlayerWeapon->update((float)deltaTime);
+        }
 
         updateWaveSystem((float)deltaTime);
         updateZombies((float)deltaTime);
         processHealthPickups();
         collisionSystem.update(&world);
         handleCollisions();
-        lockCameraAndPlayerVerticalToZero();  // no-op while airborne
+        lockCameraAndPlayerVerticalToZero();
         zombieAnimationSystem.updateBloodSplashEffects(&world, (float)deltaTime);
         world.deleteMarkedEntities();
 
         float currentHealth = 100.0f;
-        float maxHealth     = 100.0f;
+        float maxHealth = 100.0f;
         if (auto health = getMainPlayerHealth(); health)
         {
             currentHealth = health->currentHealth;
-            maxHealth     = health->maxHealth;
+            maxHealth = health->maxHealth;
         }
         renderer.setHealth(currentHealth, maxHealth, (float)deltaTime);
 
@@ -1487,7 +1434,9 @@ private:
         {
             bool playerDefeated = false;
             if (auto *health = getMainPlayerHealth(); health)
+            {
                 playerDefeated = (!health->isAlive) || (health->currentHealth <= 0.0f);
+            }
 
             if (playerDefeated)
             {
@@ -1495,8 +1444,7 @@ private:
                 our::GameSession::setEndingResult(our::EndingOutcome::Lose, computeCurrentExposure());
                 getApp()->changeState("ending");
             }
-            else if (zombieWaveRuntime.allWavesCompleted &&
-                     zombieSpawningSystem.getAliveZombieCount(&world) == 0)
+            else if (zombieWaveRuntime.allWavesCompleted && zombieSpawningSystem.getAliveZombieCount(&world) == 0)
             {
                 endingQueued = true;
                 our::GameSession::setEndingResult(our::EndingOutcome::Win, computeCurrentExposure());
@@ -1504,18 +1452,29 @@ private:
             }
         }
 
+        // Clean up finished audio sources
         our::AudioManager::getInstance().cleanupFinishedSources();
+
+        // And finally we use the renderer system to draw the scene
         renderer.render(&world);
+
+        // Draw ammo HUD over the final frame
         hudSystem.renderAmmoHUD(getApp()->getFrameBufferSize(), mainPlayerWeapon);
 
+        // Handle reload key (R)
         if (keyboard.justPressed(GLFW_KEY_R))
         {
             if (mainPlayerWeapon)
+            {
                 mainPlayerWeapon->reload();
+            }
         }
 
         if (keyboard.justPressed(GLFW_KEY_ESCAPE))
+        {
+            // If the escape  key is pressed in this frame, go to the play state
             getApp()->changeState("menu");
+        }
     }
 
     void onMouseButtonEvent(int button, int action, int mods) override
@@ -1523,12 +1482,18 @@ private:
         if (isPaused)
             return;
 
+        // Handle mouse button clicks for shooting
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
         {
             if (!mainCameraEntity)
+            {
                 mainCameraEntity = findMainCameraEntity(mainPlayerEntity);
+            }
+
             if (!mainPlayerEntity)
+            {
                 mainPlayerEntity = findMainPlayerEntity();
+            }
 
             our::CameraComponent *camera = mainCameraEntity ? mainCameraEntity->getComponent<our::CameraComponent>() : nullptr;
             our::WeaponComponent *weapon = getMainPlayerWeapon();
@@ -1538,18 +1503,13 @@ private:
                 if (weapon->shoot())
                 {
                     if (auto *player = mainPlayerEntity ? mainPlayerEntity->getComponent<our::PlayerComponent>() : nullptr)
+                    {
                         player->shootRequested = true;
+                    }
 
                     muzzleFlashTimeLeft = muzzleFlashDuration;
-                    auto  frameBufferSize = getApp()->getFrameBufferSize();
-                    float crosshairX      = 0.0f;
-                    float crosshairY      = 0.0f;
-                    if (auto *player = mainPlayerEntity ? mainPlayerEntity->getComponent<our::PlayerComponent>() : nullptr)
-                    {
-                        crosshairX = player->crosshairX;
-                        crosshairY = player->crosshairY;
-                    }
-                    our::Ray        ray        = shootingSystem.buildRayFromCamera(&world, frameBufferSize, crosshairX, crosshairY);
+                    auto frameBufferSize = getApp()->getFrameBufferSize();
+                    our::Ray ray = shootingSystem.buildRayFromCamera(&world, frameBufferSize);
                     our::FireResult fireResult = shootingSystem.fireRay(ray, &world, weapon);
 
                     zombieAnimationSystem.handleZombieKill(
@@ -1577,15 +1537,21 @@ private:
         audio.setMusicEnabled(true);
 
         if (our::AudioManager::getInstance().isInitialized())
+        {
             our::AudioManager::getInstance().stopLoopingSound(worldAmbientTrack);
+        }
 
         pauseAssets.destroy();
+
         renderer.destroy();
         hudSystem.destroy();
+        // On exit, we call exit for the camera controller system to make sure that the mouse is unlocked
         cameraController.exit();
+        // Clear the world
         world.clear();
         collisionSystem.clear();
         previousWallCollisionPairs.clear();
+        // and we delete all the loaded assets to free memory on the RAM and the VRAM
         our::clearAllAssets();
     }
 };

@@ -11,11 +11,13 @@
   "scene": {
     "renderer": {
       "sky": "assets/textures/sky.jpg",
-      "postprocess": "assets/shaders/postprocess/blit-muzzle.frag",
-      "muzzleFlashCenter": [0.5, 0.5],
-      "muzzleFlashDuration": 0.06
+      "postprocess": "assets/shaders/postprocess/blit-muzzle.frag"
+      // "muzzleFlashCenter": [0.5, 0.5],
+      // "muzzleFlashDuration": 0.0
     },
     "zombies": {
+      "sunriseStartExposure": 0.2,
+      "sunriseEndExposure": 1.2,
       "waveZombieCounts": [3, 5, 7, 10],
       "initialWaveDelaySeconds": 0.2,
       "betweenWavesDelaySeconds": 4,
@@ -57,8 +59,18 @@
       "houseColliderPaddingXZ": 1.4,
       "pistolBoneOffset": [0.0, 0.2, 0.17],
       "pistolRotationOffset": [190, 90, -110],
-      "pistolMuzzleLocalOffset": [-0.3, -0.1, -0.3],
+      // "pistolMuzzleLocalOffset": [-0.3, -0.1, -0.3],
       "pistolScaleMultiplier": 1
+    },
+    "ending": {
+      "win": {
+        "playerPositionOffset": [0.0, -6.0, -1.0],
+        "playerRotationDegrees": [0.0, 0.0, 0.0],
+        "cameraTargetOffset": [0.0, -3.0, -10.0],
+        "zoomTargetDistance": 3.2,
+        "zoomHeightOffset": -1.0,
+        "zoomDuration": 1.4
+      }
     },
     "assets": {
       "shaders": {
@@ -93,6 +105,7 @@
         "pickup-health": "assets/models/HealthBox.glb",
         "zombie": "assets/models/Zombie.glb",
         "blood-splash": "assets/models/Blood.glb",
+        "wall": "assets/environment/Wall.glb",
         "env_house_a": "assets/environment/modular/env_house_a.obj",
         "env_house_b": "assets/environment/modular/env_house_b.obj",
         "env_tower_a": "assets/environment/modular/env_tower_a.obj",
@@ -343,65 +356,69 @@
         }
       }
     },
-    
-  "world": [
-    {
-      "name": "MainPlayer",
-      "position": [0, 0, 10],
-      "components": [
-        {
-          "type": "Player",
-          "isMainPlayer": true,
-          "walkSpeed": 5.5,
-          "jumpSpeed": 9.6,
-          "gravity": -14.0,
-          "groundY": 0.0,
-          "rotationSensitivity": 0.001,
-          "pitchSensitivity": 0.0015
-        },
-        { "type": "Health", "maxHealth": 100, "currentHealth": 100 },
-        { "type": "Pistol" }
-      ],
-      "children": [
-        {
-          "name": "MainCamera",
-          "components": [
-            {
-              "type": "Camera",
-              "position": [0.8, 2.2, 4.0]
-            },
-             {
+    "world": [
+      {
+        "name": "MainPlayer",
+        "position": [0, 0, 10],
+        "components": [
+          {
+            "type": "Player",
+            "isMainPlayer": true
+          },
+          {
+            "type": "Health",
+            "maxHealth": 100,
+            "currentHealth": 100
+          },
+          {
+            "type": "Pistol"
+          }
+        ],
+        "children": [
+          {
+            "name": "MainCamera",
+            "components": [
+              {
+                "type": "Camera"
+              },
+              {
                 "type": "Collider",
-                "size": [0.8, 1.2, 1.8],
+                "size": [0.8, 1.8, 0.8],
                 "center": [0, 0.8, 0]
               },
               {
                 "type": "Free Camera Controller"
               }
-          ],
-          "children": [
-            {
-              "name": "PistolMesh",
-              "position": [0.3, -0.5, -0.8],
-              "rotation": [-110, -80, 180],
-              "scale": [40, 40, 40],
-              "components": [
-                { "type": "Mesh Renderer", "mesh": "pistol", "material": "metal" }
-              ]
-            }
-          ]
-        },
-        {
-          "name": "PlayerVisualModel",
-          "position": [0, 0, 2],
-          "rotation": [0, 180, 0],
-          "scale": [100, 100, 100],
-          "components": [
-            { "type": "Mesh Renderer", "mesh": "main-player", "material": "auto" }
-          ]
-        }
-      ]
-    },
+            ],
+            "children": [
+              {
+                "position": [1, -1, -1],
+                "rotation": [-110, -80, 180],
+                "scale": [40, 40, 40],
+                "components": [
+                  {
+                    "type": "Mesh Renderer",
+                    "mesh": "pistol",
+                    "material": "metal"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "position": [6, 4, 10],
+        "rotation": [0, 180, 0],
+        "scale": [100, 100, 100],
+        "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "main-player",
+            "material": "auto"
+          }
+        ]
+      },
       {
         "name": "street_floor",
         "position": [0, -8, 0],
@@ -858,8 +875,8 @@
       },
       {
         "name": "building_-3_-3",
-        "position": [-39.1284971125994, -8, -38.56414364700205],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
+        "position": [-39.1284971125994, 6.5, -38.56414364700205],
+        "scale": [5.903950111621557, 14, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -877,29 +894,9 @@
         ]
       },
       {
-        "name": "building_-3_-1",
-        "position": [-39.1284971125994, -8, -12.56414364700205],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 21.7835394266242, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
         "name": "building_-3_1",
-        "position": [-39.1284971125994, -8, 13.43585635299795],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
+        "position": [-39.1284971125994, 6.5, 13.43585635299795],
+        "scale": [5.903950111621557, 14, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -917,29 +914,9 @@
         ]
       },
       {
-        "name": "building_-2_-3",
-        "position": [-26.128497112599398, -8, -38.56414364700205],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 22.140917874076276, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
         "name": "building_-2_0",
         "position": [-26, -8, 0.29850746268656714],
-        "scale": [6.451612903225807, 6.8, 5.970149253731344],
+        "scale": [15, 20, 15],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -959,7 +936,7 @@
       {
         "name": "building_-2_2",
         "position": [-26, -8, 26.298507462686565],
-        "scale": [6.451612903225807, 6.8, 5.970149253731344],
+        "scale": [15, 20, 15],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -977,169 +954,9 @@
         ]
       },
       {
-        "name": "building_-2_3",
-        "position": [-26.128497112599398, -8, 39.43585635299795],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 11.26080316925533, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_-1_-3",
-        "position": [-13.128497112599398, -8, -38.56414364700205],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 19.896316037827937, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_-1_0",
-        "position": [-13, -8, 0.29850746268656714],
-        "scale": [6.451612903225807, 6.8, 5.970149253731344],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_b",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 3.710635442030294, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_-1_2",
-        "position": [-13.128497112599398, -8, 26.435856352997952],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 15.922895473870122, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_-1_3",
-        "position": [-13.128497112599398, -8, 39.43585635299795],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 14.271645152785814, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_0_-2",
-        "position": [-0.12849711259939767, -8, -25.564143647002048],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 17.396163389617854, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_0_-1",
-        "position": [-0.12849711259939767, -8, -12.56414364700205],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 3.3763239168666264, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_0_2",
-        "position": [0, -8, 26.298507462686565],
-        "scale": [6.451612903225807, 6.8, 5.970149253731344],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_b",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 23.148841504108933, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
         "name": "building_0_3",
-        "position": [-0.12849711259939767, -8, 39.43585635299795],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
+        "position": [-0.12849711259939767, 6.5, 39.43585635299795],
+        "scale": [5.903950111621557, 14, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1157,109 +974,9 @@
         ]
       },
       {
-        "name": "building_1_-2",
-        "position": [12.871502887400602, -8, -25.564143647002048],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 20.48701864471808, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_1_0",
-        "position": [12.871502887400602, -8, 0.4358563529979502],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 2.493255015387967, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_1_1",
-        "position": [13, -8, 13.298507462686567],
-        "scale": [6.451612903225807, 6.8, 5.970149253731344],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_house_b",
-            "material": "building_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 3.1691719804470813, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_1_2",
-        "position": [12.871502887400602, -8, 26.435856352997952],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 13.509132146516533, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_2_-3",
-        "position": [25.871502887400602, -8, -38.56414364700205],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 12.445461109572177, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
         "name": "building_2_-2",
         "position": [26, -8, -25.701492537313435],
-        "scale": [6.451612903225807, 6.8, 5.970149253731344],
+        "scale": [15, 20, 15],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1277,69 +994,9 @@
         ]
       },
       {
-        "name": "building_2_-1",
-        "position": [25.871502887400602, -8, -12.56414364700205],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 16.10590858410459, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_2_0",
-        "position": [25.871502887400602, -8, 0.4358563529979502],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 14.02262591970901, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_2_1",
-        "position": [25.871502887400602, -8, 13.43585635299795],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 21.531549109763112, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
         "name": "building_2_2",
         "position": [26, -8, 26.298507462686565],
-        "scale": [6.451612903225807, 6.8, 5.970149253731344],
+        "scale": [15, 20, 15],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1358,8 +1015,8 @@
       },
       {
         "name": "building_2_3",
-        "position": [25.871502887400602, -8, 39.43585635299795],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
+        "position": [25.871502887400602, 6.5, 39.43585635299795],
+        "scale": [5.903950111621557, 14, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1378,8 +1035,8 @@
       },
       {
         "name": "building_3_-3",
-        "position": [38.8715028874006, -8, -38.56414364700205],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
+        "position": [38.8715028874006, 6.5, -38.56414364700205],
+        "scale": [5.903950111621557, 14, 6.006778499367074],
         "components": [
           {
             "type": "Mesh Renderer",
@@ -1389,66 +1046,6 @@
           {
             "type": "Collider",
             "size": [8, 24.013647046051105, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_3_-2",
-        "position": [38.8715028874006, -8, -25.564143647002048],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 22.191395184833034, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_3_0",
-        "position": [38.8715028874006, -8, 0.4358563529979502],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 15.982621641458367, 8]
-          },
-          {
-            "type": "Environment",
-            "environmentType": "wall"
-          }
-        ]
-      },
-      {
-        "name": "building_3_1",
-        "position": [38.8715028874006, -8, 13.43585635299795],
-        "scale": [5.903950111621557, 8.444542213006738, 6.006778499367074],
-        "components": [
-          {
-            "type": "Mesh Renderer",
-            "mesh": "env_tower_a",
-            "material": "tower_theme"
-          },
-          {
-            "type": "Collider",
-            "size": [8, 25.255995962456044, 8]
           },
           {
             "type": "Environment",
@@ -2018,8 +1615,15 @@
       },
       {
         "name": "wall_north",
-        "position": [0, 10, 52],
+        "position": [0, 5, 52],
+        "rotation": [90, 0, 0],
+        "scale": [5200, 1000, 1000],
         "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "wall",
+            "material": "stone_wall"
+          },
           {
             "type": "Collider",
             "size": [104, 20, 2]
@@ -2032,8 +1636,15 @@
       },
       {
         "name": "wall_south",
-        "position": [0, 10, -52],
+        "position": [0, 5, -52],
+        "scale": [5200, 1000, 1000],
+        "rotation": [90, 0, 0],
         "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "wall",
+            "material": "stone_wall"
+          },
           {
             "type": "Collider",
             "size": [104, 20, 2]
@@ -2046,8 +1657,15 @@
       },
       {
         "name": "wall_east",
-        "position": [52, 10, 0],
+        "position": [52, 5, 0],
+        "rotation": [90, 90, 0],
+        "scale": [5200, 1000, 1000],
         "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "wall",
+            "material": "stone_wall"
+          },
           {
             "type": "Collider",
             "size": [2, 20, 104]
@@ -2060,8 +1678,15 @@
       },
       {
         "name": "wall_west",
-        "position": [-52, 10, 0],
+        "position": [-52, 5, 0],
+        "rotation": [90, 90, 0],
+        "scale": [5200, 1000, 1000],
         "components": [
+          {
+            "type": "Mesh Renderer",
+            "mesh": "wall",
+            "material": "stone_wall"
+          },
           {
             "type": "Collider",
             "size": [2, 20, 104]
