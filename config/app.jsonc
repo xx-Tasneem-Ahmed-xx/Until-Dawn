@@ -1,5 +1,5 @@
 {
-  "start-scene": "play",
+  "start-scene": "menu",
   "window": {
     "title": "Until Dawn",
     "size": {
@@ -11,12 +11,12 @@
   "scene": {
     "renderer": {
       "sky": "assets/textures/sky.jpg",
-      "postprocess": "assets/shaders/postprocess/blit-muzzle.frag",
-      "muzzleFlashCenter": [0.5, 0.5],
-      "muzzleFlashDuration": 0.06
+      "postprocess": "assets/shaders/postprocess/blit-muzzle.frag"
+      // "muzzleFlashCenter": [0.5, 0.5],
+      // "muzzleFlashDuration": 0.0
     },
     "zombies": {
-      "sunriseStartExposure": 1,
+      "sunriseStartExposure": 0.2,
       "sunriseEndExposure": 1.2,
       "waveZombieCounts": [3, 5, 7, 10],
       "initialWaveDelaySeconds": 0.2,
@@ -59,7 +59,7 @@
       "houseColliderPaddingXZ": 1.4,
       "pistolBoneOffset": [0.0, 0.2, 0.17],
       "pistolRotationOffset": [190, 90, -110],
-      "pistolMuzzleLocalOffset": [-0.3, -0.1, -0.3],
+      // "pistolMuzzleLocalOffset": [-0.3, -0.1, -0.3],
       "pistolScaleMultiplier": 1
     },
     "ending": {
