@@ -76,5 +76,6 @@ On Windows:
 
 ## Gameplay
 
-<video src="./demo.mp4" controls width="900"></video>
+[![Demo video thumbnail](assets/textures/menu.png)](https://youtu.be/qZC47AnXaIw)
 
+Watch the demo: https://youtu.be/qZC47AnXaIw
